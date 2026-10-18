@@ -66,7 +66,10 @@ class PostgresCompatConnection:
 
     def executemany(self, sql: str, parameters):
         statement, _ = self.translate(sql)
-        return self._connection.executemany(statement, parameters)
+        results = []
+        for parameter_set in parameters:
+            results.append(self._connection.execute(statement, parameter_set))
+        return results
 
     def executescript(self, script: str) -> None:
         script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "SERIAL PRIMARY KEY", script, flags=re.I)
