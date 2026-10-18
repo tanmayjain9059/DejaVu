@@ -42,7 +42,7 @@ class PostgresCompatConnection:
         return self._connection.execute(statement, parameters or ())
 
     def executescript(self, script: str) -> None:
-        script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "BIGSERIAL PRIMARY KEY", script, flags=re.I)
+        script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "SERIAL PRIMARY KEY", script, flags=re.I)
         for statement in script.split(";"):
             if statement.strip():
                 self.execute(statement)
