@@ -10,6 +10,26 @@ A campus lost-and-found platform with intelligent item matching and verified phy
 
 <img width="958" height="479" alt="image" src="https://github.com/user-attachments/assets/7ec20fbf-7df0-4c68-9b04-0ba9badf81d5" />
 
+
+# 🔗 LostLink — Lost & Found Platform
+
+<p align="center">
+  <a href="https://lostlink-q8ft.onrender.com/" target="_blank">
+    <img src="https://img.shields.io/badge/🚀_LIVE_DEMO-Click_Here_to_Try-2ea44f?style=for-the-badge" alt="Live Demo"/>
+  </a>
+</p>
+
+<p align="center">
+  <b>Find what you've lost. Return what you've found.</b>
+</p>
+
+### 🌐 Live Application
+
+**Try LostLink now:** https://lostlink-q8ft.onrender.com/
+
+Explore the platform and experience how LostLink helps connect people with their lost belongings.
+
+
 LostLink is a web application for managing campus lost property from initial report through verified physical return. Students submit lost or found reports and receive possible-match suggestions. Authorised office staff manage physical intake, item tagging and storage, private ownership-claim review, disputes and recorded handover.
 
 **The central rule is that a match is a lead, not proof of ownership.** A found item becomes visible for student discovery only after authorised staff confirm physical receipt and record custody. Claim approval and physical handover are separate steps; the application requires the exact physical LostLink Tag ID and identity/handover confirmations before recording a return.
