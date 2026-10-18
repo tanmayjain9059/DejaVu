@@ -77,6 +77,12 @@ jobs:
           finally:
               close_database_pool()
           PY
+      - name: Run end-to-end lost/found workflow on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k report_intake_match_claim_handover_and_rewards -v
 
   matching-evaluation:
     runs-on: ubuntu-latest
