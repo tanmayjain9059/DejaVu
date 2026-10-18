@@ -6,9 +6,13 @@ from pathlib import Path
 from PIL import Image
 from fastapi.testclient import TestClient
 
-import app.main as main
 from app.core import config as app_config
 from app.core import database as app_database
+
+# Workflow tests must never seed or mutate a developer's configured external database.
+app_config.DATABASE_URL = ""
+app_database.DATABASE_URL = ""
+import app.main as main
 from app.core import runtime as app_runtime
 from app.services import notifications as app_notifications
 from app.services import reports as app_reports_service
