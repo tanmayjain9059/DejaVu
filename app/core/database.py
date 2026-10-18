@@ -326,7 +326,7 @@ def initialise_db() -> None:
             ("Location needs confirmation",),
         )
         # Backward-compatible migrations for richer item details and report closure.
-        report_columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)").fetchall()}
+        report_columns = table_columns(conn, "reports")
         for column, declaration in (
             ("brand", "TEXT"),
             ("primary_color", "TEXT"),
