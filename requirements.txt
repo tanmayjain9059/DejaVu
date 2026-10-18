@@ -5,4 +5,4 @@ itsdangerous>=2.2
 python-dotenv>=1.0
 Pillow>=10.4
 reportlab>=4.2,<5.0
-psycopg[binary]>=3.2,<4
+psycopg[binary,pool]>=3.2,<4
