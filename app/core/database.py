@@ -1,6 +1,6 @@
 """SQLite connections, migrations, audit events and optional demo seeding."""
 from __future__ import annotations
-import hashlib, json, re, sqlite3, uuid
+import hashlib, json, os, re, sqlite3, uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -67,24 +67,60 @@ def _postgres_url() -> str:
     raise RuntimeError("DATABASE_URL must use postgresql:// or postgres://.")
 
 
+_POSTGRES_POOL = None
+
+
+def _get_postgres_pool():
+    """Create a bounded connection pool on demand for managed PostgreSQL."""
+    global _POSTGRES_POOL
+    if _POSTGRES_POOL is not None:
+        return _POSTGRES_POOL
+    try:
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+    except ImportError as exc:
+        raise RuntimeError(
+            "DATABASE_URL is configured for PostgreSQL, but psycopg with its pool extra "
+            "is not installed. Install the project requirements."
+        ) from exc
+    try:
+        max_size = int(os.getenv("DATABASE_POOL_MAX_SIZE", "5"))
+    except ValueError as exc:
+        raise RuntimeError("DATABASE_POOL_MAX_SIZE must be an integer between 1 and 20.") from exc
+    if not 1 <= max_size <= 20:
+        raise RuntimeError("DATABASE_POOL_MAX_SIZE must be between 1 and 20.")
+    _POSTGRES_POOL = ConnectionPool(
+        conninfo=_postgres_url(),
+        min_size=1,
+        max_size=max_size,
+        kwargs={"row_factory": dict_row, "connect_timeout": 10},
+        timeout=10,
+        open=True,
+    )
+    return _POSTGRES_POOL
+
+
+def close_database_pool() -> None:
+    """Release pooled PostgreSQL connections during application shutdown."""
+    global _POSTGRES_POOL
+    if _POSTGRES_POOL is not None:
+        _POSTGRES_POOL.close()
+        _POSTGRES_POOL = None
+
+
 @contextmanager
 def connect_db():
     if DATABASE_URL:
-        try:
-            import psycopg
-            from psycopg.rows import dict_row
-        except ImportError as exc:
-            raise RuntimeError(
-                "DATABASE_URL is configured for PostgreSQL, but psycopg is not installed. "
-                "Install the project requirements."
-            ) from exc
-        conn = PostgresCompatConnection(
-            psycopg.connect(_postgres_url(), row_factory=dict_row, connect_timeout=10)
-        )
-    else:
-        conn = sqlite3.connect(DB_PATH, timeout=20)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
+        pool = _get_postgres_pool()
+        # psycopg_pool commits successful transactions, rolls back on exceptions,
+        # and returns the connection to the pool on context exit.
+        with pool.connection() as raw_connection:
+            yield PostgresCompatConnection(raw_connection)
+        return
+
+    conn = sqlite3.connect(DB_PATH, timeout=20)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
         conn.commit()
