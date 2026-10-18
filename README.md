@@ -29,6 +29,7 @@ LostLink is a web application for managing campus lost property from initial rep
 - [Technology stack](#technology-stack)
 - [Local installation](#local-installation)
 - [Configuration](#configuration)
+- [External database (PostgreSQL)](#external-database-postgresql)
 - [Testing and matching evaluation](#testing-and-matching-evaluation)
 - [Limitations and production considerations](#limitations-and-production-considerations)
 
@@ -473,6 +474,20 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>CLIP_MODEL</code> | CLIP model identifier. | <code>openai/clip-vit-base-patch32</code>. |
 
 Keep secrets out of source control. The committed <code>.env.example</code> intentionally contains a placeholder and is not ready to use unchanged.
+
+
+### External database (PostgreSQL)
+
+LostLink can use a managed PostgreSQL database through <code>DATABASE_URL</code>. Leave that variable unset to continue using the local SQLite database. The application chooses PostgreSQL when a <code>postgresql://</code> or <code>postgres://</code> URL is provided.
+
+1. Create a PostgreSQL database with a managed provider such as Neon, Supabase, or Render Postgres.
+2. Add the provider's connection URL as the <code>DATABASE_URL</code> environment variable in the app host. Use the provider's TLS-enabled URL (usually includes <code>sslmode=require</code>) and store it as a secret; never commit real credentials.
+3. Keep <code>SESSION_SECRET</code> unique and set <code>SESSION_HTTPS_ONLY=true</code> on HTTPS deployments.
+4. Deploy with the standard start command: <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code>.
+
+The <code>psycopg</code> driver is installed from <code>requirements.txt</code>. At startup LostLink creates missing tables and applies its existing additive schema updates. Use a new, dedicated database first, back it up before testing a populated database, and verify the workflow after connecting. SQLite remains the default for local development.
+
+**Important:** moving database records to PostgreSQL does not move image files. Report photos and private claim evidence still use <code>UPLOAD_DIR</code>; on ephemeral hosting those files can disappear on restart/redeploy. Before relying on uploads, configure persistent storage or a private object-storage service and test access controls. Do not use real student data for a public demo.
 
 ## Testing and matching evaluation
 
