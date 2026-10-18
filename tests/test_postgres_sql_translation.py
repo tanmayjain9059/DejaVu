@@ -41,11 +41,11 @@ class PostgresSqlTranslationTests(unittest.TestCase):
     def test_autoincrement_schema_is_converted_to_serial(self):
         ddl = re.sub(
             r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT",
-            "BIGSERIAL PRIMARY KEY",
+            "SERIAL PRIMARY KEY",
             "id INTEGER PRIMARY KEY AUTOINCREMENT",
             flags=re.I,
         )
-        self.assertEqual(ddl, "id BIGSERIAL PRIMARY KEY")
+        self.assertEqual(ddl, "id SERIAL PRIMARY KEY")
 
 
 if __name__ == "__main__":
