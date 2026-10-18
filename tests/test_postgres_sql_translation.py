@@ -6,6 +6,14 @@ from app.core.database import PostgresCompatConnection
 
 
 class PostgresSqlTranslationTests(unittest.TestCase):
+    def test_postgres_row_supports_named_and_numeric_access(self):
+        from app.core.database import PostgresCompatRow
+
+        row = PostgresCompatRow(["id", "count"], [17, 4])
+        self.assertEqual(row["count"], 4)
+        self.assertEqual(row[0], 17)
+        self.assertEqual(row[1], 4)
+
     def test_positional_parameters_are_translated(self):
         sql, is_lock = PostgresCompatConnection.translate(
             "SELECT id FROM reports WHERE id=? AND status=?"
