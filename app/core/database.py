@@ -11,6 +11,29 @@ from app.core.images import perceptual_hash_from_bytes
 from app.core.security import hash_password
 
 
+class PostgresCompatRow(dict):
+    """PostgreSQL result row supporting both name and numeric-index access."""
+
+    def __init__(self, column_names, values):
+        self._ordered_values = tuple(values)
+        super().__init__(zip(column_names, self._ordered_values))
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._ordered_values[key]
+        return super().__getitem__(key)
+
+
+def postgres_row_factory(cursor):
+    """Psycopg row factory that mirrors sqlite3.Row indexing behaviour."""
+    description = cursor.description or ()
+    column_names = [
+        column.name if hasattr(column, "name") else column[0]
+        for column in description
+    ]
+    return lambda values: PostgresCompatRow(column_names, values)
+
+
 class PostgresCompatConnection:
     """Limited DB-API compatibility for the SQLite-style SQL used by this project."""
 
@@ -76,7 +99,6 @@ def _get_postgres_pool():
     if _POSTGRES_POOL is not None:
         return _POSTGRES_POOL
     try:
-        from psycopg.rows import dict_row
         from psycopg_pool import ConnectionPool
     except ImportError as exc:
         raise RuntimeError(
@@ -93,7 +115,7 @@ def _get_postgres_pool():
         conninfo=_postgres_url(),
         min_size=1,
         max_size=max_size,
-        kwargs={"row_factory": dict_row, "connect_timeout": 10},
+        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10},
         timeout=10,
         open=True,
     )
