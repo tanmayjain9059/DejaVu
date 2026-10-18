@@ -1,6 +1,6 @@
 """SQLite connections, migrations, audit events and optional demo seeding."""
 from __future__ import annotations
-import hashlib, json, sqlite3, uuid
+import hashlib, json, re, sqlite3, uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,11 +10,81 @@ from app.core.config import *
 from app.core.images import perceptual_hash_from_bytes
 from app.core.security import hash_password
 
+
+class PostgresCompatConnection:
+    """Limited DB-API compatibility for the SQLite-style SQL used by this project."""
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    @staticmethod
+    def translate(sql: str) -> tuple[str, bool]:
+        statement = sql.strip()
+        if statement.upper() == "BEGIN IMMEDIATE":
+            return "SELECT pg_advisory_xact_lock(730021)", True
+
+        ignored_insert = re.match(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", statement, re.I)
+        replace_insert = re.match(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+claim_verifications\b", statement, re.I)
+        if ignored_insert:
+            statement = re.sub(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", statement, flags=re.I).rstrip().rstrip(";")
+            statement += " ON CONFLICT DO NOTHING"
+        elif replace_insert:
+            statement = re.sub(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\b", "INSERT INTO", statement, flags=re.I).rstrip().rstrip(";")
+            statement += (
+                " ON CONFLICT (claim_id) DO UPDATE SET "
+                "verifier_user_id=EXCLUDED.verifier_user_id, "
+                "checks_json=EXCLUDED.checks_json, verified_at=EXCLUDED.verified_at"
+            )
+        return statement.replace("?", "%s"), False
+
+    def execute(self, sql: str, parameters=()):
+        statement, _ = self.translate(sql)
+        return self._connection.execute(statement, parameters or ())
+
+    def executescript(self, script: str) -> None:
+        script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "BIGSERIAL PRIMARY KEY", script, flags=re.I)
+        for statement in script.split(";"):
+            if statement.strip():
+                self.execute(statement)
+
+    def commit(self):
+        return self._connection.commit()
+
+    def rollback(self):
+        return self._connection.rollback()
+
+    def close(self):
+        return self._connection.close()
+
+
+def _postgres_url() -> str:
+    if not DATABASE_URL:
+        return ""
+    if DATABASE_URL.startswith("postgres://"):
+        return "postgresql://" + DATABASE_URL[len("postgres://"):]
+    if DATABASE_URL.startswith("postgresql://"):
+        return DATABASE_URL
+    raise RuntimeError("DATABASE_URL must use postgresql:// or postgres://.")
+
+
 @contextmanager
 def connect_db():
-    conn = sqlite3.connect(DB_PATH, timeout=20)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    if DATABASE_URL:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as exc:
+            raise RuntimeError(
+                "DATABASE_URL is configured for PostgreSQL, but psycopg is not installed. "
+                "Install the project requirements."
+            ) from exc
+        conn = PostgresCompatConnection(
+            psycopg.connect(_postgres_url(), row_factory=dict_row, connect_timeout=10)
+        )
+    else:
+        conn = sqlite3.connect(DB_PATH, timeout=20)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
         conn.commit()
@@ -23,6 +93,19 @@ def connect_db():
         raise
     finally:
         conn.close()
+
+
+def table_columns(conn, table_name: str) -> set[str]:
+    """Return column names without depending on SQLite-only PRAGMA syntax."""
+    if isinstance(conn, PostgresCompatConnection):
+        rows = conn.execute(
+            "SELECT column_name AS name FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = ?",
+            (table_name,),
+        ).fetchall()
+    else:
+        rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row["name"] for row in rows}
 
 
 def now_iso() -> str:
@@ -177,7 +260,7 @@ def initialise_db() -> None:
             """
         )
         # Keep existing local databases compatible as storage tracking is introduced.
-        report_columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)").fetchall()}
+        report_columns = table_columns(conn, "reports")
         if "storage_location" not in report_columns:
             conn.execute("ALTER TABLE reports ADD COLUMN storage_location TEXT")
         conn.execute(
@@ -215,7 +298,7 @@ def initialise_db() -> None:
                 )
             except (OSError, UnidentifiedImageError, ValueError):
                 continue
-        claim_columns = {row["name"] for row in conn.execute("PRAGMA table_info(claims)").fetchall()}
+        claim_columns = table_columns(conn, "claims")
         for column, declaration in (
             ("appeal_note", "TEXT"),
             ("appeal_count", "INTEGER NOT NULL DEFAULT 0"),
