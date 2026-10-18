@@ -26,7 +26,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
                         app_reports_service, auth_routes, reports_routes, claims_routes, engagement_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
-                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False}
+                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False, "DATABASE_URL": ""}
         for module in self.modules:
             for name, value in new_settings.items():
                 if hasattr(module, name):
