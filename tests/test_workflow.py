@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from io import BytesIO
@@ -9,9 +10,13 @@ from fastapi.testclient import TestClient
 from app.core import config as app_config
 from app.core import database as app_database
 
-# Workflow tests must never seed or mutate a developer's configured external database.
-app_config.DATABASE_URL = ""
-app_database.DATABASE_URL = ""
+# By default, workflow tests isolate themselves in temporary SQLite files.
+# The PostgreSQL CI job explicitly opts in with TEST_WITH_POSTGRES=true and points
+# DATABASE_URL only at a disposable CI-owned database.
+TEST_WITH_POSTGRES = os.getenv("TEST_WITH_POSTGRES", "").lower() == "true"
+if not TEST_WITH_POSTGRES:
+    app_config.DATABASE_URL = ""
+    app_database.DATABASE_URL = ""
 import app.main as main
 from app.core import runtime as app_runtime
 from app.services import notifications as app_notifications
@@ -30,7 +35,8 @@ class LostLinkWorkflowTests(unittest.TestCase):
                         app_reports_service, auth_routes, reports_routes, claims_routes, engagement_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
-                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False, "DATABASE_URL": ""}
+                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
+                        "DATABASE_URL": app_config.DATABASE_URL if TEST_WITH_POSTGRES else ""}
         for module in self.modules:
             for name, value in new_settings.items():
                 if hasattr(module, name):
