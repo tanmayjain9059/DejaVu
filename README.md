@@ -49,6 +49,7 @@ LostLink is a web application for managing campus lost property from initial rep
 - [Technology stack](#technology-stack)
 - [Local installation](#local-installation)
 - [Configuration](#configuration)
+- [External database (PostgreSQL)](#external-database-postgresql)
 - [Testing and matching evaluation](#testing-and-matching-evaluation)
 - [Limitations and production considerations](#limitations-and-production-considerations)
 
@@ -485,7 +486,9 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>DEMO_MODE</code> | Seed demo accounts and sample records. | Example file sets <code>true</code>; set <code>false</code> outside local demonstrations. |
 | <code>SESSION_SECRET</code> | Secret used to sign session cookies. | Required; startup rejects an empty or known placeholder value. Use a unique random secret. |
 | <code>SESSION_HTTPS_ONLY</code> | Restrict session cookies to HTTPS. | <code>false</code> for localhost; set <code>true</code> for HTTPS deployment. |
-| <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code>. |
+| <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code> when <code>DATABASE_URL</code> is unset. |
+| <code>DATABASE_URL</code> | Optional managed PostgreSQL connection URL. | Set a provider-issued <code>postgresql://</code> URL to use PostgreSQL; unset means SQLite. |
+| <code>DATABASE_POOL_MAX_SIZE</code> | Maximum number of pooled PostgreSQL connections. | Optional; defaults to <code>5</code>, accepted range <code>1-20</code>. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
@@ -493,6 +496,20 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>CLIP_MODEL</code> | CLIP model identifier. | <code>openai/clip-vit-base-patch32</code>. |
 
 Keep secrets out of source control. The committed <code>.env.example</code> intentionally contains a placeholder and is not ready to use unchanged.
+
+
+### External database (PostgreSQL)
+
+LostLink can use a managed PostgreSQL database through <code>DATABASE_URL</code>. Leave that variable unset to continue using the local SQLite database. The application chooses PostgreSQL when a <code>postgresql://</code> or <code>postgres://</code> URL is provided.
+
+1. Create a PostgreSQL database with a managed provider such as Neon, Supabase, or Render Postgres.
+2. Add the provider's connection URL as the <code>DATABASE_URL</code> environment variable in the app host. Use the provider's TLS-enabled URL (usually includes <code>sslmode=require</code>) and store it as a secret; never commit real credentials.
+3. Keep <code>SESSION_SECRET</code> unique and set <code>SESSION_HTTPS_ONLY=true</code> on HTTPS deployments.
+4. Deploy with the standard start command: <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code>.
+
+The <code>psycopg</code> driver and its pool extra are installed from <code>requirements.txt</code>. LostLink reuses a bounded PostgreSQL connection pool (default maximum 5 connections, configurable with <code>DATABASE_POOL_MAX_SIZE</code>) and closes it during application shutdown. At startup LostLink creates missing tables and applies its existing additive schema updates. Use a new, dedicated database first, back it up before testing a populated database, and verify the workflow after connecting. This connection setting does not migrate existing SQLite records automatically. SQLite remains the default for local development.
+
+**Important:** moving database records to PostgreSQL does not move image files. Report photos and private claim evidence still use <code>UPLOAD_DIR</code>; on ephemeral hosting those files can disappear on restart/redeploy. Before relying on uploads, configure persistent storage or a private object-storage service and test access controls. Do not use real student data for a public demo.
 
 ## Testing and matching evaluation
 
@@ -523,7 +540,7 @@ The benchmark is at <code>tests/data/matching_benchmark.json</code>. Its measure
 
 The current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
 
-- **Persistence:** SQLite is suitable for the prototype. If measured concurrent writes or operational needs require it, migrate to a managed database such as PostgreSQL and review connection management, query plans, transaction boundaries and uniqueness constraints.
+- **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
 - **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. Larger collections may require better candidate pre-filtering, a search index, cached embeddings and a separate inference worker.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.

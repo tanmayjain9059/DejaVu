@@ -73,6 +73,13 @@ class FrontendContractTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Navigation views missing their section: {missing}")
         self.assertTrue(set(expected).issubset(self.views))
 
+    def test_mobile_viewport_and_touch_navigation_contract(self):
+        self.assertIn("viewport-fit=cover", self.html)
+        styles = (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("@media (max-width: 700px)", styles)
+        self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
+        self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)

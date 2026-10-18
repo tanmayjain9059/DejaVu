@@ -103,6 +103,7 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
     timestamp = now_iso()
     status = "open" if body.report_type == "lost" else "awaiting_intake"
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         conn.execute(
             """INSERT INTO reports(id, public_ref, report_type, title, description, brand, primary_color,
                visible_features, category, occurred_at, location_block, location_floor, location_room,
@@ -138,6 +139,7 @@ async def close_report(
     if user["role"] != "student":
         raise HTTPException(status_code=403, detail="Only the report owner can close their report.")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         report = read_report(conn, report_id)
         if report["created_by"] != user["id"]:
             raise HTTPException(status_code=404, detail="Report not found.")
@@ -307,6 +309,7 @@ async def intake_found_item(
     if len(storage_location) < 4:
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         row = read_report(conn, report_id)
         if row["report_type"] != "found" or row["status"] != "awaiting_intake":
             raise HTTPException(status_code=409, detail="Only found-item reports awaiting intake can be accepted.")
@@ -358,6 +361,7 @@ async def update_storage_location(
     if len(storage_location) < 4:
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         report = read_report(conn, report_id)
         if report["report_type"] != "found" or not report["tag_id"]:
             raise HTTPException(status_code=409, detail="Only physically received and tagged found items can have a storage location.")

@@ -28,6 +28,62 @@ jobs:
       - name: Import application
         run: python -c "import app.main; print('LostLink application import OK')"
 
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lostlink
+          POSTGRES_PASSWORD: lostlink-ci-password
+          POSTGRES_DB: lostlink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lostlink -d lostlink"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SESSION_SECRET: ci-postgres-test-secret-8d03ca4a9b6c4f99acba
+      SESSION_HTTPS_ONLY: "false"
+      DATABASE_URL: postgresql://lostlink:lostlink-ci-password@localhost:5432/lostlink
+      DATABASE_POOL_MAX_SIZE: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install runtime and test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Bootstrap schema and verify PostgreSQL connection
+        run: |
+          python - <<'PY'
+          import app.main
+          from app.core.database import close_database_pool, connect_db, table_columns
+
+          try:
+              with connect_db() as conn:
+                  assert {"id", "email", "role"}.issubset(table_columns(conn, "users"))
+                  assert {"id", "report_id", "claimant_id"}.issubset(table_columns(conn, "claims"))
+                  conn.execute("BEGIN IMMEDIATE")
+                  assert conn.execute("SELECT 1 AS connected").fetchone()["connected"] == 1
+                  conn.execute("CREATE TEMP TABLE IF NOT EXISTS lostlink_adapter_smoke (id TEXT PRIMARY KEY)")
+                  conn.execute("INSERT OR IGNORE INTO lostlink_adapter_smoke(id) VALUES (?)", ("adapter-ok",))
+                  assert conn.execute("SELECT COUNT(*) AS n FROM lostlink_adapter_smoke").fetchone()["n"] == 1
+              print("PostgreSQL schema, pooled connection, transaction lock and SQL adapter OK")
+          finally:
+              close_database_pool()
+          PY
+      - name: Run end-to-end lost/found workflow on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k report_intake_match_claim_handover_and_rewards -v
+
   matching-evaluation:
     runs-on: ubuntu-latest
     continue-on-error: true
