@@ -1,5 +1,6 @@
 """FastAPI application composition root for LostLink."""
 from __future__ import annotations
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -20,12 +21,20 @@ if not SESSION_SECRET or SESSION_SECRET in {
 }:
     raise RuntimeError("SESSION_SECRET is unset or a placeholder. Set a unique random secret in .env before starting LostLink.")
 
-app = FastAPI(title="LostLink", version="0.1.0")
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Release shared PostgreSQL connections gracefully when the app shuts down."""
+    try:
+        yield
+    finally:
+        close_database_pool()
+
+
+app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
 app.include_router(auth_router)
 app.include_router(reports_router)
 app.include_router(claims_router)
 app.include_router(engagement_router)
-app.add_event_handler("shutdown", close_database_pool)
 initialise_db()
