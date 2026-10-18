@@ -468,6 +468,7 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>SESSION_HTTPS_ONLY</code> | Restrict session cookies to HTTPS. | <code>false</code> for localhost; set <code>true</code> for HTTPS deployment. |
 | <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code> when <code>DATABASE_URL</code> is unset. |
 | <code>DATABASE_URL</code> | Optional managed PostgreSQL connection URL. | Set a provider-issued <code>postgresql://</code> URL to use PostgreSQL; unset means SQLite. |
+| <code>DATABASE_POOL_MAX_SIZE</code> | Maximum number of pooled PostgreSQL connections. | Optional; defaults to <code>5</code>, accepted range <code>1-20</code>. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
@@ -486,7 +487,7 @@ LostLink can use a managed PostgreSQL database through <code>DATABASE_URL</code>
 3. Keep <code>SESSION_SECRET</code> unique and set <code>SESSION_HTTPS_ONLY=true</code> on HTTPS deployments.
 4. Deploy with the standard start command: <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code>.
 
-The <code>psycopg</code> driver is installed from <code>requirements.txt</code>. At startup LostLink creates missing tables and applies its existing additive schema updates. Use a new, dedicated database first, back it up before testing a populated database, and verify the workflow after connecting. SQLite remains the default for local development.
+The <code>psycopg</code> driver and its pool extra are installed from <code>requirements.txt</code>. LostLink reuses a bounded PostgreSQL connection pool (default maximum 5 connections, configurable with <code>DATABASE_POOL_MAX_SIZE</code>) and closes it during application shutdown. At startup LostLink creates missing tables and applies its existing additive schema updates. Use a new, dedicated database first, back it up before testing a populated database, and verify the workflow after connecting. This connection setting does not migrate existing SQLite records automatically. SQLite remains the default for local development.
 
 **Important:** moving database records to PostgreSQL does not move image files. Report photos and private claim evidence still use <code>UPLOAD_DIR</code>; on ephemeral hosting those files can disappear on restart/redeploy. Before relying on uploads, configure persistent storage or a private object-storage service and test access controls. Do not use real student data for a public demo.
 
