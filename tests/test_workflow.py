@@ -1,14 +1,24 @@
+import os
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
 from fastapi.testclient import TestClient
 
-import app.main as main
 from app.core import config as app_config
 from app.core import database as app_database
+
+# By default, workflow tests isolate themselves in temporary SQLite files.
+# The PostgreSQL CI job explicitly opts in with TEST_WITH_POSTGRES=true and points
+# DATABASE_URL only at a disposable CI-owned database.
+TEST_WITH_POSTGRES = os.getenv("TEST_WITH_POSTGRES", "").lower() == "true"
+if not TEST_WITH_POSTGRES:
+    app_config.DATABASE_URL = ""
+    app_database.DATABASE_URL = ""
+import app.main as main
 from app.core import runtime as app_runtime
 from app.services import notifications as app_notifications
 from app.services import reports as app_reports_service
@@ -26,7 +36,8 @@ class LostLinkWorkflowTests(unittest.TestCase):
                         app_reports_service, auth_routes, reports_routes, claims_routes, engagement_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
-                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False}
+                        "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
+                        "DATABASE_URL": app_config.DATABASE_URL if TEST_WITH_POSTGRES else ""}
         for module in self.modules:
             for name, value in new_settings.items():
                 if hasattr(module, name):
@@ -286,6 +297,67 @@ class LostLinkWorkflowTests(unittest.TestCase):
         intake_notice = next(item for item in finder_notifications if item["title"] == "Found item received and stored")
         self.assertNotIn(tag_id, intake_notice["message"])
         self.assertNotIn("Student Affairs Office - Cabinet B2", intake_notice["message"])
+
+    def test_security_headers_are_present(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("x-frame-options"), "DENY")
+        self.assertEqual(
+            response.headers.get("referrer-policy"),
+            "strict-origin-when-cross-origin",
+        )
+        self.assertIn("geolocation=()", response.headers.get("permissions-policy", ""))
+        api_response = self.client.get("/api/config")
+        self.assertEqual(api_response.headers.get("cache-control"), "no-store")
+        self.assertEqual(api_response.headers.get("cross-origin-resource-policy"), "same-origin")
+
+    def test_health_endpoints_report_process_and_database_status(self):
+        self.assertEqual(self.client.get("/health/live").json(), {"status": "ok"})
+        ready = self.client.get("/health/ready")
+        self.assertEqual(ready.status_code, 200)
+        self.assertEqual(ready.json(), {"status": "ready"})
+
+    def test_cross_origin_mutations_are_rejected(self):
+        response = self.client.post(
+            "/api/logout",
+            headers={"Origin": "https://attacker.example"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Cross-origin", response.json()["detail"])
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
+
+    def test_missing_origin_is_rejected_in_strict_production_mode(self):
+        original = main.REQUIRE_REQUEST_ORIGIN
+        main.REQUIRE_REQUEST_ORIGIN = True
+        try:
+            response = self.client.post("/api/logout")
+            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.headers.get("cache-control"), "no-store")
+        finally:
+            main.REQUIRE_REQUEST_ORIGIN = original
+
+    def test_https_mode_adds_hsts_and_content_security_policy(self):
+        original = main.HTTPS_ONLY
+        main.HTTPS_ONLY = True
+        try:
+            response = self.client.get("/")
+            self.assertEqual(response.headers.get("strict-transport-security"), "max-age=31536000")
+            self.assertIn("frame-ancestors 'none'", response.headers.get("content-security-policy", ""))
+            insecure_origin = self.client.post(
+                "/api/logout", headers={"Origin": "http://testserver"}
+            )
+            self.assertEqual(insecure_origin.status_code, 403, insecure_origin.text)
+        finally:
+            main.HTTPS_ONLY = original
+
+    def test_same_origin_mutations_are_allowed(self):
+        response = self.client.post(
+            "/api/logout",
+            headers={"Origin": "http://testserver"},
+        )
+        self.assertEqual(response.status_code, 200)
 
     def test_invalid_optional_report_date_is_rejected(self):
         self.login("claimant@example.test", "claimant-password")
@@ -737,6 +809,408 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.assertEqual(response.json()["user"]["role"], "student")
             self.client.post("/api/logout")
         self.set_demo_mode(False)
+
+
+    def test_report_image_file_is_removed_when_database_transaction_rolls_back(self):
+        self.login("claimant@example.test", "claimant-password")
+        created = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Green water bottle", "Green bottle with a white lid and a small scratch."),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        report_id = created.json()["report"]["id"]
+
+        image = Image.new("RGB", (48, 48), (25, 130, 90))
+        stream = BytesIO()
+        image.save(stream, format="PNG")
+        original_audit = reports_routes.audit
+
+        def fail_audit(*args, **kwargs):
+            raise RuntimeError("simulated audit storage failure")
+
+        reports_routes.audit = fail_audit
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    f"/api/reports/{report_id}/image",
+                    files={"file": ("bottle.png", stream.getvalue(), "image/png")},
+                )
+        finally:
+            reports_routes.audit = original_audit
+
+        with main.connect_db() as conn:
+            row = conn.execute("SELECT image_path FROM reports WHERE id=?", (report_id,)).fetchone()
+        self.assertIsNone(row["image_path"])
+        self.assertEqual(list(main.UPLOAD_DIR.iterdir()), [])
+
+    def test_handover_rolls_back_if_reward_or_notification_write_fails(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Silver headphones", "Silver headphones with a black case and blue marker."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf C-05",
+            "private_detail": "Blue marker line inside the case.",
+            "value_band": "medium",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        tag_id = intake.json()["report"]["tag_id"]
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": report_id,
+            "evidence": "I can identify the blue marker line inside the case and describe its contents.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+        claim_id = claim_response.json()["claim"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        decision = self.client.post(f"/api/claims/{claim_id}/decision", json={
+            "action": "approve",
+            "note": "Ownership evidence reviewed.",
+            "verification_checks": ["distinctive_features", "physical_inspection", "claimant_identity"],
+        })
+        self.assertEqual(decision.status_code, 200, decision.text)
+        payload = {
+            "confirmed_physical_handover": True,
+            "claimant_identity_checked": True,
+            "tag_id": tag_id,
+            "note": "Rollback fault-injection test.",
+        }
+
+        original_notify = claims_routes.notify_user
+        def fail_notification(*args, **kwargs):
+            raise RuntimeError("simulated notification write failure")
+        claims_routes.notify_user = fail_notification
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(f"/api/claims/{claim_id}/handover", json=payload)
+        finally:
+            claims_routes.notify_user = original_notify
+
+        with main.connect_db() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM reward_ledger WHERE event_key=?", ("verified-return:" + report_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT status FROM claims WHERE id=?", (claim_id,)).fetchone()["status"], "approved_for_collection")
+
+        original_award = claims_routes.award_points
+        def fail_reward(*args, **kwargs):
+            raise RuntimeError("simulated reward write failure")
+        claims_routes.award_points = fail_reward
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(f"/api/claims/{claim_id}/handover", json=payload)
+        finally:
+            claims_routes.award_points = original_award
+
+        with main.connect_db() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT status FROM reports WHERE id=?", (report_id,)).fetchone()["status"], "claim_approved")
+
+    def test_schema_migration_baseline_is_recorded(self):
+        with main.connect_db() as conn:
+            migration = conn.execute(
+                "SELECT version, name FROM schema_migrations WHERE version=1"
+            ).fetchone()
+            active_index_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=2"
+            ).fetchone()
+            uniqueness_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=3"
+            ).fetchone()
+            legacy_columns_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=4"
+            ).fetchone()
+        self.assertIsNotNone(migration)
+        self.assertEqual(migration["name"], "legacy_schema_baseline")
+        self.assertIsNotNone(active_index_migration)
+        self.assertEqual(active_index_migration["name"], "active_claim_lookup_indexes")
+        self.assertIsNotNone(uniqueness_migration)
+        self.assertEqual(uniqueness_migration["name"], "workflow_event_uniqueness_guards")
+        self.assertIsNotNone(legacy_columns_migration)
+        self.assertEqual(
+            legacy_columns_migration["name"],
+            "legacy_additive_columns_and_image_fingerprints",
+        )
+
+    def test_application_refuses_unknown_future_schema_versions(self):
+        with self.assertRaisesRegex(RuntimeError, "newer than this application supports"):
+            with main.connect_db() as conn:
+                conn.execute(
+                    "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+                    (999, "future_test_version", main.now_iso()),
+                )
+                app_database._apply_versioned_schema_migrations(conn)
+
+    def test_concurrent_handover_requests_only_return_item_once(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Olive backpack", "Olive backpack with a yellow zipper pull and side pocket."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf C-03",
+            "private_detail": "Yellow thread at the inner seam.",
+            "value_band": "medium",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        tag_id = intake.json()["report"]["tag_id"]
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": report_id,
+            "evidence": "I can identify the yellow thread at the inner seam and confirm the contents in person.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+        claim_id = claim_response.json()["claim"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        decision = self.client.post(f"/api/claims/{claim_id}/decision", json={
+            "action": "approve",
+            "note": "Ownership evidence reviewed.",
+            "verification_checks": ["distinctive_features", "physical_inspection", "claimant_identity"],
+        })
+        self.assertEqual(decision.status_code, 200, decision.text)
+
+        second_client = TestClient(main.app)
+        try:
+            second_login = second_client.post("/api/login", json={
+                "email": "office@example.test", "password": "office-password"
+            })
+            self.assertEqual(second_login.status_code, 200, second_login.text)
+            payload = {
+                "confirmed_physical_handover": True,
+                "claimant_identity_checked": True,
+                "tag_id": tag_id,
+                "note": "Concurrent duplicate-handover regression test.",
+            }
+
+            def submit(client):
+                return client.post(f"/api/claims/{claim_id}/handover", json=payload)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(submit, (self.client, second_client)))
+
+            self.assertEqual(sorted(response.status_code for response in responses), [200, 409])
+            with main.connect_db() as conn:
+                handovers = conn.execute(
+                    "SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)
+                ).fetchone()[0]
+                rewards = conn.execute(
+                    "SELECT COUNT(*) FROM reward_ledger WHERE event_key=?",
+                    ("verified-return:" + report_id,),
+                ).fetchone()[0]
+            self.assertEqual(handovers, 1)
+            self.assertEqual(rewards, 1)
+        finally:
+            second_client.close()
+
+
+    def test_concurrent_competing_claims_are_both_disputed(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Black umbrella", "Black umbrella with a wooden curved handle and a small silver tip."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf D-02",
+            "private_detail": "Small silver tip under the handle.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                ("rival@example.test", "Rival Claimant", "student",
+                 main.hash_password("rival-password"), main.now_iso()),
+            )
+
+        self.login("claimant@example.test", "claimant-password")
+        rival_client = TestClient(main.app)
+        self.assertEqual(rival_client.post("/api/login", json={
+            "email": "rival@example.test", "password": "rival-password"
+        }).status_code, 200)
+        payloads = (
+            {"report_id": report_id, "evidence": "I can identify the wooden curved handle and the silver tip beneath it.", "evidence_types": ["distinctive_features"]},
+            {"report_id": report_id, "evidence": "I can identify the silver tip and describe the unique wear on the handle.", "evidence_types": ["distinctive_features"]},
+        )
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(
+                    lambda args: args[0].post("/api/claims", json=args[1]),
+                    ((self.client, payloads[0]), (rival_client, payloads[1])),
+                ))
+            self.assertEqual([response.status_code for response in responses], [200, 200],
+                             [response.text for response in responses])
+            with main.connect_db() as conn:
+                claims = conn.execute(
+                    "SELECT status FROM claims WHERE report_id=? ORDER BY created_at, id", (report_id,)
+                ).fetchall()
+            self.assertEqual(len(claims), 2)
+            self.assertEqual({row["status"] for row in claims}, {"disputed"})
+        finally:
+            rival_client.close()
+
+    def test_report_closure_cannot_race_with_approval_of_linked_claim(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Blue notebook", "Blue notebook with a torn lower corner and initials inside."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_report_id = lost.json()["report"]["id"]
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Blue notebook", "Blue notebook with a torn lower corner and initials inside."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{found_report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office cabinet B-04",
+            "private_detail": "A handwritten note on the inside back cover.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": found_report_id,
+            "lost_report_id": lost_report_id,
+            "evidence": "I can describe the torn lower corner and the initials written inside my notebook.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+
+        office_client = TestClient(main.app)
+        self.assertEqual(office_client.post("/api/login", json={
+            "email": "office@example.test", "password": "office-password"
+        }).status_code, 200)
+        try:
+            close_request = {
+                "reason": "no_longer_searching",
+                "note": "I am closing this search after reviewing my belongings.",
+            }
+            approve_request = {
+                "action": "approve",
+                "note": "Ownership evidence reviewed in person.",
+                "verification_checks": [
+                    "distinctive_features", "physical_inspection",
+                    "supporting_evidence", "claimant_identity",
+                ],
+            }
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                close_future = pool.submit(
+                    self.client.post, f"/api/reports/{lost_report_id}/close", json=close_request
+                )
+                approve_future = pool.submit(
+                    office_client.post, f"/api/claims/{claim_response.json()['claim']['id']}/decision",
+                    json=approve_request,
+                )
+                close_response, approve_response = close_future.result(), approve_future.result()
+            self.assertEqual(close_response.status_code, 409, close_response.text)
+            self.assertEqual(approve_response.status_code, 200, approve_response.text)
+            with main.connect_db() as conn:
+                lost_status = conn.execute(
+                    "SELECT status FROM reports WHERE id=?", (lost_report_id,)
+                ).fetchone()["status"]
+                claim_status = conn.execute(
+                    "SELECT status FROM claims WHERE id=?", (claim_response.json()["claim"]["id"],)
+                ).fetchone()["status"]
+            self.assertEqual(lost_status, "open")
+            self.assertEqual(claim_status, "approved_for_collection")
+        finally:
+            office_client.close()
+
+    def test_database_has_unique_guards_for_idempotent_workflow_events(self):
+        expected = {
+            "uq_notifications_user_event_key",
+            "uq_reward_ledger_user_event_key",
+            "uq_handovers_claim_id",
+            "uq_handovers_report_id",
+        }
+        with main.connect_db() as conn:
+            if TEST_WITH_POSTGRES:
+                rows = conn.execute(
+                    "SELECT indexname AS name FROM pg_indexes "
+                    "WHERE schemaname=current_schema() AND indexname = ANY(?)",
+                    (list(expected),),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
+                    tuple(sorted(expected)),
+                ).fetchall()
+            self.assertEqual({row["name"] for row in rows}, expected)
+
+            user_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("claimant@example.test",)
+            ).fetchone()["id"]
+        event_key = "unique-guard-regression"
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO notifications(id,user_id,event_key,title,message,entity_type,entity_id,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                ("notice-unique-1", user_id, event_key, "Test", "Test", "test", "entity", main.now_iso()),
+            )
+        with self.assertRaises(Exception):
+            with main.connect_db() as conn:
+                conn.execute(
+                    "INSERT INTO notifications(id,user_id,event_key,title,message,entity_type,entity_id,created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    ("notice-unique-2", user_id, event_key, "Test", "Test", "test", "entity", main.now_iso()),
+                )
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO reward_ledger(id,user_id,event_key,points,reason,report_id,created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                ("reward-unique-1", user_id, event_key, 5, "test", None, main.now_iso()),
+            )
+        with self.assertRaises(Exception):
+            with main.connect_db() as conn:
+                conn.execute(
+                    "INSERT INTO reward_ledger(id,user_id,event_key,points,reason,report_id,created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    ("reward-unique-2", user_id, event_key, 5, "test", None, main.now_iso()),
+                )
 
 
 if __name__ == "__main__":

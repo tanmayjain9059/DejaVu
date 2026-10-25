@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lostlink
+      POSTGRES_USER: lostlink
+      POSTGRES_PASSWORD: ${LOSTLINK_DB_PASSWORD:-local-dev-only-change-me}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - lostlink-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lostlink -d lostlink"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  lostlink-postgres-data:

@@ -19,14 +19,181 @@ jobs:
           cache: pip
       - name: Install runtime and test dependencies
         run: python -m pip install -r requirements-dev.txt
-      - name: Compile application and tests
-        run: python -m compileall -q app tests
+      - name: Compile application, tests and operational scripts
+        run: python -m compileall -q app tests scripts
+      - name: Check backup and restore shell syntax
+        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh scripts/backup_uploads.sh scripts/restore_uploads.sh
       - name: Check JavaScript syntax
         run: node --check app/static/app.js
       - name: Run unit, workflow and frontend contract tests
         run: python -m unittest discover -s tests -v
       - name: Import application
         run: python -c "import app.main; print('LostLink application import OK')"
+
+  container-build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://lostlink:ci-only-password@db.example.test:5432/lostlink?sslmode=require
+      SESSION_SECRET: ci-only-not-for-deployment-container-build-check
+      ALLOWED_HOSTS: lostlink.example.test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose configuration
+        run: docker compose -f compose.production.yml config --quiet
+      - name: Validate production container build
+        run: docker build --tag lostlink-ci .
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lostlink
+          POSTGRES_PASSWORD: lostlink-ci-password
+          POSTGRES_DB: lostlink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lostlink -d lostlink"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SESSION_SECRET: ci-postgres-test-secret-8d03ca4a9b6c4f99acba
+      SESSION_HTTPS_ONLY: "false"
+      DATABASE_URL: postgresql://lostlink:lostlink-ci-password@localhost:5432/lostlink
+      DATABASE_POOL_MAX_SIZE: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install runtime and test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Bootstrap schema and verify PostgreSQL connection
+        run: |
+          python - <<'PY'
+          import app.main
+          from app.core.database import close_database_pool, connect_db, table_columns
+
+          try:
+              with connect_db() as conn:
+                  assert {"id", "email", "role"}.issubset(table_columns(conn, "users"))
+                  assert {"id", "report_id", "claimant_id"}.issubset(table_columns(conn, "claims"))
+                  conn.execute("BEGIN IMMEDIATE")
+                  assert conn.execute("SELECT 1 AS connected").fetchone()["connected"] == 1
+                  conn.execute("CREATE TEMP TABLE IF NOT EXISTS lostlink_adapter_smoke (id TEXT PRIMARY KEY)")
+                  conn.execute("INSERT OR IGNORE INTO lostlink_adapter_smoke(id) VALUES (?)", ("adapter-ok",))
+                  assert conn.execute("SELECT COUNT(*) AS n FROM lostlink_adapter_smoke").fetchone()["n"] == 1
+              print("PostgreSQL schema, pooled connection, transaction lock and SQL adapter OK")
+          finally:
+              close_database_pool()
+          PY
+      - name: Run end-to-end lost/found workflow on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k report_intake_match_claim_handover_and_rewards -v
+      - name: Reset disposable PostgreSQL schema before concurrency regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Run concurrent duplicate-handover regression on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_concurrent_handover_requests_only_return_item_once -v
+      - name: Reset disposable PostgreSQL schema before competing-claims regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test concurrent competing claims on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_concurrent_competing_claims_are_both_disputed -v
+      - name: Reset disposable PostgreSQL schema before closure-approval race regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test report closure versus claim approval race on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_report_closure_cannot_race_with_approval_of_linked_claim -v
+      - name: Reset disposable PostgreSQL schema before uniqueness regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test database uniqueness guards on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_database_has_unique_guards_for_idempotent_workflow_events -v
+      - name: Reset disposable PostgreSQL schema before migration smoke test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Exercise SQLite-to-PostgreSQL migration in CI
+        run: |
+          migration_tmp="$(mktemp -d)"
+          trap 'rm -rf "$migration_tmp"' EXIT
+          export MIGRATION_TMP="$migration_tmp"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["MIGRATION_TMP"])
+          os.environ["DATABASE_URL"] = ""
+          os.environ["DATA_DIR"] = str(root / "source-data")
+          os.environ["DATABASE_PATH"] = str(root / "source.sqlite")
+          os.environ["UPLOAD_DIR"] = str(root / "source-uploads")
+          os.environ["DEMO_MODE"] = "false"
+
+          from app.core import database
+          database.DATABASE_URL = ""
+          database.DEMO_MODE = False
+          database.initialise_db()
+          (database.UPLOAD_DIR / "fixture.jpg").write_bytes(b"migration-fixture")
+          with database.connect_db() as conn:
+              conn.execute(
+                  "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                  ("migration@example.test", "Migration Fixture", "student", "not-used-in-login", database.now_iso()),
+              )
+              user_id = conn.execute(
+                  "SELECT id FROM users WHERE email=?", ("migration@example.test",)
+              ).fetchone()["id"]
+              conn.execute(
+                  """INSERT INTO reports
+                     (id, public_ref, report_type, title, description, category, status,
+                      created_by, image_path, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                  ("migration-report", "LL-MIG-0001", "lost", "Fixture item",
+                   "A fixture report for migration verification.", "bags_wallets", "open",
+                   user_id, "fixture.jpg", database.now_iso(), database.now_iso()),
+              )
+          database.close_database_pool()
+          PY
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false \
+            python scripts/migrate_sqlite_to_postgres.py --source-db "$migration_tmp/source.sqlite" \
+            --source-uploads "$migration_tmp/source-uploads"
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false \
+            python scripts/migrate_sqlite_to_postgres.py --source-db "$migration_tmp/source.sqlite" \
+            --source-uploads "$migration_tmp/source-uploads" --execute
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false python - <<'PY'
+          from pathlib import Path
+          from app.core import database
+
+          with database.connect_db() as conn:
+              user = conn.execute(
+                  "SELECT id FROM users WHERE email=?", ("migration@example.test",)
+              ).fetchone()
+              report = conn.execute(
+                  "SELECT image_path FROM reports WHERE id=?", ("migration-report",)
+              ).fetchone()
+              assert user is not None and report is not None
+              assert (database.UPLOAD_DIR / report["image_path"]).read_bytes() == b"migration-fixture"
+          database.close_database_pool()
+          print("SQLite-to-PostgreSQL migration and referenced-upload smoke test OK")
+          PY
 
   matching-evaluation:
     runs-on: ubuntu-latest
