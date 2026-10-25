@@ -36,11 +36,16 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
 
 
-def _apply_security_headers(response):
+def _apply_security_headers(response, private_api=False):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+    if private_api:
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
     if HTTPS_ONLY:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     return response
@@ -69,7 +74,7 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                     status_code=403,
                     content={"detail": "Invalid request origin."},
                 ))
-    return _apply_security_headers(await call_next(request))
+    return _apply_security_headers(await call_next(request), private_api=request.url.path.startswith("/api/"))
 
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
