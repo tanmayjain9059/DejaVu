@@ -274,6 +274,13 @@ def _apply_versioned_schema_migrations(conn) -> None:
         int(row["version"])
         for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
     }
+    supported = {1, *(version for version, _, _ in SCHEMA_MIGRATIONS)}
+    unknown = applied - supported
+    if unknown:
+        raise RuntimeError(
+            "Database schema is newer than this application supports; "
+            f"unknown migration versions: {sorted(unknown)}"
+        )
     for version, name, migrate in SCHEMA_MIGRATIONS:
         if version in applied:
             continue
