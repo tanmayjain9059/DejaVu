@@ -266,6 +266,11 @@ def initialise_db() -> None:
                 window_started_at TEXT NOT NULL,
                 locked_until TEXT
             );
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                applied_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS reports (
                 id TEXT PRIMARY KEY,
                 public_ref TEXT NOT NULL UNIQUE,
@@ -434,6 +439,13 @@ def initialise_db() -> None:
         ):
             if column not in claim_columns:
                 conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+        # Record the current legacy bootstrap as the initial schema baseline.
+        # Existing additive compatibility updates above remain safe to re-run; future
+        # schema changes must receive a new ordered migration version.
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+            (1, "legacy_schema_baseline", now_iso()),
+        )
         if not DEMO_MODE:
             return
 
