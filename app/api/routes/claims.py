@@ -131,18 +131,26 @@ async def upload_claim_evidence_image(
                 detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
             )
         filename = "claim-" + uuid.uuid4().hex + ".jpg"
-        (UPLOAD_DIR / filename).write_bytes(normalized)
-        conn.execute(
-            """INSERT INTO claim_evidence_images
-               (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (uuid.uuid4().hex, claim_id, user["id"], filename, image_sha256, image_phash, now_iso()),
-        )
-        audit(conn, user["id"], "claim_evidence_image_added", "claim", claim_id,
-              {"sha256_prefix": image_sha256[:12]})
-        notify_role(conn, "office", "claim-evidence-image:" + claim_id,
-                    "Claim evidence image submitted", "A claimant attached private image evidence for review.",
-                    "claim", claim_id)
+        image_path = (UPLOAD_DIR / filename).resolve()
+        if image_path.parent != UPLOAD_DIR.resolve():
+            raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+        image_path.write_bytes(normalized)
+        try:
+            conn.execute(
+                """INSERT INTO claim_evidence_images
+                   (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (uuid.uuid4().hex, claim_id, user["id"], filename, image_sha256, image_phash, now_iso()),
+            )
+            audit(conn, user["id"], "claim_evidence_image_added", "claim", claim_id,
+                  {"sha256_prefix": image_sha256[:12]})
+            notify_role(conn, "office", "claim-evidence-image:" + claim_id,
+                        "Claim evidence image submitted", "A claimant attached private image evidence for review.",
+                        "claim", claim_id)
+        except Exception:
+            # Keep filesystem and database state aligned if the transaction aborts.
+            image_path.unlink(missing_ok=True)
+            raise
     return {"ok": True, "message": "Private evidence image attached."}
 
 
