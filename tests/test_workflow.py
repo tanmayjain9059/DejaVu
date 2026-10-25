@@ -297,6 +297,17 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertNotIn(tag_id, intake_notice["message"])
         self.assertNotIn("Student Affairs Office - Cabinet B2", intake_notice["message"])
 
+    def test_security_headers_are_present(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("x-frame-options"), "DENY")
+        self.assertEqual(
+            response.headers.get("referrer-policy"),
+            "strict-origin-when-cross-origin",
+        )
+        self.assertIn("geolocation=()", response.headers.get("permissions-policy", ""))
+
     def test_invalid_optional_report_date_is_rejected(self):
         self.login("claimant@example.test", "claimant-password")
         body = self.report_body("lost", "Blue headphones", "Blue over-ear headphones with a padded headband.")
