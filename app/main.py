@@ -48,16 +48,23 @@ def _apply_security_headers(response, private_api=False):
         response.headers["Pragma"] = "no-cache"
     if HTTPS_ONLY:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
+            "form-action 'self'; img-src 'self' data: blob:; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests",
+        )
     return response
 
 
 @app.middleware("http")
 async def protect_unsafe_api_requests_and_add_headers(request: Request, call_next):
     """Reject cross-origin API mutations and add baseline browser security headers."""
-    if request.url.path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        origin = request.headers.get("origin")
-        referer = request.headers.get("referer")
-        source = origin or referer
+    is_api = request.url.path.startswith("/api/")
+    if is_api and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        source = request.headers.get("origin") or request.headers.get("referer")
         if source:
             try:
                 source_url = urlsplit(source)
@@ -68,14 +75,18 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                     return _apply_security_headers(JSONResponse(
                         status_code=403,
                         content={"detail": "Cross-origin state-changing requests are not allowed."},
-                    ))
+                    ), private_api=True)
             except ValueError:
                 return _apply_security_headers(JSONResponse(
                     status_code=403,
                     content={"detail": "Invalid request origin."},
-                ))
-    return _apply_security_headers(await call_next(request), private_api=request.url.path.startswith("/api/"))
-
+                ), private_api=True)
+        elif REQUIRE_REQUEST_ORIGIN:
+            return _apply_security_headers(JSONResponse(
+                status_code=403,
+                content={"detail": "A same-origin request header is required."},
+            ), private_api=True)
+    return _apply_security_headers(await call_next(request), private_api=is_api)
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
