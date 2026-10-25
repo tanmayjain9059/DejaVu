@@ -856,11 +856,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
                     "SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)
                 ).fetchone()[0]
                 rewards = conn.execute(
-                    "SELECT COUNT(*) FROM reward_ledger WHERE event_key LIKE ?",
-                    ("%"+claim_id+"%",),
+                    "SELECT COUNT(*) FROM reward_ledger WHERE event_key=?",
+                    ("verified-return:" + report_id,),
                 ).fetchone()[0]
             self.assertEqual(handovers, 1)
-            self.assertLessEqual(rewards, 1)
+            self.assertEqual(rewards, 1)
         finally:
             second_client.close()
 
