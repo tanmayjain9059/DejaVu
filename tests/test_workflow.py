@@ -839,6 +839,81 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertIsNone(row["image_path"])
         self.assertEqual(list(main.UPLOAD_DIR.iterdir()), [])
 
+    def test_handover_rolls_back_if_reward_or_notification_write_fails(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Silver headphones", "Silver headphones with a black case and blue marker."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf C-05",
+            "private_detail": "Blue marker line inside the case.",
+            "value_band": "medium",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        tag_id = intake.json()["report"]["tag_id"]
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": report_id,
+            "evidence": "I can identify the blue marker line inside the case and describe its contents.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+        claim_id = claim_response.json()["claim"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        decision = self.client.post(f"/api/claims/{claim_id}/decision", json={
+            "action": "approve",
+            "note": "Ownership evidence reviewed.",
+            "verification_checks": ["distinctive_features", "physical_inspection", "claimant_identity"],
+        })
+        self.assertEqual(decision.status_code, 200, decision.text)
+        payload = {
+            "confirmed_physical_handover": True,
+            "claimant_identity_checked": True,
+            "tag_id": tag_id,
+            "note": "Rollback fault-injection test.",
+        }
+
+        original_notify = claims_routes.notify_user
+        def fail_notification(*args, **kwargs):
+            raise RuntimeError("simulated notification write failure")
+        claims_routes.notify_user = fail_notification
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(f"/api/claims/{claim_id}/handover", json=payload)
+        finally:
+            claims_routes.notify_user = original_notify
+
+        with main.connect_db() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM reward_ledger WHERE event_key=?", ("verified-return:" + report_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT status FROM claims WHERE id=?", (claim_id,)).fetchone()["status"], "approved_for_collection")
+
+        original_award = claims_routes.award_points
+        def fail_reward(*args, **kwargs):
+            raise RuntimeError("simulated reward write failure")
+        claims_routes.award_points = fail_reward
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(f"/api/claims/{claim_id}/handover", json=payload)
+        finally:
+            claims_routes.award_points = original_award
+
+        with main.connect_db() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)).fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT status FROM reports WHERE id=?", (report_id,)).fetchone()["status"], "claim_approved")
+
     def test_schema_migration_baseline_is_recorded(self):
         with main.connect_db() as conn:
             migration = conn.execute(
