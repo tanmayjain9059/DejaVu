@@ -825,6 +825,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
             ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
+        active_index_migration = conn.execute(
+            "SELECT name FROM schema_migrations WHERE version=2"
+        ).fetchone()
+        self.assertIsNotNone(active_index_migration)
+        self.assertEqual(active_index_migration["name"], "active_claim_lookup_indexes")
 
     def test_concurrent_handover_requests_only_return_item_once(self):
         self.login("finder@example.test", "finder-password")
