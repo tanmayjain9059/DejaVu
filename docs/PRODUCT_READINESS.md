@@ -35,7 +35,7 @@ to the public internet.
 - [ ] Test a backup restore against the exact PostgreSQL schema and application revision.
 - [ ] Document a one-time SQLite-to-PostgreSQL migration and validate row counts, relationships, and image paths.
 - [ ] Measure pool saturation and transaction/advisory-lock contention under representative concurrent use.
-- [x] Add liveness and database-readiness endpoints; [ ] verify deployment health checks and a repeatable clean-environment release test.
+- [x] Add liveness and database-readiness endpoints; [x] document a reproducible local PostgreSQL service; [ ] verify deployment health checks and a repeatable clean-environment release test.
 
 ## P4 — Matching quality and operational pilot
 
@@ -47,7 +47,7 @@ to the public internet.
 
 ## Current known limitations
 
-- PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage.
+- PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage. A Docker Compose service is provided for local development; no hosted production database has been provisioned.
 - Existing SQLite data is not automatically migrated when `DATABASE_URL` is set.
 - PostgreSQL does not persist local uploaded files; image/evidence storage needs a separate durable storage plan.
 - Matching benchmark data is small and synthetic; it is not evidence of real-campus accuracy.
