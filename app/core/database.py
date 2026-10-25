@@ -262,10 +262,34 @@ def _migration_add_active_claim_indexes(conn) -> None:
     )
 
 
+def _migration_add_event_uniqueness_guards(conn) -> None:
+    """Enforce idempotency at the database layer, including upgraded legacy DBs."""
+    unique_keys = (
+        ("notifications", "user_id, event_key", "uq_notifications_user_event_key"),
+        ("reward_ledger", "user_id, event_key", "uq_reward_ledger_user_event_key"),
+        ("handovers", "claim_id", "uq_handovers_claim_id"),
+        ("handovers", "report_id", "uq_handovers_report_id"),
+    )
+    for table, columns, index_name in unique_keys:
+        duplicate = conn.execute(
+            f"SELECT {columns}, COUNT(*) AS duplicate_count FROM {table} "
+            f"GROUP BY {columns} HAVING COUNT(*) > 1 LIMIT 1"
+        ).fetchone()
+        if duplicate:
+            raise RuntimeError(
+                f"Cannot apply uniqueness migration: duplicate key exists in {table} "
+                f"for ({columns}). Reconcile duplicate historical rows before retrying."
+            )
+        conn.execute(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS {index_name} ON {table} ({columns})"
+        )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
+    (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
 )
 
 
