@@ -32,8 +32,14 @@ jobs:
 
   container-build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://lostlink:ci-only-password@db.example.test:5432/lostlink?sslmode=require
+      SESSION_SECRET: ci-only-not-for-deployment-container-build-check
+      ALLOWED_HOSTS: lostlink.example.test
     steps:
       - uses: actions/checkout@v4
+      - name: Validate production Compose configuration
+        run: docker compose -f compose.production.yml config --quiet
       - name: Validate production container build
         run: docker build --tag lostlink-ci .
 
