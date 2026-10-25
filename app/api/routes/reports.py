@@ -202,37 +202,45 @@ async def upload_report_image(
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
-    with connect_db() as conn:
-        # Serialise fingerprint check and insert/update against concurrent uploads.
-        conn.execute("BEGIN IMMEDIATE")
-        row = read_report(conn, report_id)
-        is_office = user["role"] == "office"
-        if not is_office and row["created_by"] != user["id"]:
-            raise HTTPException(status_code=403, detail="You cannot update this report.")
-        if not is_office and row["report_type"] == "found" and row["status"] != "awaiting_intake":
-            raise HTTPException(status_code=409, detail="A found item's photo can only be changed before office intake.")
-        if image_fingerprint_matches(conn, image_sha256, image_phash):
-            raise HTTPException(
-                status_code=409,
-                detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
-            )
-        filename = uuid.uuid4().hex + ".jpg"
-        new_path = (UPLOAD_DIR / filename).resolve()
-        if new_path.parent != UPLOAD_DIR.resolve():
-            raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-        new_path.write_bytes(normalized)
-        old = row["image_path"]
-        try:
+
+    new_path = None
+    old = None
+    try:
+        with connect_db() as conn:
+            # Serialize fingerprint check and update against concurrent uploads.
+            conn.execute("BEGIN IMMEDIATE")
+            row = read_report(conn, report_id)
+            is_office = user["role"] == "office"
+            if not is_office and row["created_by"] != user["id"]:
+                raise HTTPException(status_code=403, detail="You cannot update this report.")
+            if not is_office and row["report_type"] == "found" and row["status"] != "awaiting_intake":
+                raise HTTPException(status_code=409, detail="A found item's photo can only be changed before office intake.")
+            if image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(
+                    status_code=409,
+                    detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
+                )
+            filename = uuid.uuid4().hex + ".jpg"
+            new_path = (UPLOAD_DIR / filename).resolve()
+            if new_path.parent != UPLOAD_DIR.resolve():
+                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+            new_path.write_bytes(normalized)
+            old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
                 (filename, image_sha256, image_phash, now_iso(), report_id),
             )
             audit(conn, user["id"], "report_image_added", "report", report_id)
             updated = read_report(conn, report_id)
-        except Exception:
-            # The surrounding DB context will roll back; remove the uncommitted file too.
-            new_path.unlink(missing_ok=True)
-            raise
+    except Exception:
+        # Also catches commit failures from the connection context manager.
+        if new_path is not None:
+            try:
+                new_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+
     # Only delete the previous image after the DB transaction has committed.
     if old:
         old_path = (UPLOAD_DIR / old).resolve()
@@ -242,7 +250,6 @@ async def upload_report_image(
             except OSError:
                 pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
-
 
 @router.get("/api/reports/{report_id}/image")
 async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
