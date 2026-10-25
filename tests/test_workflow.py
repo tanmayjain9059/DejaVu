@@ -308,6 +308,9 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "strict-origin-when-cross-origin",
         )
         self.assertIn("geolocation=()", response.headers.get("permissions-policy", ""))
+        api_response = self.client.get("/api/config")
+        self.assertEqual(api_response.headers.get("cache-control"), "no-store")
+        self.assertEqual(api_response.headers.get("cross-origin-resource-policy"), "same-origin")
 
     def test_health_endpoints_report_process_and_database_status(self):
         self.assertEqual(self.client.get("/health/live").json(), {"status": "ok"})
@@ -782,6 +785,38 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.client.post("/api/logout")
         self.set_demo_mode(False)
 
+
+    def test_report_image_file_is_removed_when_database_transaction_rolls_back(self):
+        self.login("claimant@example.test", "claimant-password")
+        created = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Green water bottle", "Green bottle with a white lid and a small scratch."),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        report_id = created.json()["report"]["id"]
+
+        image = Image.new("RGB", (48, 48), (25, 130, 90))
+        stream = BytesIO()
+        image.save(stream, format="PNG")
+        original_audit = reports_routes.audit
+
+        def fail_audit(*args, **kwargs):
+            raise RuntimeError("simulated audit storage failure")
+
+        reports_routes.audit = fail_audit
+        try:
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    f"/api/reports/{report_id}/image",
+                    files={"file": ("bottle.png", stream.getvalue(), "image/png")},
+                )
+        finally:
+            reports_routes.audit = original_audit
+
+        with main.connect_db() as conn:
+            row = conn.execute("SELECT image_path FROM reports WHERE id=?", (report_id,)).fetchone()
+        self.assertIsNone(row["image_path"])
+        self.assertEqual(list(main.UPLOAD_DIR.iterdir()), [])
 
     def test_schema_migration_baseline_is_recorded(self):
         with main.connect_db() as conn:
