@@ -69,6 +69,23 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
 
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
+@app.get("/health/live", include_in_schema=False)
+def health_live():
+    """Process liveness endpoint; does not depend on external services."""
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", include_in_schema=False)
+def health_ready():
+    """Readiness endpoint that verifies a usable database connection."""
+    try:
+        with connect_db() as conn:
+            conn.execute("SELECT 1 AS ready").fetchone()
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    return {"status": "ready"}
+
+
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
 app.include_router(auth_router)
 app.include_router(reports_router)
