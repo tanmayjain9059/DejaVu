@@ -19,14 +19,23 @@ jobs:
           cache: pip
       - name: Install runtime and test dependencies
         run: python -m pip install -r requirements-dev.txt
-      - name: Compile application and tests
-        run: python -m compileall -q app tests
+      - name: Compile application, tests and operational scripts
+        run: python -m compileall -q app tests scripts
+      - name: Check backup and restore shell syntax
+        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh
       - name: Check JavaScript syntax
         run: node --check app/static/app.js
       - name: Run unit, workflow and frontend contract tests
         run: python -m unittest discover -s tests -v
       - name: Import application
         run: python -c "import app.main; print('LostLink application import OK')"
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production container build
+        run: docker build --tag lostlink-ci .
 
   postgres-integration:
     runs-on: ubuntu-latest
@@ -83,6 +92,14 @@ jobs:
         run: >-
           python -m unittest discover -s tests -p test_workflow.py
           -k report_intake_match_claim_handover_and_rewards -v
+      - name: Reset disposable PostgreSQL schema before concurrency regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Run concurrent duplicate-handover regression on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_concurrent_handover_requests_only_return_item_once -v
 
   matching-evaluation:
     runs-on: ubuntu-latest
