@@ -326,6 +326,27 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn("Cross-origin", response.json()["detail"])
         self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
+
+    def test_missing_origin_is_rejected_in_strict_production_mode(self):
+        original = main.REQUIRE_REQUEST_ORIGIN
+        main.REQUIRE_REQUEST_ORIGIN = True
+        try:
+            response = self.client.post("/api/logout")
+            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.headers.get("cache-control"), "no-store")
+        finally:
+            main.REQUIRE_REQUEST_ORIGIN = original
+
+    def test_https_mode_adds_hsts_and_content_security_policy(self):
+        original = main.HTTPS_ONLY
+        main.HTTPS_ONLY = True
+        try:
+            response = self.client.get("/")
+            self.assertEqual(response.headers.get("strict-transport-security"), "max-age=31536000")
+            self.assertIn("frame-ancestors 'none'", response.headers.get("content-security-policy", ""))
+        finally:
+            main.HTTPS_ONLY = original
 
     def test_same_origin_mutations_are_allowed(self):
         response = self.client.post(
