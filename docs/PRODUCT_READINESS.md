@@ -22,7 +22,7 @@ to the public internet.
 
 ## P2 — Security and privacy
 
-- [ ] Complete a CSRF/request-origin review for cookie-authenticated state-changing endpoints.
+- [x] Add same-host Origin/Referer checks for unsafe API mutations; [ ] verify reverse-proxy/canonical-host behavior in the deployed environment.
 - [ ] Review every API route for object-level authorisation and private evidence access.
 - [ ] Configure production HTTPS, a managed secret, secure session cookies, and a supported deployment configuration.
 - [ ] Add a tested retention/deletion policy for reports, evidence images, audit events, and account data.
