@@ -21,6 +21,24 @@ class PostgresSqlTranslationTests(unittest.TestCase):
         self.assertFalse(is_lock)
         self.assertEqual(sql, "SELECT id FROM reports WHERE id=%s AND status=%s")
 
+    def test_question_marks_inside_literals_and_comments_are_preserved(self):
+        sql, is_lock = PostgresCompatConnection.translate(
+            "SELECT '?' AS literal, \"?\" AS identifier, value FROM items "
+            "WHERE id=? -- ? is a comment\\n/* ? is also a comment */"
+        )
+        self.assertFalse(is_lock)
+        self.assertEqual(
+            sql,
+            "SELECT '?' AS literal, \"?\" AS identifier, value FROM items "
+            "WHERE id=%s -- ? is a comment\\n/* ? is also a comment */",
+        )
+
+    def test_escaped_quote_does_not_end_sql_string_early(self):
+        sql, _ = PostgresCompatConnection.translate(
+            "SELECT 'it''s ?' AS literal FROM items WHERE id=?"
+        )
+        self.assertEqual(sql, "SELECT 'it''s ?' AS literal FROM items WHERE id=%s")
+
     def test_insert_or_ignore_becomes_conflict_safe_insert(self):
         sql, is_lock = PostgresCompatConnection.translate(
             "INSERT OR IGNORE INTO notifications(id, user_id) VALUES (?, ?)"
