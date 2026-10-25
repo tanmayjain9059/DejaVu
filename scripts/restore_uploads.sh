@@ -29,7 +29,15 @@ command -v tar >/dev/null || { echo "tar is required" >&2; exit 2; }
 
 plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-uploads-restore.XXXXXX")"
 staging_dir="$(mktemp -d "$UPLOADS_TARGET/.restore.XXXXXX")"
-cleanup() { rm -f "$plain_file"; [[ -z "$staging_dir" ]] || rm -rf "$staging_dir"; }
+restored_files=()
+completed=false
+cleanup() {
+  rm -f "$plain_file"
+  if [[ "$completed" != "true" ]]; then
+    for restored in "${restored_files[@]}"; do rm -f -- "$restored"; done
+  fi
+  [[ -z "$staging_dir" ]] || rm -rf "$staging_dir"
+}
 trap cleanup EXIT
 chmod 600 "$plain_file"
 age --decrypt --identity "$AGE_IDENTITY" --output "$plain_file" "$BACKUP_FILE"
@@ -53,7 +61,12 @@ with tarfile.open(sys.argv[1], "r:gz") as archive:
 PY
 
 tar --extract --gzip --file="$plain_file" --directory="$staging_dir" --no-same-owner --no-same-permissions
-find "$staging_dir" -mindepth 1 -maxdepth 1 -type f -exec mv --target-directory="$UPLOADS_TARGET" -- {} +
+while IFS= read -r -d "" staged_file; do
+  destination="$UPLOADS_TARGET/$(basename "$staged_file")"
+  mv -- "$staged_file" "$destination"
+  restored_files+=("$destination")
+done < <(find "$staging_dir" -mindepth 1 -maxdepth 1 -type f -print0)
 rm -rf "$staging_dir"
 staging_dir=""
+completed=true
 echo "Uploads restored. Verify file counts and hashes against the database before cutover."
