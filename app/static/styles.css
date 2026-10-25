@@ -12,8 +12,8 @@
   --amber-soft: #fff3dc;
   --danger: #ab4946;
   --danger-soft: #fff0ee;
-  --shadow: 0 14px 38px rgba(20, 48, 44, .07);
-  --radius: 18px;
+  --shadow: 0 11px 30px rgba(20, 48, 44, .06);
+  --radius: 17px;
 }
 * { box-sizing: border-box; }
 html { color-scheme: light; scroll-behavior: smooth; }
@@ -23,7 +23,7 @@ button { cursor: pointer; }
 button:disabled { cursor: wait; opacity: .65; }
 a { color: inherit; }
 .hidden { display: none !important; }
-.ambient { position: fixed; z-index: -1; border-radius: 50%; pointer-events: none; filter: blur(1px); opacity: .5; }
+.ambient { position: fixed; z-index: -1; border-radius: 50%; pointer-events: none; filter: blur(1px); opacity: .42; }
 .ambient-one { width: 360px; height: 360px; top: -170px; right: 5%; background: #e1f0e6; }
 .ambient-two { width: 280px; height: 280px; bottom: -180px; left: -80px; background: #f1e8d8; }
 .brand-lockup { display: flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
