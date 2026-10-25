@@ -17,7 +17,7 @@ to the public internet.
 - [ ] Add concurrent integration tests for competing claims on one item.
 - [x] Add a regression test for concurrent duplicate handover requests and assert one handover and one reward event; [ ] confirm it passes on the exact candidate CI run.
 - [ ] Prove report closure and claim approval cannot race into an invalid state.
-- [x] Add a regression test that simulates an audit-write failure during image upload and verifies rollback/file cleanup; [ ] extend fault-injection coverage to notifications and rewards.
+- [x] Add fault-injection tests for audit failure during image upload and notification/reward failures during handover; verify rollback and filesystem cleanup.
 - [ ] Confirm database constraints are the final guard for unique handovers, reward event keys, and notification event keys.
 
 ## P2 — Security and privacy
