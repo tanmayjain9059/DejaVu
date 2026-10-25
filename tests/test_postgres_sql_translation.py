@@ -24,13 +24,13 @@ class PostgresSqlTranslationTests(unittest.TestCase):
     def test_question_marks_inside_literals_and_comments_are_preserved(self):
         sql, is_lock = PostgresCompatConnection.translate(
             "SELECT '?' AS literal, \"?\" AS identifier, value FROM items "
-            "WHERE id=? -- ? is a comment\\n/* ? is also a comment */"
+            "WHERE id=? -- ? is a comment\n/* ? is also a comment */"
         )
         self.assertFalse(is_lock)
         self.assertEqual(
             sql,
             "SELECT '?' AS literal, \"?\" AS identifier, value FROM items "
-            "WHERE id=%s -- ? is a comment\\n/* ? is also a comment */",
+            "WHERE id=%s -- ? is a comment\n/* ? is also a comment */",
         )
 
     def test_escaped_quote_does_not_end_sql_string_early(self):
