@@ -6,25 +6,25 @@ to the public internet.
 
 ## P0 — Establish a safe code baseline
 
-- [ ] Review the database adapter and transaction changes in the hardening PR.
+- [x] Review the database adapter, transaction boundaries, and route-level authorization code; retain independent human review before merge.
 - [ ] Reconcile the hardening branch with the latest `main` changes.
-- [ ] Require passing CI on the exact candidate commit; keep `main` unchanged until a human approves the PR.
+- [ ] Require passing CI on the final exact candidate commit after the new PostgreSQL race/uniqueness tests; keep `main` unchanged until a human approves the PR.
 - [x] Add regression coverage for PostgreSQL placeholder conversion around quoted strings and SQL comments.
 - [x] Add baseline browser security response headers with response-level tests.
 
 ## P1 — Workflow integrity and concurrency
 
-- [ ] Add concurrent integration tests for competing claims on one item.
+- [x] Add concurrent integration tests for competing claims on one item; verify both claims enter the disputed state.
 - [x] Add a regression test for concurrent duplicate handover requests and assert one handover and one reward event; [ ] confirm it passes on the exact candidate CI run.
-- [ ] Prove report closure and claim approval cannot race into an invalid state.
+- [x] Add a concurrent regression for report closure versus approval of a linked claim; approval now rechecks linked-report state inside the serialized transaction.
 - [x] Add fault-injection tests for audit failure during image upload and notification/reward failures during handover; verify rollback and filesystem cleanup.
-- [ ] Confirm database constraints are the final guard for unique handovers, reward event keys, and notification event keys.
+- [x] Add versioned unique-index guards for handovers, reward event keys, and notification event keys; migration fails closed on duplicate historical keys.
 
 ## P2 — Security and privacy
 
 - [x] Add same-host Origin/Referer checks for unsafe API mutations and configurable trusted-host validation; [ ] verify reverse-proxy/canonical-host behavior in the deployed environment.
 - [x] Add no-store API response headers to reduce sensitive browser-cache persistence.
-- [ ] Review every API route for object-level authorisation and private evidence access.
+- [x] Review API route authorization for reports, claims, private evidence, notifications, certificates, activity, and office endpoints; existing private-evidence and linked-report authorization regressions cover key boundaries. [ ] Complete staging verification.
 - [x] Add a non-root production container configuration requiring HTTPS cookies, a session secret, database URL, and explicit host allowlist; [ ] validate it behind the actual production proxy.
 - [x] Add an institution-facing retention policy template; [ ] obtain approval for actual periods/holds and implement/test a dry-run-first deletion process.
 - [x] Add a persistent private uploads volume and encrypted uploads backup/restore utilities; [ ] verify permissions and complete a coordinated database-plus-uploads backup/restore drill.
@@ -32,10 +32,10 @@ to the public internet.
 
 ## P3 — Database operations
 
-- [x] Add an ordered, forward-only schema migration runner and ledger (version 1 records the legacy baseline; version 2 adds active-claim lookup indexes); [ ] define rollback/recovery policy for future migrations and gradually move legacy additive changes out of startup bootstrap.
+- [x] Add an ordered, forward-only migration ledger (v1 legacy baseline, v2 active-claim indexes, v3 workflow uniqueness guards, v4 legacy additive columns/image fingerprint backfill), with a documented recovery policy. Core table bootstrap remains at startup; future schema changes must use versioned migrations.
 - [x] Add a conservative SQLite-to-PostgreSQL migration utility with dry-run mode, empty-destination guard, integrity/FK checks, row-count verification, sequence repair, and referenced-upload copy; [ ] rehearse it against a representative backup and independently verify results.
 - [x] Add encrypted PostgreSQL backup and guarded restore scripts; [ ] test a restore against the exact PostgreSQL schema/application revision and restore matching uploads.
-- [ ] Measure pool saturation and transaction/advisory-lock contention under representative concurrent use.
+- [ ] Measure pool saturation and transaction/advisory-lock contention against a representative staging workload; CI race regressions are correctness tests, not capacity measurements.
 - [x] Add liveness/readiness endpoints, local PostgreSQL setup, production container configuration, and database runbooks; [ ] verify deployment health checks and a repeatable clean-environment release test.
 
 ## P4 — Matching quality and operational pilot
