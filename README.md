@@ -32,6 +32,7 @@ LostLink is a web application for managing campus lost property from initial rep
 - [External database (PostgreSQL)](#external-database-postgresql)
 - [Testing and matching evaluation](#testing-and-matching-evaluation)
 - [Limitations and production considerations](#limitations-and-production-considerations)
+- [Product-readiness checklist](docs/PRODUCT_READINESS.md)
 
 ## Problem and goals
 
