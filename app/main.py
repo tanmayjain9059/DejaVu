@@ -1,7 +1,9 @@
 """FastAPI application composition root for LostLink."""
 from __future__ import annotations
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from urllib.parse import urlsplit
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import *
@@ -34,8 +36,28 @@ app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
 
 
 @app.middleware("http")
-async def add_security_headers(request, call_next):
-    """Apply baseline browser security headers to app and API responses."""
+async def protect_unsafe_api_requests_and_add_headers(request: Request, call_next):
+    """Reject cross-origin API mutations and add baseline browser security headers."""
+    if request.url.path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+        source = origin or referer
+        if source:
+            try:
+                source_url = urlsplit(source)
+                source_host = source_url.netloc.lower()
+                request_host = request.headers.get("host", "").lower()
+                valid_scheme = source_url.scheme.lower() in {"http", "https"}
+                if not valid_scheme or not source_host or source_host != request_host:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Cross-origin state-changing requests are not allowed."},
+                    )
+            except ValueError:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Invalid request origin."},
+                )
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
