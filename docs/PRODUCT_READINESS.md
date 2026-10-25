@@ -35,7 +35,7 @@ to the public internet.
 - [ ] Test a backup restore against the exact PostgreSQL schema and application revision.
 - [ ] Document a one-time SQLite-to-PostgreSQL migration and validate row counts, relationships, and image paths.
 - [ ] Measure pool saturation and transaction/advisory-lock contention under representative concurrent use.
-- [ ] Add deployment health/readiness checks and a repeatable clean-environment release test.
+- [x] Add liveness and database-readiness endpoints; [ ] verify deployment health checks and a repeatable clean-environment release test.
 
 ## P4 — Matching quality and operational pilot
 
