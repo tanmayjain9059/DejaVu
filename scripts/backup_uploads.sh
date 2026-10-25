@@ -23,7 +23,10 @@ plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-uploads.XXXXXX")"
 backup_name="lostlink-uploads-$timestamp.tar.gz.age"
 backup_file="$BACKUP_DIR/$backup_name"
 manifest="$backup_file.sha256"
-cleanup() { rm -f "$plain_file"; }
+cleanup() {
+  rm -f "$plain_file"
+  if [[ -f "$backup_file" && ! -f "$manifest" ]]; then rm -f "$backup_file"; fi
+}
 trap cleanup EXIT
 
 tar --create --gzip --file="$plain_file" --directory="$UPLOADS_DIR" --one-file-system -- .
