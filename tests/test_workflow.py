@@ -922,10 +922,15 @@ class LostLinkWorkflowTests(unittest.TestCase):
             active_index_migration = conn.execute(
                 "SELECT name FROM schema_migrations WHERE version=2"
             ).fetchone()
+            uniqueness_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=3"
+            ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
         self.assertIsNotNone(active_index_migration)
         self.assertEqual(active_index_migration["name"], "active_claim_lookup_indexes")
+        self.assertIsNotNone(uniqueness_migration)
+        self.assertEqual(uniqueness_migration["name"], "workflow_event_uniqueness_guards")
 
     def test_application_refuses_unknown_future_schema_versions(self):
         with self.assertRaisesRegex(RuntimeError, "newer than this application supports"):
@@ -1008,6 +1013,192 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.assertEqual(rewards, 1)
         finally:
             second_client.close()
+
+
+    def test_concurrent_competing_claims_are_both_disputed(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Black umbrella", "Black umbrella with a wooden curved handle and a small silver tip."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf D-02",
+            "private_detail": "Small silver tip under the handle.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                ("rival@example.test", "Rival Claimant", "student",
+                 main.hash_password("rival-password"), main.now_iso()),
+            )
+
+        self.login("claimant@example.test", "claimant-password")
+        rival_client = TestClient(main.app)
+        self.assertEqual(rival_client.post("/api/login", json={
+            "email": "rival@example.test", "password": "rival-password"
+        }).status_code, 200)
+        payloads = (
+            {"report_id": report_id, "evidence": "I can identify the wooden curved handle and the silver tip beneath it.", "evidence_types": ["distinctive_features"]},
+            {"report_id": report_id, "evidence": "I can identify the silver tip and describe the unique wear on the handle.", "evidence_types": ["distinctive_features"]},
+        )
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(
+                    lambda args: args[0].post("/api/claims", json=args[1]),
+                    ((self.client, payloads[0]), (rival_client, payloads[1])),
+                ))
+            self.assertEqual([response.status_code for response in responses], [200, 200],
+                             [response.text for response in responses])
+            with main.connect_db() as conn:
+                claims = conn.execute(
+                    "SELECT status FROM claims WHERE report_id=? ORDER BY created_at, id", (report_id,)
+                ).fetchall()
+            self.assertEqual(len(claims), 2)
+            self.assertEqual({row["status"] for row in claims}, {"disputed"})
+        finally:
+            rival_client.close()
+
+    def test_report_closure_cannot_race_with_approval_of_linked_claim(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Blue notebook", "Blue notebook with a torn lower corner and initials inside."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_report_id = lost.json()["report"]["id"]
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Blue notebook", "Blue notebook with a torn lower corner and initials inside."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{found_report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office cabinet B-04",
+            "private_detail": "A handwritten note on the inside back cover.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": found_report_id,
+            "lost_report_id": lost_report_id,
+            "evidence": "I can describe the torn lower corner and the initials written inside my notebook.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+
+        office_client = TestClient(main.app)
+        self.assertEqual(office_client.post("/api/login", json={
+            "email": "office@example.test", "password": "office-password"
+        }).status_code, 200)
+        try:
+            close_request = {
+                "reason": "no_longer_searching",
+                "note": "I am closing this search after reviewing my belongings.",
+            }
+            approve_request = {
+                "action": "approve",
+                "note": "Ownership evidence reviewed in person.",
+                "verification_checks": [
+                    "distinctive_features", "physical_inspection",
+                    "supporting_evidence", "claimant_identity",
+                ],
+            }
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                close_future = pool.submit(
+                    self.client.post, f"/api/reports/{lost_report_id}/close", json=close_request
+                )
+                approve_future = pool.submit(
+                    office_client.post, f"/api/claims/{claim_response.json()['claim']['id']}/decision",
+                    json=approve_request,
+                )
+                close_response, approve_response = close_future.result(), approve_future.result()
+            self.assertEqual(close_response.status_code, 409, close_response.text)
+            self.assertEqual(approve_response.status_code, 200, approve_response.text)
+            with main.connect_db() as conn:
+                lost_status = conn.execute(
+                    "SELECT status FROM reports WHERE id=?", (lost_report_id,)
+                ).fetchone()["status"]
+                claim_status = conn.execute(
+                    "SELECT status FROM claims WHERE id=?", (claim_response.json()["claim"]["id"],)
+                ).fetchone()["status"]
+            self.assertEqual(lost_status, "open")
+            self.assertEqual(claim_status, "approved_for_collection")
+        finally:
+            office_client.close()
+
+    def test_database_has_unique_guards_for_idempotent_workflow_events(self):
+        expected = {
+            "uq_notifications_user_event_key",
+            "uq_reward_ledger_user_event_key",
+            "uq_handovers_claim_id",
+            "uq_handovers_report_id",
+        }
+        with main.connect_db() as conn:
+            if TEST_WITH_POSTGRES:
+                rows = conn.execute(
+                    "SELECT indexname AS name FROM pg_indexes "
+                    "WHERE schemaname=current_schema() AND indexname = ANY(?)",
+                    (list(expected),),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
+                    tuple(sorted(expected)),
+                ).fetchall()
+            self.assertEqual({row["name"] for row in rows}, expected)
+
+            user_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("claimant@example.test",)
+            ).fetchone()["id"]
+        event_key = "unique-guard-regression"
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO notifications(id,user_id,event_key,title,message,entity_type,entity_id,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                ("notice-unique-1", user_id, event_key, "Test", "Test", "test", "entity", main.now_iso()),
+            )
+        with self.assertRaises(Exception):
+            with main.connect_db() as conn:
+                conn.execute(
+                    "INSERT INTO notifications(id,user_id,event_key,title,message,entity_type,entity_id,created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    ("notice-unique-2", user_id, event_key, "Test", "Test", "test", "entity", main.now_iso()),
+                )
+        with main.connect_db() as conn:
+            conn.execute(
+                "INSERT INTO reward_ledger(id,user_id,event_key,points,reason,report_id,created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                ("reward-unique-1", user_id, event_key, 5, "test", None, main.now_iso()),
+            )
+        with self.assertRaises(Exception):
+            with main.connect_db() as conn:
+                conn.execute(
+                    "INSERT INTO reward_ledger(id,user_id,event_key,points,reason,report_id,created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    ("reward-unique-2", user_id, event_key, 5, "test", None, main.now_iso()),
+                )
 
 
 if __name__ == "__main__":
