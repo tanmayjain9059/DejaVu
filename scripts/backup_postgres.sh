@@ -16,7 +16,7 @@ esac
 
 mkdir -p "$BACKUP_DIR"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-backup.XXXXXX.dump")"
+plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-backup.XXXXXX")"
 backup_name="lostlink-$timestamp.dump.age"
 backup_file="$BACKUP_DIR/$backup_name"
 manifest="$backup_file.sha256"
