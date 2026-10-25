@@ -29,7 +29,7 @@ Use a fresh, empty PostgreSQL database. Schedule a maintenance window and stop w
 
 The utility copies known application tables in dependency order and the image files referenced by report/evidence records. It does not delete or modify the SQLite source. It deliberately does not merge into a populated PostgreSQL database. Run a rehearsal with a recent copy of production data before the final maintenance-window migration.
 
-The current startup bootstrap records a `schema_migrations` baseline row. Existing additive schema compatibility updates remain in the startup bootstrap; a formal ordered schema-migration runner and rollback policy remain a release gate for future schema changes.
+The startup bootstrap records the legacy schema as version 1; an ordered forward-only migration runner applies version 2 (active-claim lookup indexes) and records applied versions. Existing additive compatibility updates still run in the legacy bootstrap. Future migrations must be appended with a new version and a safe, idempotent operation; a per-migration rollback/recovery policy remains a release gate.
 
 ## PostgreSQL backups
 
