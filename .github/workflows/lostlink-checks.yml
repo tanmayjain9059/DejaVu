@@ -106,6 +106,30 @@ jobs:
         run: >-
           python -m unittest discover -s tests -p test_workflow.py
           -k test_concurrent_handover_requests_only_return_item_once -v
+      - name: Reset disposable PostgreSQL schema before competing-claims regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test concurrent competing claims on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_concurrent_competing_claims_are_both_disputed -v
+      - name: Reset disposable PostgreSQL schema before closure-approval race regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test report closure versus claim approval race on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_report_closure_cannot_race_with_approval_of_linked_claim -v
+      - name: Reset disposable PostgreSQL schema before uniqueness regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Test database uniqueness guards on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: >-
+          python -m unittest discover -s tests -p test_workflow.py
+          -k test_database_has_unique_guards_for_idempotent_workflow_events -v
       - name: Reset disposable PostgreSQL schema before migration smoke test
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
       - name: Exercise SQLite-to-PostgreSQL migration in CI
