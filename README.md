@@ -470,6 +470,8 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code> when <code>DATABASE_URL</code> is unset. |
 | <code>DATABASE_URL</code> | Optional managed PostgreSQL connection URL. | Set a provider-issued <code>postgresql://</code> URL to use PostgreSQL; unset means SQLite. |
 | <code>DATABASE_POOL_MAX_SIZE</code> | Maximum number of pooled PostgreSQL connections. | Optional; defaults to <code>5</code>, accepted range <code>1-20</code>. |
+| <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
+| <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
