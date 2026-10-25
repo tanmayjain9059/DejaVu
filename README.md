@@ -535,3 +535,8 @@ The current application is not a production deployment and has not been assigned
 ## Related documentation
 
 - [Architecture.md](Architecture.md) — module boundaries, request flow and implementation invariants.
+
+### Run PostgreSQL locally with Docker Compose
+
+For local development without creating a hosted database, see [Local PostgreSQL setup](docs/LOCAL_POSTGRESQL.md). From the repository root, run `docker compose up -d postgres`, set the documented local `DATABASE_URL` in your untracked `.env`, then start LostLink normally. The Compose database listens only on localhost and stores data in a named Docker volume. The example password is development-only; do not expose this configuration to the public internet.
+
