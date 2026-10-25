@@ -321,6 +321,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertIn("Cross-origin", response.json()["detail"])
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
 
     def test_same_origin_mutations_are_allowed(self):
         response = self.client.post(
