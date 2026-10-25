@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 
@@ -780,6 +781,88 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.assertEqual(response.json()["user"]["role"], "student")
             self.client.post("/api/logout")
         self.set_demo_mode(False)
+
+
+    def test_schema_migration_baseline_is_recorded(self):
+        with main.connect_db() as conn:
+            migration = conn.execute(
+                "SELECT version, name FROM schema_migrations WHERE version=1"
+            ).fetchone()
+        self.assertIsNotNone(migration)
+        self.assertEqual(migration["name"], "legacy_schema_baseline")
+
+    def test_concurrent_handover_requests_only_return_item_once(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Olive backpack", "Olive backpack with a yellow zipper pull and side pocket."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf C-03",
+            "private_detail": "Yellow thread at the inner seam.",
+            "value_band": "medium",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        tag_id = intake.json()["report"]["tag_id"]
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        claim_response = self.client.post("/api/claims", json={
+            "report_id": report_id,
+            "evidence": "I can identify the yellow thread at the inner seam and confirm the contents in person.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim_response.status_code, 200, claim_response.text)
+        claim_id = claim_response.json()["claim"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        decision = self.client.post(f"/api/claims/{claim_id}/decision", json={
+            "action": "approve",
+            "note": "Ownership evidence reviewed.",
+            "verification_checks": ["distinctive_features", "physical_inspection", "claimant_identity"],
+        })
+        self.assertEqual(decision.status_code, 200, decision.text)
+
+        second_client = TestClient(main.app)
+        try:
+            second_login = second_client.post("/api/login", json={
+                "email": "office@example.test", "password": "office-password"
+            })
+            self.assertEqual(second_login.status_code, 200, second_login.text)
+            payload = {
+                "confirmed_physical_handover": True,
+                "claimant_identity_checked": True,
+                "tag_id": tag_id,
+                "note": "Concurrent duplicate-handover regression test.",
+            }
+
+            def submit(client):
+                return client.post(f"/api/claims/{claim_id}/handover", json=payload)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(submit, (self.client, second_client)))
+
+            self.assertEqual(sorted(response.status_code for response in responses), [200, 409])
+            with main.connect_db() as conn:
+                handovers = conn.execute(
+                    "SELECT COUNT(*) FROM handovers WHERE claim_id=?", (claim_id,)
+                ).fetchone()[0]
+                rewards = conn.execute(
+                    "SELECT COUNT(*) FROM reward_ledger WHERE event_key LIKE ?",
+                    ("%"+claim_id+"%",),
+                ).fetchone()[0]
+            self.assertEqual(handovers, 1)
+            self.assertLessEqual(rewards, 1)
+        finally:
+            second_client.close()
 
 
 if __name__ == "__main__":
