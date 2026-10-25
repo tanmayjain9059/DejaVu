@@ -1,0 +1,39 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lostlink:production
+    restart: unless-stopped
+    init: true
+    read_only: true
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    environment:
+      PORT: "8000"
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to the production PostgreSQL URL}
+      DATABASE_POOL_MAX_SIZE: ${DATABASE_POOL_MAX_SIZE:-5}
+      SESSION_SECRET: ${SESSION_SECRET:?Set a unique SESSION_SECRET}
+      SESSION_HTTPS_ONLY: "true"
+      DEMO_MODE: "false"
+      DATA_DIR: /data
+      UPLOAD_DIR: /data/uploads
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Set ALLOWED_HOSTS to your canonical host, comma-separated}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - lostlink-uploads:/data/uploads
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  lostlink-uploads:
