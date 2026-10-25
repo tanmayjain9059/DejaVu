@@ -30,7 +30,7 @@ case "$BACKUP_FILE" in
   *.age)
     : "${AGE_IDENTITY:?Set AGE_IDENTITY to the private age identity path}"
     command -v age >/dev/null || { echo "age is required to decrypt this backup" >&2; exit 2; }
-    plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-restore.XXXXXX.dump")"
+    plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-restore.XXXXXX")"
     chmod 600 "$plain_file"
     age --decrypt --identity "$AGE_IDENTITY" --output "$plain_file" "$BACKUP_FILE"
     BACKUP_TO_RESTORE="$plain_file"
