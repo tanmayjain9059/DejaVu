@@ -75,7 +75,10 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                 source_url = urlsplit(source)
                 source_host = source_url.netloc.lower()
                 request_host = request.headers.get("host", "").lower()
-                valid_scheme = source_url.scheme.lower() in {"http", "https"}
+                source_scheme = source_url.scheme.lower()
+                valid_scheme = source_scheme in {"http", "https"}
+                if HTTPS_ONLY and source_scheme != "https":
+                    valid_scheme = False
                 if not valid_scheme or not source_host or source_host != request_host:
                     return _apply_security_headers(JSONResponse(
                         status_code=403,
