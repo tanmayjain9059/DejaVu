@@ -46,7 +46,7 @@ Configure the reverse proxy to forward HTTPS traffic to `127.0.0.1:8000`, preser
 
 ## Backup and restore
 
-See [database and upload backup operations](DATABASE_OPERATIONS.md). A PostgreSQL dump does not contain the upload volume. Store backups encrypted and off-host with access controls; test restoration on an isolated database before relying on them.
+See [database and upload backup operations](DATABASE_OPERATIONS.md). PostgreSQL dumps are encrypted with age before retention; store encrypted artifacts off-host with access controls. A PostgreSQL dump does not contain the upload volume. Test restoration on an isolated database before relying on backups.
 
 ## Limits that require environment-specific validation
 
