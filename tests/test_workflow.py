@@ -308,6 +308,21 @@ class LostLinkWorkflowTests(unittest.TestCase):
         )
         self.assertIn("geolocation=()", response.headers.get("permissions-policy", ""))
 
+    def test_cross_origin_mutations_are_rejected(self):
+        response = self.client.post(
+            "/api/logout",
+            headers={"Origin": "https://attacker.example"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Cross-origin", response.json()["detail"])
+
+    def test_same_origin_mutations_are_allowed(self):
+        response = self.client.post(
+            "/api/logout",
+            headers={"Origin": "http://testserver"},
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_invalid_optional_report_date_is_rejected(self):
         self.login("claimant@example.test", "claimant-password")
         body = self.report_body("lost", "Blue headphones", "Blue over-ear headphones with a padded headband.")
