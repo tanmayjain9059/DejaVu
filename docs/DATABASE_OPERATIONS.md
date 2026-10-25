@@ -99,6 +99,19 @@ RESTORE_CONFIRM=YES DATABASE_URL='postgresql://...' \
 
 This operation is destructive to objects in the selected target database. Confirm the target twice before setting `RESTORE_CONFIRM=YES`. Restore the matching uploads backup separately, then test `/health/ready`, row counts, foreign-key integrity, login, claim approval, handover, and private evidence access. Record the drill date, duration, data-loss window, and any recovery issues.
 
+## Schema migration recovery policy
+
+Schema migrations are forward-only and recorded in `schema_migrations`. Do not edit a migration that has been applied to any shared environment and do not run ad-hoc reverse SQL in production.
+
+1. Take and verify a database backup and matching uploads recovery point before deploying a schema-changing revision.
+2. Test the migration against a restored copy of the current production schema and data. Record row counts and foreign-key checks before and after.
+3. If a migration fails, stop the rollout and keep the previous application revision running only if it remains schema-compatible. Do not bypass an unknown migration version or manually mark a failed version as applied.
+4. For a failed or partially applied migration, restore the database and matching uploads to the verified pre-deployment recovery point in an isolated rehearsal first. For additive changes that already committed, prefer a reviewed forward-fix migration rather than destructive rollback.
+5. If a uniqueness migration reports duplicate historical events, reconcile them with an audited, owner-approved repair plan; do not automatically delete ledger, notification, or handover history.
+6. Record the application SHA, migration versions, backup identifiers, verification output, decision, and operator in the release log.
+
+Version 4 moves legacy additive column checks and image-fingerprint backfill into the ordered migration runner. The `lost_report_id` compatibility column is prepared before version 2 because that migration creates its lookup index. The runner still bootstraps core tables at startup; review future changes for whether they belong in a versioned migration.
+
 ## Operational release gates
 
 - Monitor backup freshness, restore outcomes, disk usage, DB connection pool saturation, query latency, failed logins, HTTP 5xx, and readiness failures.
