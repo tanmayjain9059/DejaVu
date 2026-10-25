@@ -544,6 +544,7 @@ For local development without creating a hosted database, see [Local PostgreSQL 
 
 - [Production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md) — non-root container, managed PostgreSQL, canonical host allowlist, HTTPS proxy, persistent private uploads, and pre-launch checks.
 - [Database operations](docs/DATABASE_OPERATIONS.md) — explicit SQLite-to-PostgreSQL dry-run/migration, encrypted PostgreSQL backups, and guarded restore drills.
+- [Retention policy template](docs/RETENTION_POLICY_TEMPLATE.md) — institution approval is required before automated deletion can be enabled.
 - [Production Compose file](compose.production.yml) — binds the app only to localhost for a TLS reverse proxy; requires real `DATABASE_URL`, `SESSION_SECRET`, and `ALLOWED_HOSTS` environment values.
 - The interface has a deliberately small visual polish pass; no navigation or workflow redesign was intended.
 
