@@ -308,6 +308,12 @@ class LostLinkWorkflowTests(unittest.TestCase):
         )
         self.assertIn("geolocation=()", response.headers.get("permissions-policy", ""))
 
+    def test_health_endpoints_report_process_and_database_status(self):
+        self.assertEqual(self.client.get("/health/live").json(), {"status": "ok"})
+        ready = self.client.get("/health/ready")
+        self.assertEqual(ready.status_code, 200)
+        self.assertEqual(ready.json(), {"status": "ready"})
+
     def test_cross_origin_mutations_are_rejected(self):
         response = self.client.post(
             "/api/logout",
