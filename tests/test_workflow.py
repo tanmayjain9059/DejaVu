@@ -345,6 +345,10 @@ class LostLinkWorkflowTests(unittest.TestCase):
             response = self.client.get("/")
             self.assertEqual(response.headers.get("strict-transport-security"), "max-age=31536000")
             self.assertIn("frame-ancestors 'none'", response.headers.get("content-security-policy", ""))
+            insecure_origin = self.client.post(
+                "/api/logout", headers={"Origin": "http://testserver"}
+            )
+            self.assertEqual(insecure_origin.status_code, 403, insecure_origin.text)
         finally:
             main.HTTPS_ONLY = original
 
