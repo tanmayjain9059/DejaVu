@@ -27,6 +27,7 @@ cleanup() { rm -f "$plain_file"; }
 trap cleanup EXIT
 
 tar --create --gzip --file="$plain_file" --directory="$UPLOADS_DIR" --one-file-system -- .
+tar --list --gzip --file="$plain_file" >/dev/null
 age --encrypt --recipient "$AGE_RECIPIENT" --output "$backup_file" "$plain_file"
 (
   cd "$BACKUP_DIR"
