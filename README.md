@@ -540,3 +540,10 @@ The current application is not a production deployment and has not been assigned
 
 For local development without creating a hosted database, see [Local PostgreSQL setup](docs/LOCAL_POSTGRESQL.md). From the repository root, run `docker compose up -d postgres`, set the documented local `DATABASE_URL` in your untracked `.env`, then start LostLink normally. The Compose database listens only on localhost and stores data in a named Docker volume. The example password is development-only; do not expose this configuration to the public internet.
 
+### Production deployment and database operations
+
+- [Production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md) — non-root container, managed PostgreSQL, canonical host allowlist, HTTPS proxy, persistent private uploads, and pre-launch checks.
+- [Database operations](docs/DATABASE_OPERATIONS.md) — explicit SQLite-to-PostgreSQL dry-run/migration, encrypted PostgreSQL backups, and guarded restore drills.
+- [Production Compose file](compose.production.yml) — binds the app only to localhost for a TLS reverse proxy; requires real `DATABASE_URL`, `SESSION_SECRET`, and `ALLOWED_HOSTS` environment values.
+- The interface has a deliberately small visual polish pass; no navigation or workflow redesign was intended.
+
