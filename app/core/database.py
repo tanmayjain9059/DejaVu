@@ -248,6 +248,42 @@ def audit(conn: sqlite3.Connection, actor_id: int, action: str,
     )
 
 
+def _migration_add_active_claim_indexes(conn) -> None:
+    """Add lookup indexes for active claims without changing workflow semantics."""
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_claims_active_report
+           ON claims(report_id, status)
+           WHERE status IN ('pending','disputed','needs_more_evidence','approved_for_collection')"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_claims_active_lost_report
+           ON claims(lost_report_id, status)
+           WHERE lost_report_id IS NOT NULL"""
+    )
+
+
+# Forward-only, ordered schema migrations. Never edit an applied migration;
+# append a new version and provide a safe, idempotent operation.
+SCHEMA_MIGRATIONS = (
+    (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
+)
+
+
+def _apply_versioned_schema_migrations(conn) -> None:
+    applied = {
+        int(row["version"])
+        for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+    for version, name, migrate in SCHEMA_MIGRATIONS:
+        if version in applied:
+            continue
+        migrate(conn)
+        conn.execute(
+            "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+            (version, name, now_iso()),
+        )
+
+
 def initialise_db() -> None:
     with connect_db() as conn:
         conn.executescript(
@@ -446,6 +482,7 @@ def initialise_db() -> None:
             "INSERT OR IGNORE INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
             (1, "legacy_schema_baseline", now_iso()),
         )
+        _apply_versioned_schema_migrations(conn)
         if not DEMO_MODE:
             return
 
