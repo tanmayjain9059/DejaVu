@@ -112,6 +112,18 @@ Schema migrations are forward-only and recorded in `schema_migrations`. Do not e
 
 Version 4 moves legacy additive column checks and image-fingerprint backfill into the ordered migration runner. The `lost_report_id` compatibility column is prepared before version 2 because that migration creates its lookup index. The runner still bootstraps core tables at startup; review future changes for whether they belong in a versioned migration.
 
+## Staging database contention probe
+
+Use the bounded synthetic probe before a pilot, against a staging PostgreSQL database only. It does not mutate application rows, but it acquires the same transaction lock used by workflows and can temporarily queue transactions.
+
+```bash
+DATABASE_URL='postgresql://<staging-user>:<url-encoded-password>@<staging-host>:5432/<staging-db>?sslmode=require' \
+DATABASE_POOL_MAX_SIZE=5 APP_ENV=staging \
+python scripts/probe_database_contention.py --confirm-staging --workers 4 --iterations 20
+```
+
+Repeat with the planned pool size and controlled contention, for example `--workers 10 --iterations 50 --hold-ms 10`. Do not run against production. Record pool size, staging instance size, worker count, p50/p95/max latency, throughput, and failures. Compare only equivalent configurations; these lock-probe timings are a diagnostic baseline, not a full API load test or a production capacity claim.
+
 ## Operational release gates
 
 - Monitor backup freshness, restore outcomes, disk usage, DB connection pool saturation, query latency, failed logins, HTTP 5xx, and readiness failures.
