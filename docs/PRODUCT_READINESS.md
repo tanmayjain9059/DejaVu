@@ -32,7 +32,7 @@ to the public internet.
 
 ## P3 — Database operations
 
-- [ ] Replace the legacy startup schema bootstrap with a formal ordered schema-migration runner and documented rollback/recovery policy (a baseline ledger row now records the legacy schema).
+- [x] Add an ordered, forward-only schema migration runner and ledger (version 1 records the legacy baseline; version 2 adds active-claim lookup indexes); [ ] define rollback/recovery policy for future migrations and gradually move legacy additive changes out of startup bootstrap.
 - [x] Add a conservative SQLite-to-PostgreSQL migration utility with dry-run mode, empty-destination guard, integrity/FK checks, row-count verification, sequence repair, and referenced-upload copy; [ ] rehearse it against a representative backup and independently verify results.
 - [x] Add encrypted PostgreSQL backup and guarded restore scripts; [ ] test a restore against the exact PostgreSQL schema/application revision and restore matching uploads.
 - [ ] Measure pool saturation and transaction/advisory-lock contention under representative concurrent use.
@@ -52,6 +52,6 @@ to the public internet.
 - Existing SQLite data is not automatically migrated at startup; an explicit utility is available but has not been rehearsed on the production dataset.
 - Image/evidence files remain filesystem-backed. Production Compose provides a persistent volume, but coordinated off-host backup and restoration must be verified.
 - Matching benchmark data is small and synthetic; it is not evidence of real-campus accuracy.
-- The schema-migration ledger currently records the legacy bootstrap baseline; it is not yet a full ordered migration runner.
+- The migration ledger records the legacy bootstrap baseline and applies versioned forward migrations for new changes; older additive compatibility updates still run in the legacy bootstrap, and each future migration needs an explicit recovery plan.
 - The visual pass only slightly reduces shadow, radius, and ambient contrast; it does not change product navigation or workflows.
 - A passing CI run is not a security audit, load test, backup/restore test, live deployment verification, or production-readiness certification.
