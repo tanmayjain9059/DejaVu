@@ -35,7 +35,7 @@ to the public internet.
 - [x] Add an ordered, forward-only migration ledger (v1 legacy baseline, v2 active-claim indexes, v3 workflow uniqueness guards, v4 legacy additive columns/image fingerprint backfill), with a documented recovery policy. Core table bootstrap remains at startup; future schema changes must use versioned migrations.
 - [x] Add a conservative SQLite-to-PostgreSQL migration utility with dry-run mode, empty-destination guard, integrity/FK checks, row-count verification, sequence repair, and referenced-upload copy; [ ] rehearse it against a representative backup and independently verify results.
 - [x] Add encrypted PostgreSQL backup and guarded restore scripts; [ ] test a restore against the exact PostgreSQL schema/application revision and restore matching uploads.
-- [ ] Measure pool saturation and transaction/advisory-lock contention against a representative staging workload; CI race regressions are correctness tests, not capacity measurements.
+- [ ] Run `scripts/probe_database_contention.py` against a representative staging workload and record p50/p95/max latency, throughput, failures, pool size, and database instance size; CI race regressions are correctness tests, not capacity measurements.
 - [x] Add liveness/readiness endpoints, local PostgreSQL setup, production container configuration, and database runbooks; [ ] verify deployment health checks and a repeatable clean-environment release test.
 
 ## P4 — Matching quality and operational pilot
