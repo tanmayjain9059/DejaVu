@@ -285,11 +285,60 @@ def _migration_add_event_uniqueness_guards(conn) -> None:
         )
 
 
+def _migration_move_legacy_additive_columns(conn) -> None:
+    """Version legacy additive schema upgrades and image fingerprint backfill."""
+    for column, declaration in (
+        ("storage_location", "TEXT"),
+        ("brand", "TEXT"),
+        ("primary_color", "TEXT"),
+        ("visible_features", "TEXT"),
+        ("closure_reason", "TEXT"),
+        ("closure_note", "TEXT"),
+        ("image_sha256", "TEXT"),
+        ("image_phash", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+    for column, declaration in (
+        ("appeal_note", "TEXT"),
+        ("appeal_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("evidence_types", "TEXT NOT NULL DEFAULT '[]'"),
+    ):
+        if column not in table_columns(conn, "claims"):
+            conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+
+    conn.execute(
+        "UPDATE reports SET storage_location=? WHERE tag_id IS NOT NULL "
+        "AND (storage_location IS NULL OR TRIM(storage_location)='')",
+        ("Location needs confirmation",),
+    )
+    for image_row in conn.execute(
+        "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
+    ).fetchall():
+        image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
+        if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
+            continue
+        if image_row["image_sha256"] and image_row["image_phash"]:
+            continue
+        try:
+            image_bytes = image_path.read_bytes()
+            image_digest = image_row["image_sha256"] or hashlib.sha256(image_bytes).hexdigest()
+            image_phash = image_row["image_phash"] or perceptual_hash_from_bytes(image_bytes)
+            conn.execute(
+                "UPDATE reports SET image_sha256=?, image_phash=? WHERE id=?",
+                (image_digest, image_phash, image_row["id"]),
+            )
+        except (OSError, UnidentifiedImageError, ValueError):
+            continue
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
+    (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
 )
 
 
@@ -458,54 +507,12 @@ def initialise_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_claims_claimant ON claims(claimant_id, created_at);
             """
         )
-        # Keep existing local databases compatible as storage tracking is introduced.
-        report_columns = table_columns(conn, "reports")
-        if "storage_location" not in report_columns:
-            conn.execute("ALTER TABLE reports ADD COLUMN storage_location TEXT")
-        conn.execute(
-            "UPDATE reports SET storage_location=? WHERE tag_id IS NOT NULL AND (storage_location IS NULL OR TRIM(storage_location)='')",
-            ("Location needs confirmation",),
-        )
-        # Backward-compatible migrations for richer item details and report closure.
-        report_columns = table_columns(conn, "reports")
-        for column, declaration in (
-            ("brand", "TEXT"),
-            ("primary_color", "TEXT"),
-            ("visible_features", "TEXT"),
-            ("closure_reason", "TEXT"),
-            ("closure_note", "TEXT"),
-            ("image_sha256", "TEXT"),
-            ("image_phash", "TEXT"),
-        ):
-            if column not in report_columns:
-                conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
-        for image_row in conn.execute(
-            "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
-        ).fetchall():
-            image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
-            if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
-                continue
-            if image_row["image_sha256"] and image_row["image_phash"]:
-                continue
-            try:
-                image_bytes = image_path.read_bytes()
-                image_digest = image_row["image_sha256"] or hashlib.sha256(image_bytes).hexdigest()
-                image_phash = image_row["image_phash"] or perceptual_hash_from_bytes(image_bytes)
-                conn.execute(
-                    "UPDATE reports SET image_sha256=?, image_phash=? WHERE id=?",
-                    (image_digest, image_phash, image_row["id"]),
-                )
-            except (OSError, UnidentifiedImageError, ValueError):
-                continue
+        # The active-claim index migration (v2) needs this column before the
+        # ordered runner starts. Remaining additive compatibility changes live
+        # in migration v4 below rather than running on every application start.
         claim_columns = table_columns(conn, "claims")
-        for column, declaration in (
-            ("appeal_note", "TEXT"),
-            ("appeal_count", "INTEGER NOT NULL DEFAULT 0"),
-            ("lost_report_id", "TEXT REFERENCES reports(id)"),
-            ("evidence_types", "TEXT NOT NULL DEFAULT '[]'"),
-        ):
-            if column not in claim_columns:
-                conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+        if "lost_report_id" not in claim_columns:
+            conn.execute("ALTER TABLE claims ADD COLUMN lost_report_id TEXT REFERENCES reports(id)")
         # Record the current legacy bootstrap as the initial schema baseline.
         # Existing additive compatibility updates above remain safe to re-run; future
         # schema changes must receive a new ordered migration version.
