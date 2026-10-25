@@ -35,6 +35,16 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
 
 
+def _apply_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if HTTPS_ONLY:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return response
+
+
 @app.middleware("http")
 async def protect_unsafe_api_requests_and_add_headers(request: Request, call_next):
     """Reject cross-origin API mutations and add baseline browser security headers."""
@@ -49,23 +59,16 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                 request_host = request.headers.get("host", "").lower()
                 valid_scheme = source_url.scheme.lower() in {"http", "https"}
                 if not valid_scheme or not source_host or source_host != request_host:
-                    return JSONResponse(
+                    return _apply_security_headers(JSONResponse(
                         status_code=403,
                         content={"detail": "Cross-origin state-changing requests are not allowed."},
-                    )
+                    ))
             except ValueError:
-                return JSONResponse(
+                return _apply_security_headers(JSONResponse(
                     status_code=403,
                     content={"detail": "Invalid request origin."},
-                )
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    if HTTPS_ONLY:
-        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
-    return response
+                ))
+    return _apply_security_headers(await call_next(request))
 
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
