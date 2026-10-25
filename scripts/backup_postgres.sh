@@ -20,7 +20,10 @@ plain_file="$(mktemp "${TMPDIR:-/tmp}/lostlink-backup.XXXXXX")"
 backup_name="lostlink-$timestamp.dump.age"
 backup_file="$BACKUP_DIR/$backup_name"
 manifest="$backup_file.sha256"
-cleanup() { rm -f "$plain_file"; }
+cleanup() {
+  rm -f "$plain_file"
+  if [[ -f "$backup_file" && ! -f "$manifest" ]]; then rm -f "$backup_file"; fi
+}
 trap cleanup EXIT
 
 pg_dump --format=custom --no-owner --no-acl --dbname="$DATABASE_URL" --file="$plain_file"
