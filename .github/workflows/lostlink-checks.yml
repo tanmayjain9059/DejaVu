@@ -106,6 +106,70 @@ jobs:
         run: >-
           python -m unittest discover -s tests -p test_workflow.py
           -k test_concurrent_handover_requests_only_return_item_once -v
+      - name: Reset disposable PostgreSQL schema before migration smoke test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Exercise SQLite-to-PostgreSQL migration in CI
+        run: |
+          migration_tmp="$(mktemp -d)"
+          trap 'rm -rf "$migration_tmp"' EXIT
+          export MIGRATION_TMP="$migration_tmp"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["MIGRATION_TMP"])
+          os.environ["DATABASE_URL"] = ""
+          os.environ["DATA_DIR"] = str(root / "source-data")
+          os.environ["DATABASE_PATH"] = str(root / "source.sqlite")
+          os.environ["UPLOAD_DIR"] = str(root / "source-uploads")
+          os.environ["DEMO_MODE"] = "false"
+
+          from app.core import database
+          database.DATABASE_URL = ""
+          database.DEMO_MODE = False
+          database.initialise_db()
+          (database.UPLOAD_DIR / "fixture.jpg").write_bytes(b"migration-fixture")
+          with database.connect_db() as conn:
+              conn.execute(
+                  "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                  ("migration@example.test", "Migration Fixture", "student", "not-used-in-login", database.now_iso()),
+              )
+              user_id = conn.execute(
+                  "SELECT id FROM users WHERE email=?", ("migration@example.test",)
+              ).fetchone()["id"]
+              conn.execute(
+                  """INSERT INTO reports
+                     (id, public_ref, report_type, title, description, category, status,
+                      created_by, image_path, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                  ("migration-report", "LL-MIG-0001", "lost", "Fixture item",
+                   "A fixture report for migration verification.", "bags_wallets", "open",
+                   user_id, "fixture.jpg", database.now_iso(), database.now_iso()),
+              )
+          database.close_database_pool()
+          PY
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false \
+            python scripts/migrate_sqlite_to_postgres.py --source-db "$migration_tmp/source.sqlite" \
+            --source-uploads "$migration_tmp/source-uploads"
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false \
+            python scripts/migrate_sqlite_to_postgres.py --source-db "$migration_tmp/source.sqlite" \
+            --source-uploads "$migration_tmp/source-uploads" --execute
+          DATA_DIR="$migration_tmp/target-data" UPLOAD_DIR="$migration_tmp/target-uploads" DEMO_MODE=false python - <<'PY'
+          from pathlib import Path
+          from app.core import database
+
+          with database.connect_db() as conn:
+              user = conn.execute(
+                  "SELECT id FROM users WHERE email=?", ("migration@example.test",)
+              ).fetchone()
+              report = conn.execute(
+                  "SELECT image_path FROM reports WHERE id=?", ("migration-report",)
+              ).fetchone()
+              assert user is not None and report is not None
+              assert (database.UPLOAD_DIR / report["image_path"]).read_bytes() == b"migration-fixture"
+          database.close_database_pool()
+          print("SQLite-to-PostgreSQL migration and referenced-upload smoke test OK")
+          PY
 
   matching-evaluation:
     runs-on: ubuntu-latest
