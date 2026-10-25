@@ -24,7 +24,7 @@ if not SESSION_SECRET or SESSION_SECRET in {
 } or len(SESSION_SECRET) < 32:
     raise RuntimeError("SESSION_SECRET must be a unique, non-placeholder secret of at least 32 characters.")
 
-if HTTPS_ONLY and ALLOWED_HOSTS == ["*"]:
+if HTTPS_ONLY and "*" in ALLOWED_HOSTS:
     raise RuntimeError("ALLOWED_HOSTS must explicitly list canonical hostnames when HTTPS_ONLY is enabled.")
 if HTTPS_ONLY and not REQUIRE_REQUEST_ORIGIN:
     raise RuntimeError("REQUIRE_REQUEST_ORIGIN=true is required when HTTPS_ONLY is enabled.")
