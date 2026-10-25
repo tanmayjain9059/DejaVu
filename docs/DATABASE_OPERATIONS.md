@@ -43,6 +43,28 @@ The script creates a custom-format dump, encrypts it with `age`, checks that `pg
 
 The database dump does not include uploaded photos or private claim evidence. Back up the named Docker uploads volume or the configured storage provider using a coordinated snapshot/backup plan. Keep the database dump and corresponding upload snapshot together.
 
+## Optional daily backup schedule (self-hosted Linux)
+
+The repository includes hardened systemd service/timer templates in `deploy/systemd/`. Use these only if the database is reachable from a Linux backup host; managed platforms may instead use their native scheduler.
+
+1. Install PostgreSQL client utilities and `age` on the backup host.
+2. Create a dedicated `lostlink-backup` system user/group and directories for the script checkout, secret file, and backups. Make the backup directory writable only by that account and administrators.
+3. Create `/etc/lostlink/backup.env` with mode `0640`, owned by `root:lostlink-backup`, containing:
+
+   ```dotenv
+   DATABASE_URL=postgresql://<user>:<url-encoded-password>@<host>:5432/<database>?sslmode=require
+   AGE_RECIPIENT=age1...
+   BACKUP_DIR=/var/backups/lostlink
+   RETENTION_DAYS=14
+   ```
+
+   Use the real provider URL and public age recipient. Keep the private age identity off this host. Do not commit the environment file.
+4. Install the service and timer from `deploy/systemd/` into `/etc/systemd/system/`, then run `systemctl daemon-reload` and `systemctl enable --now lostlink-backup.timer`.
+5. Verify `systemctl list-timers lostlink-backup.timer`, run `systemctl start lostlink-backup.service` once, and inspect `journalctl -u lostlink-backup.service`. Configure an external alert for failed units and stale backup timestamps.
+6. Copy encrypted dumps and checksum manifests to a separate encrypted/access-controlled failure domain. A local timer and local retention are not a substitute for off-host backups.
+
+The timer is a template, not activated by this repository. The uploads volume must have its own coordinated backup schedule.
+
 ## Restore drill
 
 Restore only into a separate disposable database first:
