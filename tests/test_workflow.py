@@ -844,11 +844,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
             migration = conn.execute(
                 "SELECT version, name FROM schema_migrations WHERE version=1"
             ).fetchone()
+            active_index_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=2"
+            ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
-        active_index_migration = conn.execute(
-            "SELECT name FROM schema_migrations WHERE version=2"
-        ).fetchone()
         self.assertIsNotNone(active_index_migration)
         self.assertEqual(active_index_migration["name"], "active_claim_lookup_indexes")
 
