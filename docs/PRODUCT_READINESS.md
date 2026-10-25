@@ -27,8 +27,8 @@ to the public internet.
 - [ ] Review every API route for object-level authorisation and private evidence access.
 - [x] Add a non-root production container configuration requiring HTTPS cookies, a session secret, database URL, and explicit host allowlist; [ ] validate it behind the actual production proxy.
 - [x] Add an institution-facing retention policy template; [ ] obtain approval for actual periods/holds and implement/test a dry-run-first deletion process.
-- [x] Add a persistent private uploads volume to the production Compose configuration; [ ] verify permissions, coordinated backups, and restoration.
-- [x] Add encrypted PostgreSQL dump and guarded restore scripts; [ ] complete an off-host backup and restore drill and configure monitoring/incident response.
+- [x] Add a persistent private uploads volume and encrypted uploads backup/restore utilities; [ ] verify permissions and complete a coordinated database-plus-uploads backup/restore drill.
+- [x] Add encrypted PostgreSQL dump and guarded restore scripts plus a daily systemd timer template; [ ] complete an off-host backup and restore drill and configure monitoring/incident response.
 
 ## P3 — Database operations
 
