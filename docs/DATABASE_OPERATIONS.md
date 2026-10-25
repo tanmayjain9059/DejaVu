@@ -65,6 +65,29 @@ The repository includes hardened systemd service/timer templates in `deploy/syst
 
 The timer is a template, not activated by this repository. The uploads volume must have its own coordinated backup schedule.
 
+## Private uploads backup and restore
+
+The database backup does not include report photos or claim evidence. The repository includes encrypted archive utilities for a configured private uploads directory.
+
+Create an encrypted uploads snapshot:
+
+```bash
+AGE_RECIPIENT=age1... UPLOADS_DIR=/path/to/private/uploads \
+  BACKUP_DIR=/secure/backups RETENTION_DAYS=14 bash scripts/backup_uploads.sh
+```
+
+Restore only into a separate empty directory:
+
+```bash
+RESTORE_CONFIRM=YES AGE_IDENTITY=/secure/keys/lostlink-backup-identity.txt \
+  UPLOADS_TARGET=/path/to/empty/uploads \
+  bash scripts/restore_uploads.sh /secure/backups/lostlink-uploads-YYYYMMDDTHHMMSSZ.tar.gz.age
+```
+
+The restore script verifies the checksum and archive paths, rejects symlinks/non-file entries, and refuses a non-empty target. Keep the decryption identity separate from encrypted archives.
+
+**Consistency requirement:** the database and uploads must represent the same recovery point. Pause application writes for the coordinated backup or use storage/database snapshots with a documented consistency guarantee. Running the two scripts at unrelated times is not a verified recovery plan. Keep both artifacts off-host, encrypted, access-controlled, and retention-managed. Restore both into an isolated environment and verify every database-referenced image before cutover.
+
 ## Restore drill
 
 Restore only into a separate disposable database first:
