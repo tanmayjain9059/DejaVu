@@ -934,7 +934,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
                     "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
                     (999, "future_test_version", main.now_iso()),
                 )
-                main._apply_versioned_schema_migrations(conn)
+                app_database._apply_versioned_schema_migrations(conn)
 
     def test_concurrent_handover_requests_only_return_item_once(self):
         self.login("finder@example.test", "finder-password")
