@@ -337,6 +337,17 @@ async def decide_claim(
         if claim["status"] in {"rejected", "approved_for_collection", "returned"}:
             raise HTTPException(status_code=409, detail="This claim has already reached a final review state.")
         if body.action == "approve":
+            # A linked lost report must remain open until the claim is approved.
+            # The transaction lock makes this check atomic with report closure.
+            if claim["lost_report_id"]:
+                linked_lost = read_report(conn, claim["lost_report_id"])
+                if (linked_lost["created_by"] != claim["claimant_id"] or
+                        linked_lost["report_type"] != "lost" or
+                        linked_lost["status"] != "open"):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="The linked lost report is no longer open. Reconcile the report before approving this claim.",
+                    )
             others = conn.execute(
                 "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
                 (claim["report_id"], claim_id)
