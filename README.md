@@ -465,7 +465,7 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | Variable | Purpose | Example/default behaviour |
 |---|---|---|
 | <code>DEMO_MODE</code> | Seed demo accounts and sample records. | Example file sets <code>true</code>; set <code>false</code> outside local demonstrations. |
-| <code>SESSION_SECRET</code> | Secret used to sign session cookies. | Required; startup rejects an empty or known placeholder value. Use a unique random secret. |
+| <code>SESSION_SECRET</code> | Secret used to sign session cookies. | Required; startup rejects an empty/placeholder secret and secrets shorter than 32 characters. Use a unique random secret. |
 | <code>SESSION_HTTPS_ONLY</code> | Restrict session cookies to HTTPS. | <code>false</code> for localhost; set <code>true</code> for HTTPS deployment. |
 | <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code> when <code>DATABASE_URL</code> is unset. |
 | <code>DATABASE_URL</code> | Optional managed PostgreSQL connection URL. | Set a provider-issued <code>postgresql://</code> URL to use PostgreSQL; unset means SQLite. |
