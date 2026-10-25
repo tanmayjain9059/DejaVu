@@ -115,27 +115,29 @@ async def upload_claim_evidence_image(
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
-    with connect_db() as conn:
-        # Serialize duplicate checks across simultaneous student and office demo processes.
-        conn.execute("BEGIN IMMEDIATE")
-        claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
-        if not claim or claim["claimant_id"] != user["id"]:
-            raise HTTPException(status_code=404, detail="Claim not found.")
-        if claim["status"] not in {"pending", "disputed", "needs_more_evidence"}:
-            raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
-        if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
-            raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
-        if image_fingerprint_matches(conn, image_sha256, image_phash):
-            raise HTTPException(
-                status_code=409,
-                detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
-            )
-        filename = "claim-" + uuid.uuid4().hex + ".jpg"
-        image_path = (UPLOAD_DIR / filename).resolve()
-        if image_path.parent != UPLOAD_DIR.resolve():
-            raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-        image_path.write_bytes(normalized)
-        try:
+
+    image_path = None
+    try:
+        with connect_db() as conn:
+            # Serialize duplicate checks across simultaneous student and office processes.
+            conn.execute("BEGIN IMMEDIATE")
+            claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
+            if not claim or claim["claimant_id"] != user["id"]:
+                raise HTTPException(status_code=404, detail="Claim not found.")
+            if claim["status"] not in {"pending", "disputed", "needs_more_evidence"}:
+                raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
+            if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
+                raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
+            if image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(
+                    status_code=409,
+                    detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
+                )
+            filename = "claim-" + uuid.uuid4().hex + ".jpg"
+            image_path = (UPLOAD_DIR / filename).resolve()
+            if image_path.parent != UPLOAD_DIR.resolve():
+                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+            image_path.write_bytes(normalized)
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
@@ -147,12 +149,15 @@ async def upload_claim_evidence_image(
             notify_role(conn, "office", "claim-evidence-image:" + claim_id,
                         "Claim evidence image submitted", "A claimant attached private image evidence for review.",
                         "claim", claim_id)
-        except Exception:
-            # Keep filesystem and database state aligned if the transaction aborts.
-            image_path.unlink(missing_ok=True)
-            raise
+    except Exception:
+        # Also catches commit failures from the connection context manager.
+        if image_path is not None:
+            try:
+                image_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
     return {"ok": True, "message": "Private evidence image attached."}
-
 
 @router.get("/api/claims/{claim_id}/evidence-image")
 async def get_claim_evidence_image(
