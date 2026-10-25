@@ -925,12 +925,20 @@ class LostLinkWorkflowTests(unittest.TestCase):
             uniqueness_migration = conn.execute(
                 "SELECT name FROM schema_migrations WHERE version=3"
             ).fetchone()
+            legacy_columns_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=4"
+            ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
         self.assertIsNotNone(active_index_migration)
         self.assertEqual(active_index_migration["name"], "active_claim_lookup_indexes")
         self.assertIsNotNone(uniqueness_migration)
         self.assertEqual(uniqueness_migration["name"], "workflow_event_uniqueness_guards")
+        self.assertIsNotNone(legacy_columns_migration)
+        self.assertEqual(
+            legacy_columns_migration["name"],
+            "legacy_additive_columns_and_image_fingerprints",
+        )
 
     def test_application_refuses_unknown_future_schema_versions(self):
         with self.assertRaisesRegex(RuntimeError, "newer than this application supports"):
