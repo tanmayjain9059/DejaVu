@@ -22,7 +22,7 @@ jobs:
       - name: Compile application, tests and operational scripts
         run: python -m compileall -q app tests scripts
       - name: Check backup and restore shell syntax
-        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh
+        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh scripts/backup_uploads.sh scripts/restore_uploads.sh
       - name: Check JavaScript syntax
         run: node --check app/static/app.js
       - name: Run unit, workflow and frontend contract tests
