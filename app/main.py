@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.core.config import *
 from app.core.database import *
 from app.core.images import *
@@ -72,6 +73,7 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
 
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 @app.get("/health/live", include_in_schema=False)
 def health_live():
     """Process liveness endpoint; does not depend on external services."""
