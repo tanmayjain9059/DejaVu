@@ -17,6 +17,7 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
 HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()] or ["*"]
+REQUIRE_REQUEST_ORIGIN = os.getenv("REQUIRE_REQUEST_ORIGIN", "false").lower() == "true"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 ALLOWED_EVIDENCE_TYPES = {
     "distinctive_features", "purchase_or_receipt", "packaging_or_accessory",
