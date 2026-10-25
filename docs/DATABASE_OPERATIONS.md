@@ -33,13 +33,13 @@ The current startup bootstrap records a `schema_migrations` baseline row. Existi
 
 ## PostgreSQL backups
 
-Install PostgreSQL client utilities matching your supported server version. Set `DATABASE_URL` through your secret manager or an untracked shell environment variable, then run:
+Install PostgreSQL client utilities matching your supported server version and [age](https://age-encryption.org/). Create an age key pair and store the private identity separately from the backups. Set `AGE_RECIPIENT` to the public recipient key and `DATABASE_URL` through your secret manager or an untracked shell environment variable, then run:
 
 ```bash
-BACKUP_DIR=/secure/backups RETENTION_DAYS=14 scripts/backup_postgres.sh
+AGE_RECIPIENT=age1... BACKUP_DIR=/secure/backups RETENTION_DAYS=14 scripts/backup_postgres.sh
 ```
 
-The script creates a custom-format dump, checks that `pg_restore` can read its catalog, writes a SHA-256 manifest, and applies local retention. This is **not** off-site backup by itself. Copy backups to encrypted, access-controlled storage in a separate failure domain and monitor freshness/failures. Protect the connection string and backup files.
+The script creates a custom-format dump, encrypts it with `age`, checks that `pg_restore` can read its catalog before encryption, writes a SHA-256 manifest, and applies local retention. Copy the encrypted artifacts to access-controlled storage in a separate failure domain and monitor freshness/failures. Protect the connection string, recipient identity, and backup files.
 
 The database dump does not include uploaded photos or private claim evidence. Back up the named Docker uploads volume or the configured storage provider using a coordinated snapshot/backup plan. Keep the database dump and corresponding upload snapshot together.
 
