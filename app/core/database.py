@@ -34,6 +34,68 @@ def postgres_row_factory(cursor):
     return lambda values: PostgresCompatRow(column_names, values)
 
 
+def _translate_placeholders(statement: str) -> str:
+    """Translate SQLite positional placeholders without touching quoted text/comments."""
+    output: list[str] = []
+    index = 0
+    quote: str | None = None
+    line_comment = False
+    block_comment = False
+
+    while index < len(statement):
+        char = statement[index]
+        next_pair = statement[index:index + 2]
+
+        if line_comment:
+            output.append(char)
+            if char == "\n":
+                line_comment = False
+            index += 1
+            continue
+
+        if block_comment:
+            if next_pair == "*/":
+                output.append(next_pair)
+                block_comment = False
+                index += 2
+            else:
+                output.append(char)
+                index += 1
+            continue
+
+        if quote:
+            output.append(char)
+            if char == quote:
+                if index + 1 < len(statement) and statement[index + 1] == quote:
+                    output.append(statement[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+
+        if next_pair == "--":
+            output.append(next_pair)
+            line_comment = True
+            index += 2
+        elif next_pair == "/*":
+            output.append(next_pair)
+            block_comment = True
+            index += 2
+        elif char in ("'", '"'):
+            quote = char
+            output.append(char)
+            index += 1
+        elif char == "?":
+            output.append("%s")
+            index += 1
+        else:
+            output.append(char)
+            index += 1
+
+    return "".join(output)
+
+
 class PostgresCompatConnection:
     """Limited DB-API compatibility for the SQLite-style SQL used by this project."""
 
@@ -58,7 +120,7 @@ class PostgresCompatConnection:
                 "verifier_user_id=EXCLUDED.verifier_user_id, "
                 "checks_json=EXCLUDED.checks_json, verified_at=EXCLUDED.verified_at"
             )
-        return statement.replace("?", "%s"), False
+        return _translate_placeholders(statement), False
 
     def execute(self, sql: str, parameters=()):
         statement, _ = self.translate(sql)
