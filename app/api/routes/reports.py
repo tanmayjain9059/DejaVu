@@ -217,19 +217,30 @@ async def upload_report_image(
                 detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
             )
         filename = uuid.uuid4().hex + ".jpg"
-        (UPLOAD_DIR / filename).write_bytes(normalized)
+        new_path = (UPLOAD_DIR / filename).resolve()
+        if new_path.parent != UPLOAD_DIR.resolve():
+            raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+        new_path.write_bytes(normalized)
         old = row["image_path"]
-        conn.execute(
-            "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
-            (filename, image_sha256, image_phash, now_iso(), report_id),
-        )
-        audit(conn, user["id"], "report_image_added", "report", report_id)
-        if old:
+        try:
+            conn.execute(
+                "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
+                (filename, image_sha256, image_phash, now_iso(), report_id),
+            )
+            audit(conn, user["id"], "report_image_added", "report", report_id)
+            updated = read_report(conn, report_id)
+        except Exception:
+            # The surrounding DB context will roll back; remove the uncommitted file too.
+            new_path.unlink(missing_ok=True)
+            raise
+    # Only delete the previous image after the DB transaction has committed.
+    if old:
+        old_path = (UPLOAD_DIR / old).resolve()
+        if old_path.parent == UPLOAD_DIR.resolve() and old_path != new_path:
             try:
-                (UPLOAD_DIR / old).unlink(missing_ok=True)
+                old_path.unlink(missing_ok=True)
             except OSError:
                 pass
-        updated = read_report(conn, report_id)
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
 
 
