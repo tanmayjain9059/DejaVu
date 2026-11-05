@@ -294,7 +294,9 @@ The report matching endpoint currently retrieves up to 500 of the most recently 
 | <code>sentence-transformers/all-MiniLM-L6-v2</code> | Creates sentence embeddings to compare the semantic similarity of report text. | Install <code>requirements-ml.txt</code> and set <code>USE_SEMANTIC_MODEL=true</code>. |
 | <code>openai/clip-vit-base-patch32</code> | Compares two item photos, or compares an available photo with the opposite report's text when only one image is present. | Install ML dependencies and set <code>USE_CLIP_MODEL=true</code>. |
 
-Semantic embeddings are compared using cosine similarity. CLIP produces visual or image-text similarity features. If an optional model cannot load or inference fails, the matcher falls back to the deterministic text baseline or omits the unavailable image signal. Optional inference consumes additional memory and CPU/GPU resources; models should not be described as active unless their flags are enabled and loading has been verified.
+Semantic embeddings are compared using cosine similarity. When MiniLM is enabled, LostLink encodes the lost report and the candidate descriptions in one batch for each ranking request. The model-based ranking runs in a worker thread so CPU inference does not block the FastAPI event loop. In-app notification heuristics deliberately use the lexical baseline while the database write transaction is open; the full semantic/visual ranking is shown in the match view. CLIP still evaluates available photos per candidate, so its memory and latency must be measured before enabling it on a constrained host.
+
+If an optional model cannot load or inference fails, the matcher falls back to the deterministic text baseline or omits the unavailable image signal. Optional inference consumes additional memory and CPU/GPU resources; models should not be described as active unless their flags are enabled and loading has been verified.
 
 Automatic image caption generation and keyword extraction are not implemented. CLIP similarity is not image captioning.
 
