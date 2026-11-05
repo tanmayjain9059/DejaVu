@@ -201,9 +201,42 @@ class MatchingEngine:
         except Exception:
             return None
 
-    def compare(self, lost: dict[str, Any], found: dict[str, Any]) -> dict[str, Any]:
-        text_score, text_engine = self.text_similarity(_text_value(lost), _text_value(found))
-        image_score = self.image_similarity(lost, found)
+    def _batch_semantic_scores(
+        self, lost: dict[str, Any], found_reports: list[dict[str, Any]]
+    ) -> list[tuple[float, str]] | None:
+        model = self._load_text_model()
+        if model is None or not found_reports:
+            return None
+        texts = [_text_value(lost), *(_text_value(report) for report in found_reports)]
+        try:
+            embeddings = model.encode(
+                texts, normalize_embeddings=True, batch_size=32, show_progress_bar=False
+            )
+            query_vector = embeddings[0]
+            scores = []
+            for vector in embeddings[1:]:
+                cosine = float(sum(float(a) * float(b) for a, b in zip(query_vector, vector)))
+                scores.append((max(0.0, min(1.0, cosine)), "sentence_embeddings"))
+            return scores
+        except Exception:
+            self._text_model = None
+            return None
+
+    def compare(
+        self,
+        lost: dict[str, Any],
+        found: dict[str, Any],
+        *,
+        use_models: bool = True,
+        text_result: tuple[float, str] | None = None,
+    ) -> dict[str, Any]:
+        if text_result is not None:
+            text_score, text_engine = text_result
+        elif use_models:
+            text_score, text_engine = self.text_similarity(_text_value(lost), _text_value(found))
+        else:
+            text_score, text_engine = lexical_similarity(_text_value(lost), _text_value(found)), "lexical_baseline"
+        image_score = self.image_similarity(lost, found) if use_models else None
         lost_cat, found_cat = lost.get("category"), found.get("category")
         category_score = 1.0 if lost_cat and lost_cat == found_cat else (0.15 if not lost_cat or not found_cat else 0.0)
         location_score = _location_score(lost, found)
@@ -328,9 +361,11 @@ class MatchingEngine:
         }
 
     def rank(self, lost: dict[str, Any], found_reports: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
+        semantic_scores = self._batch_semantic_scores(lost, found_reports)
         ranked = []
-        for report in found_reports:
-            result = self.compare(lost, report)
+        for index, report in enumerate(found_reports):
+            text_result = semantic_scores[index] if semantic_scores is not None else None
+            result = self.compare(lost, report, text_result=text_result)
             ranked.append({"report": report, **result})
         ranked.sort(key=lambda item: item["score"], reverse=True)
         return ranked[:limit]
