@@ -4,6 +4,8 @@ import sqlite3, uuid
 from app.core.config import UPLOAD_DIR
 from app.core.database import now_iso
 
+# shortcut: notification matching stays lexical inside write transactions; use a queued ML worker if campus evaluation shows missed-alert harm.
+
 def notify_user(
     conn: sqlite3.Connection,
     user_id: int,
