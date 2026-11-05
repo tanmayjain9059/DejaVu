@@ -34,7 +34,7 @@ def notify_role(
         notify_user(conn, row["id"], event_key, title, message, entity_type, entity_id)
 
 def notify_possible_matches(conn: sqlite3.Connection, found_row: sqlite3.Row) -> int:
-    """Create deduplicated in-app alerts for students' open lost reports."""
+    """Create deduplicated in-app alerts using the lightweight matcher."""
     from app.matching import matching_engine
 
     found = dict(found_row)
@@ -50,7 +50,7 @@ def notify_possible_matches(conn: sqlite3.Connection, found_row: sqlite3.Row) ->
         lost = dict(lost_row)
         if lost.get("image_path"):
             lost["image_path"] = str(UPLOAD_DIR / lost["image_path"])
-        result = matching_engine.compare(lost, found)
+        result = matching_engine.compare(lost, found, use_models=False)
         # This threshold is a notification heuristic. Matching scores are not probabilities.
         if result["score"] < 0.58:
             continue
@@ -69,7 +69,7 @@ def notify_possible_matches(conn: sqlite3.Connection, found_row: sqlite3.Row) ->
 
 
 def notify_matches_for_lost_report(conn: sqlite3.Connection, lost_row: sqlite3.Row) -> int:
-    """Notify the reporter when a newly created lost report matches existing office-held items."""
+    """Notify the reporter using the lightweight matcher; full AI ranking stays in the match view."""
     from app.matching import matching_engine
 
     lost = dict(lost_row)
@@ -84,7 +84,7 @@ def notify_matches_for_lost_report(conn: sqlite3.Connection, lost_row: sqlite3.R
         found = dict(found_row)
         if found.get("image_path"):
             found["image_path"] = str(UPLOAD_DIR / found["image_path"])
-        result = matching_engine.compare(lost, found)
+        result = matching_engine.compare(lost, found, use_models=False)
         if result["score"] < 0.58:
             continue
         event_key = "match:" + lost_row["id"] + ":" + found_row["id"]
