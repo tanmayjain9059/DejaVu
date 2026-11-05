@@ -7,15 +7,15 @@ to the public internet.
 ## P0 — Establish a safe code baseline
 
 - [x] Review the database adapter, transaction boundaries, and route-level authorization code; retain independent human review before merge.
-- [ ] Reconcile the hardening branch with the latest `main` changes.
-- [ ] Require passing CI on the final exact candidate commit after the new PostgreSQL race/uniqueness tests; keep `main` unchanged until a human approves the PR.
+- [x] Reconcile and merge `codex/hardening-db-mobile` into `main`; `codex/product-readiness-hardening` was already an ancestor of the merged branch and contributed no unique commits.
+- [x] The merged `main` commit `b601d0048658cbb22d32bab735a658da7cd00651` passed the exact-head CI run, including unit/workflow tests, PostgreSQL integration and concurrency regressions, Docker/Compose validation, and semantic matching evaluation. This is CI evidence, not a production certification.
 - [x] Add regression coverage for PostgreSQL placeholder conversion around quoted strings and SQL comments.
 - [x] Add baseline browser security response headers with response-level tests.
 
 ## P1 — Workflow integrity and concurrency
 
 - [x] Add concurrent integration tests for competing claims on one item; verify both claims enter the disputed state.
-- [x] Add a regression test for concurrent duplicate handover requests and assert one handover and one reward event; [ ] confirm it passes on the exact candidate CI run.
+- [x] Add a regression test for concurrent duplicate handover requests and assert one handover and one reward event; the exact merged-head PostgreSQL CI run passed.
 - [x] Add a concurrent regression for report closure versus approval of a linked claim; approval now rechecks linked-report state inside the serialized transaction.
 - [x] Add fault-injection tests for audit failure during image upload and notification/reward failures during handover; verify rollback and filesystem cleanup.
 - [x] Add versioned unique-index guards for handovers, reward event keys, and notification event keys; migration fails closed on duplicate historical keys.
