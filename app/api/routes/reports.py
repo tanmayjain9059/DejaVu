@@ -1,5 +1,6 @@
 """HTTP route group."""
 from fastapi import APIRouter
+from starlette.concurrency import run_in_threadpool
 from app.core.runtime import *
 from app.schemas import *
 
@@ -300,7 +301,7 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
         if candidate_item.get("image_path"):
             candidate_item["image_path"] = str(UPLOAD_DIR / candidate_item["image_path"])
         candidate_data.append(candidate_item)
-    ranked = matching_engine.rank(lost_for_matching, candidate_data, limit=5)
+    ranked = await run_in_threadpool(matching_engine.rank, lost_for_matching, candidate_data, limit=5)
     internal = user["role"] == "office"
     results = []
     for match in ranked:
