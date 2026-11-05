@@ -82,7 +82,7 @@ async def contribution_leaderboard(user: dict[str, Any] = Depends(authenticated_
                WHERE u.role='student'
                GROUP BY u.id, u.display_name
                HAVING SUM(l.points) > 0
-               ORDER BY total_points DESC, u.display_name COLLATE NOCASE ASC"""
+               ORDER BY total_points DESC, LOWER(u.display_name) ASC"""
         ).fetchall()
     leaders = []
     previous_points = None

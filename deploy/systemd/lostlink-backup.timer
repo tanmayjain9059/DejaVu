@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily encrypted LostLink PostgreSQL backup schedule
+Documentation=file:/opt/lostlink/docs/DATABASE_OPERATIONS.md
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+Unit=lostlink-backup.service
+
+[Install]
+WantedBy=timers.target

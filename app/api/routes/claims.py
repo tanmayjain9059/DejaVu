@@ -115,36 +115,49 @@ async def upload_claim_evidence_image(
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
-    with connect_db() as conn:
-        # Serialize duplicate checks across simultaneous student and office demo processes.
-        conn.execute("BEGIN IMMEDIATE")
-        claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
-        if not claim or claim["claimant_id"] != user["id"]:
-            raise HTTPException(status_code=404, detail="Claim not found.")
-        if claim["status"] not in {"pending", "disputed", "needs_more_evidence"}:
-            raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
-        if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
-            raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
-        if image_fingerprint_matches(conn, image_sha256, image_phash):
-            raise HTTPException(
-                status_code=409,
-                detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
-            )
-        filename = "claim-" + uuid.uuid4().hex + ".jpg"
-        (UPLOAD_DIR / filename).write_bytes(normalized)
-        conn.execute(
-            """INSERT INTO claim_evidence_images
-               (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (uuid.uuid4().hex, claim_id, user["id"], filename, image_sha256, image_phash, now_iso()),
-        )
-        audit(conn, user["id"], "claim_evidence_image_added", "claim", claim_id,
-              {"sha256_prefix": image_sha256[:12]})
-        notify_role(conn, "office", "claim-evidence-image:" + claim_id,
-                    "Claim evidence image submitted", "A claimant attached private image evidence for review.",
-                    "claim", claim_id)
-    return {"ok": True, "message": "Private evidence image attached."}
 
+    image_path = None
+    try:
+        with connect_db() as conn:
+            # Serialize duplicate checks across simultaneous student and office processes.
+            conn.execute("BEGIN IMMEDIATE")
+            claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
+            if not claim or claim["claimant_id"] != user["id"]:
+                raise HTTPException(status_code=404, detail="Claim not found.")
+            if claim["status"] not in {"pending", "disputed", "needs_more_evidence"}:
+                raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
+            if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
+                raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
+            if image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(
+                    status_code=409,
+                    detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
+                )
+            filename = "claim-" + uuid.uuid4().hex + ".jpg"
+            image_path = (UPLOAD_DIR / filename).resolve()
+            if image_path.parent != UPLOAD_DIR.resolve():
+                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+            image_path.write_bytes(normalized)
+            conn.execute(
+                """INSERT INTO claim_evidence_images
+                   (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (uuid.uuid4().hex, claim_id, user["id"], filename, image_sha256, image_phash, now_iso()),
+            )
+            audit(conn, user["id"], "claim_evidence_image_added", "claim", claim_id,
+                  {"sha256_prefix": image_sha256[:12]})
+            notify_role(conn, "office", "claim-evidence-image:" + claim_id,
+                        "Claim evidence image submitted", "A claimant attached private image evidence for review.",
+                        "claim", claim_id)
+    except Exception:
+        # Also catches commit failures from the connection context manager.
+        if image_path is not None:
+            try:
+                image_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    return {"ok": True, "message": "Private evidence image attached."}
 
 @router.get("/api/claims/{claim_id}/evidence-image")
 async def get_claim_evidence_image(
@@ -240,6 +253,7 @@ async def update_claim_evidence(
     if user["role"] != "student":
         raise HTTPException(status_code=403, detail="This action is available to the claimant.")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -278,6 +292,7 @@ async def dispute_rejected_claim(
     if len(reason) < 20:
         raise HTTPException(status_code=422, detail="Explain why the decision should be reviewed (at least 20 characters).")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -314,6 +329,7 @@ async def decide_claim(
 ):
     require_office(user)
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -321,6 +337,17 @@ async def decide_claim(
         if claim["status"] in {"rejected", "approved_for_collection", "returned"}:
             raise HTTPException(status_code=409, detail="This claim has already reached a final review state.")
         if body.action == "approve":
+            # A linked lost report must remain open until the claim is approved.
+            # The transaction lock makes this check atomic with report closure.
+            if claim["lost_report_id"]:
+                linked_lost = read_report(conn, claim["lost_report_id"])
+                if (linked_lost["created_by"] != claim["claimant_id"] or
+                        linked_lost["report_type"] != "lost" or
+                        linked_lost["status"] != "open"):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="The linked lost report is no longer open. Reconcile the report before approving this claim.",
+                    )
             others = conn.execute(
                 "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
                 (claim["report_id"], claim_id)
@@ -405,6 +432,7 @@ async def record_handover(
     if not body.confirmed_physical_handover or not body.claimant_identity_checked:
         raise HTTPException(status_code=422, detail="Confirm the physical handover and claimant identity.")
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")

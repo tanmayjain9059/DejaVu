@@ -9,11 +9,15 @@ load_dotenv()
 ROOT = Path(__file__).resolve().parents[2]  # app/core/config.py -> repository root
 DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(DATA_DIR / "lostlink.db"))).resolve()
+# Optional managed PostgreSQL database. Leave unset for local SQLite development.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
 HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()] or ["*"]
+REQUIRE_REQUEST_ORIGIN = os.getenv("REQUIRE_REQUEST_ORIGIN", "false").lower() == "true"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 ALLOWED_EVIDENCE_TYPES = {
     "distinctive_features", "purchase_or_receipt", "packaging_or_accessory",

@@ -6,11 +6,11 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 
 ## Project layout
 
-- app/main.py — FastAPI composition root, session middleware, static files, router registration and DB initialisation.
+- app/main.py — FastAPI composition root, session middleware, baseline Origin/Referer checks, browser security headers, health endpoints, static files, router registration and DB initialisation.
 - app/schemas.py — Pydantic request-body validation.
 - app/matching.py — explainable lost/found matching, text similarity and optional CLIP similarity.
 - app/core/config.py — environment settings, directories and shared category/privacy policy.
-- app/core/database.py — SQLite lifecycle, schema, migrations, audit events and demo seed data.
+- app/core/database.py — SQLite lifecycle plus optional PostgreSQL connection pooling/compatibility adapter, schema migrations, audit events and demo seed data.
 - app/core/images.py — image validation, canonical JPEG conversion, SHA-256/perceptual fingerprints and watermarking.
 - app/core/security.py — PBKDF2 password hash and verification helpers.
 - app/core/runtime.py — compatibility facade re-exporting shared helpers to route modules and legacy imports.
@@ -40,13 +40,13 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 
 ### Database and configuration
 
-The SQLite connection context manager commits on success, rolls back on exceptions, enables foreign keys and always closes the connection. Initialisation creates tables/indexes, applies additive migrations, backfills hashes for legacy report images where possible and seeds examples only when DEMO_MODE=true.
+The SQLite connection context manager commits on success, rolls back on exceptions, enables foreign keys and always closes the connection. When DATABASE_URL is set, a bounded psycopg pool and a limited SQL compatibility adapter are used instead. Initialisation creates tables/indexes, applies additive migrations, backfills hashes for legacy report images where possible and seeds examples only when DEMO_MODE=true. The adapter is not a replacement for versioned migrations or dialect-specific tests.
 
 ### Image and security utilities
 
 Images are limited to supported formats, verified, EXIF-oriented, resized, re-encoded as JPEG and fingerprinted. Re-encoding removes original metadata. Exact SHA-256 plus perceptual similarity checks discourage reuse of report/claim images. Labelled previews discourage casual copying but cannot prevent screenshots.
 
-Password helpers use PBKDF2-HMAC-SHA256 with a random salt and 180,000 iterations. Session middleware uses strict SameSite cookies, an eight-hour lifetime and the SESSION_HTTPS_ONLY option.
+Password helpers use PBKDF2-HMAC-SHA256 with a random salt and 180,000 iterations. Session middleware uses strict SameSite cookies, an eight-hour lifetime and the SESSION_HTTPS_ONLY option. Unsafe API mutations reject a supplied Origin/Referer whose host differs from the request Host; this is a baseline browser control and still requires reverse-proxy/deployment verification. Responses include baseline anti-sniffing, frame, referrer and permissions headers. Liveness and database-readiness endpoints are available at /health/live and /health/ready.
 
 ### Domain services
 

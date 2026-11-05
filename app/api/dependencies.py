@@ -1,5 +1,6 @@
 """Session authentication and office-role dependency helpers."""
 from __future__ import annotations
+import sqlite3
 from typing import Any
 from fastapi import HTTPException, Request
 from app.core.database import connect_db

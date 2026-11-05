@@ -1,0 +1,19 @@
+[Unit]
+Description=Encrypted LostLink PostgreSQL backup
+Wants=network-online.target
+After=network-online.target
+Documentation=file:/opt/lostlink/docs/DATABASE_OPERATIONS.md
+
+[Service]
+Type=oneshot
+User=lostlink-backup
+Group=lostlink-backup
+WorkingDirectory=/opt/lostlink
+EnvironmentFile=/etc/lostlink/backup.env
+ExecStart=/bin/bash /opt/lostlink/scripts/backup_postgres.sh
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/lostlink

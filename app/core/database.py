@@ -1,6 +1,6 @@
 """SQLite connections, migrations, audit events and optional demo seeding."""
 from __future__ import annotations
-import hashlib, json, sqlite3, uuid
+import hashlib, json, os, re, sqlite3, uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,8 +10,205 @@ from app.core.config import *
 from app.core.images import perceptual_hash_from_bytes
 from app.core.security import hash_password
 
+
+class PostgresCompatRow(dict):
+    """PostgreSQL result row supporting both name and numeric-index access."""
+
+    def __init__(self, column_names, values):
+        self._ordered_values = tuple(values)
+        super().__init__(zip(column_names, self._ordered_values))
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._ordered_values[key]
+        return super().__getitem__(key)
+
+
+def postgres_row_factory(cursor):
+    """Psycopg row factory that mirrors sqlite3.Row indexing behaviour."""
+    description = cursor.description or ()
+    column_names = [
+        column.name if hasattr(column, "name") else column[0]
+        for column in description
+    ]
+    return lambda values: PostgresCompatRow(column_names, values)
+
+
+def _translate_placeholders(statement: str) -> str:
+    """Translate SQLite positional placeholders without touching quoted text/comments."""
+    output: list[str] = []
+    index = 0
+    quote: str | None = None
+    line_comment = False
+    block_comment = False
+
+    while index < len(statement):
+        char = statement[index]
+        next_pair = statement[index:index + 2]
+
+        if line_comment:
+            output.append(char)
+            if char == "\n":
+                line_comment = False
+            index += 1
+            continue
+
+        if block_comment:
+            if next_pair == "*/":
+                output.append(next_pair)
+                block_comment = False
+                index += 2
+            else:
+                output.append(char)
+                index += 1
+            continue
+
+        if quote:
+            output.append(char)
+            if char == quote:
+                if index + 1 < len(statement) and statement[index + 1] == quote:
+                    output.append(statement[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+
+        if next_pair == "--":
+            output.append(next_pair)
+            line_comment = True
+            index += 2
+        elif next_pair == "/*":
+            output.append(next_pair)
+            block_comment = True
+            index += 2
+        elif char in ("'", '"'):
+            quote = char
+            output.append(char)
+            index += 1
+        elif char == "?":
+            output.append("%s")
+            index += 1
+        else:
+            output.append(char)
+            index += 1
+
+    return "".join(output)
+
+
+class PostgresCompatConnection:
+    """Limited DB-API compatibility for the SQLite-style SQL used by this project."""
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    @staticmethod
+    def translate(sql: str) -> tuple[str, bool]:
+        statement = sql.strip()
+        if statement.upper() == "BEGIN IMMEDIATE":
+            return "SELECT pg_advisory_xact_lock(730021)", True
+
+        ignored_insert = re.match(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", statement, re.I)
+        replace_insert = re.match(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+claim_verifications\b", statement, re.I)
+        if ignored_insert:
+            statement = re.sub(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", statement, flags=re.I).rstrip().rstrip(";")
+            statement += " ON CONFLICT DO NOTHING"
+        elif replace_insert:
+            statement = re.sub(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\b", "INSERT INTO", statement, flags=re.I).rstrip().rstrip(";")
+            statement += (
+                " ON CONFLICT (claim_id) DO UPDATE SET "
+                "verifier_user_id=EXCLUDED.verifier_user_id, "
+                "checks_json=EXCLUDED.checks_json, verified_at=EXCLUDED.verified_at"
+            )
+        return _translate_placeholders(statement), False
+
+    def execute(self, sql: str, parameters=()):
+        statement, _ = self.translate(sql)
+        return self._connection.execute(statement, parameters or ())
+
+    def executemany(self, sql: str, parameters):
+        statement, _ = self.translate(sql)
+        results = []
+        for parameter_set in parameters:
+            results.append(self._connection.execute(statement, parameter_set))
+        return results
+
+    def executescript(self, script: str) -> None:
+        script = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "SERIAL PRIMARY KEY", script, flags=re.I)
+        for statement in script.split(";"):
+            if statement.strip():
+                self.execute(statement)
+
+    def commit(self):
+        return self._connection.commit()
+
+    def rollback(self):
+        return self._connection.rollback()
+
+    def close(self):
+        return self._connection.close()
+
+
+def _postgres_url() -> str:
+    if not DATABASE_URL:
+        return ""
+    if DATABASE_URL.startswith("postgres://"):
+        return "postgresql://" + DATABASE_URL[len("postgres://"):]
+    if DATABASE_URL.startswith("postgresql://"):
+        return DATABASE_URL
+    raise RuntimeError("DATABASE_URL must use postgresql:// or postgres://.")
+
+
+_POSTGRES_POOL = None
+
+
+def _get_postgres_pool():
+    """Create a bounded connection pool on demand for managed PostgreSQL."""
+    global _POSTGRES_POOL
+    if _POSTGRES_POOL is not None:
+        return _POSTGRES_POOL
+    try:
+        from psycopg_pool import ConnectionPool
+    except ImportError as exc:
+        raise RuntimeError(
+            "DATABASE_URL is configured for PostgreSQL, but psycopg with its pool extra "
+            "is not installed. Install the project requirements."
+        ) from exc
+    try:
+        max_size = int(os.getenv("DATABASE_POOL_MAX_SIZE", "5"))
+    except ValueError as exc:
+        raise RuntimeError("DATABASE_POOL_MAX_SIZE must be an integer between 1 and 20.") from exc
+    if not 1 <= max_size <= 20:
+        raise RuntimeError("DATABASE_POOL_MAX_SIZE must be between 1 and 20.")
+    _POSTGRES_POOL = ConnectionPool(
+        conninfo=_postgres_url(),
+        min_size=1,
+        max_size=max_size,
+        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10},
+        timeout=10,
+        open=True,
+    )
+    return _POSTGRES_POOL
+
+
+def close_database_pool() -> None:
+    """Release pooled PostgreSQL connections during application shutdown."""
+    global _POSTGRES_POOL
+    if _POSTGRES_POOL is not None:
+        _POSTGRES_POOL.close()
+        _POSTGRES_POOL = None
+
+
 @contextmanager
 def connect_db():
+    if DATABASE_URL:
+        pool = _get_postgres_pool()
+        # psycopg_pool commits successful transactions, rolls back on exceptions,
+        # and returns the connection to the pool on context exit.
+        with pool.connection() as raw_connection:
+            yield PostgresCompatConnection(raw_connection)
+        return
+
     conn = sqlite3.connect(DB_PATH, timeout=20)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -25,6 +222,19 @@ def connect_db():
         conn.close()
 
 
+def table_columns(conn, table_name: str) -> set[str]:
+    """Return column names without depending on SQLite-only PRAGMA syntax."""
+    if isinstance(conn, PostgresCompatConnection):
+        rows = conn.execute(
+            "SELECT column_name AS name FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = ?",
+            (table_name,),
+        ).fetchall()
+    else:
+        rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row["name"] for row in rows}
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -36,6 +246,122 @@ def audit(conn: sqlite3.Connection, actor_id: int, action: str,
            VALUES (?, ?, ?, ?, ?, ?)""",
         (actor_id, action, entity_type, entity_id, json.dumps(details or {}), now_iso()),
     )
+
+
+def _migration_add_active_claim_indexes(conn) -> None:
+    """Add lookup indexes for active claims without changing workflow semantics."""
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_claims_active_report
+           ON claims(report_id, status)
+           WHERE status IN ('pending','disputed','needs_more_evidence','approved_for_collection')"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_claims_active_lost_report
+           ON claims(lost_report_id, status)
+           WHERE lost_report_id IS NOT NULL"""
+    )
+
+
+def _migration_add_event_uniqueness_guards(conn) -> None:
+    """Enforce idempotency at the database layer, including upgraded legacy DBs."""
+    unique_keys = (
+        ("notifications", "user_id, event_key", "uq_notifications_user_event_key"),
+        ("reward_ledger", "user_id, event_key", "uq_reward_ledger_user_event_key"),
+        ("handovers", "claim_id", "uq_handovers_claim_id"),
+        ("handovers", "report_id", "uq_handovers_report_id"),
+    )
+    for table, columns, index_name in unique_keys:
+        duplicate = conn.execute(
+            f"SELECT {columns}, COUNT(*) AS duplicate_count FROM {table} "
+            f"GROUP BY {columns} HAVING COUNT(*) > 1 LIMIT 1"
+        ).fetchone()
+        if duplicate:
+            raise RuntimeError(
+                f"Cannot apply uniqueness migration: duplicate key exists in {table} "
+                f"for ({columns}). Reconcile duplicate historical rows before retrying."
+            )
+        conn.execute(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS {index_name} ON {table} ({columns})"
+        )
+
+
+def _migration_move_legacy_additive_columns(conn) -> None:
+    """Version legacy additive schema upgrades and image fingerprint backfill."""
+    for column, declaration in (
+        ("storage_location", "TEXT"),
+        ("brand", "TEXT"),
+        ("primary_color", "TEXT"),
+        ("visible_features", "TEXT"),
+        ("closure_reason", "TEXT"),
+        ("closure_note", "TEXT"),
+        ("image_sha256", "TEXT"),
+        ("image_phash", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+    for column, declaration in (
+        ("appeal_note", "TEXT"),
+        ("appeal_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("evidence_types", "TEXT NOT NULL DEFAULT '[]'"),
+    ):
+        if column not in table_columns(conn, "claims"):
+            conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+
+    conn.execute(
+        "UPDATE reports SET storage_location=? WHERE tag_id IS NOT NULL "
+        "AND (storage_location IS NULL OR TRIM(storage_location)='')",
+        ("Location needs confirmation",),
+    )
+    for image_row in conn.execute(
+        "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
+    ).fetchall():
+        image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
+        if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
+            continue
+        if image_row["image_sha256"] and image_row["image_phash"]:
+            continue
+        try:
+            image_bytes = image_path.read_bytes()
+            image_digest = image_row["image_sha256"] or hashlib.sha256(image_bytes).hexdigest()
+            image_phash = image_row["image_phash"] or perceptual_hash_from_bytes(image_bytes)
+            conn.execute(
+                "UPDATE reports SET image_sha256=?, image_phash=? WHERE id=?",
+                (image_digest, image_phash, image_row["id"]),
+            )
+        except (OSError, UnidentifiedImageError, ValueError):
+            continue
+
+
+# Forward-only, ordered schema migrations. Never edit an applied migration;
+# append a new version and provide a safe, idempotent operation.
+SCHEMA_MIGRATIONS = (
+    (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
+    (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
+    (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
+)
+
+
+def _apply_versioned_schema_migrations(conn) -> None:
+    applied = {
+        int(row["version"])
+        for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+    supported = {1, *(version for version, _, _ in SCHEMA_MIGRATIONS)}
+    unknown = applied - supported
+    if unknown:
+        raise RuntimeError(
+            "Database schema is newer than this application supports; "
+            f"unknown migration versions: {sorted(unknown)}"
+        )
+    for version, name, migrate in SCHEMA_MIGRATIONS:
+        if version in applied:
+            continue
+        migrate(conn)
+        conn.execute(
+            "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+            (version, name, now_iso()),
+        )
 
 
 def initialise_db() -> None:
@@ -55,6 +381,11 @@ def initialise_db() -> None:
                 failure_count INTEGER NOT NULL DEFAULT 0,
                 window_started_at TEXT NOT NULL,
                 locked_until TEXT
+            );
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                applied_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS reports (
                 id TEXT PRIMARY KEY,
@@ -176,54 +507,20 @@ def initialise_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_claims_claimant ON claims(claimant_id, created_at);
             """
         )
-        # Keep existing local databases compatible as storage tracking is introduced.
-        report_columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)").fetchall()}
-        if "storage_location" not in report_columns:
-            conn.execute("ALTER TABLE reports ADD COLUMN storage_location TEXT")
+        # The active-claim index migration (v2) needs this column before the
+        # ordered runner starts. Remaining additive compatibility changes live
+        # in migration v4 below rather than running on every application start.
+        claim_columns = table_columns(conn, "claims")
+        if "lost_report_id" not in claim_columns:
+            conn.execute("ALTER TABLE claims ADD COLUMN lost_report_id TEXT REFERENCES reports(id)")
+        # Record the current legacy bootstrap as the initial schema baseline.
+        # Existing additive compatibility updates above remain safe to re-run; future
+        # schema changes must receive a new ordered migration version.
         conn.execute(
-            "UPDATE reports SET storage_location=? WHERE tag_id IS NOT NULL AND (storage_location IS NULL OR TRIM(storage_location)='')",
-            ("Location needs confirmation",),
+            "INSERT OR IGNORE INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+            (1, "legacy_schema_baseline", now_iso()),
         )
-        # Backward-compatible migrations for richer item details and report closure.
-        report_columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)").fetchall()}
-        for column, declaration in (
-            ("brand", "TEXT"),
-            ("primary_color", "TEXT"),
-            ("visible_features", "TEXT"),
-            ("closure_reason", "TEXT"),
-            ("closure_note", "TEXT"),
-            ("image_sha256", "TEXT"),
-            ("image_phash", "TEXT"),
-        ):
-            if column not in report_columns:
-                conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
-        for image_row in conn.execute(
-            "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
-        ).fetchall():
-            image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
-            if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
-                continue
-            if image_row["image_sha256"] and image_row["image_phash"]:
-                continue
-            try:
-                image_bytes = image_path.read_bytes()
-                image_digest = image_row["image_sha256"] or hashlib.sha256(image_bytes).hexdigest()
-                image_phash = image_row["image_phash"] or perceptual_hash_from_bytes(image_bytes)
-                conn.execute(
-                    "UPDATE reports SET image_sha256=?, image_phash=? WHERE id=?",
-                    (image_digest, image_phash, image_row["id"]),
-                )
-            except (OSError, UnidentifiedImageError, ValueError):
-                continue
-        claim_columns = {row["name"] for row in conn.execute("PRAGMA table_info(claims)").fetchall()}
-        for column, declaration in (
-            ("appeal_note", "TEXT"),
-            ("appeal_count", "INTEGER NOT NULL DEFAULT 0"),
-            ("lost_report_id", "TEXT REFERENCES reports(id)"),
-            ("evidence_types", "TEXT NOT NULL DEFAULT '[]'"),
-        ):
-            if column not in claim_columns:
-                conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+        _apply_versioned_schema_migrations(conn)
         if not DEMO_MODE:
             return
 
