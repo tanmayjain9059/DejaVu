@@ -80,6 +80,45 @@ class MatchingTests(unittest.TestCase):
         reasons = " ".join(self.engine.compare(lost, found)["reasons"])
         self.assertIn("Categories differ: Electronics vs Accessories", reasons)
 
+    def test_rank_batches_semantic_embeddings_once(self):
+        class FakeModel:
+            def __init__(self):
+                self.calls = 0
+                self.inputs = []
+
+            def encode(self, texts, **kwargs):
+                self.calls += 1
+                self.inputs = list(texts)
+                return [[1.0, 0.0] for _ in texts]
+
+        engine = MatchingEngine()
+        fake_model = FakeModel()
+        engine.semantic_enabled = True
+        engine._text_attempted = True
+        engine._text_model = fake_model
+        lost = {"title": "Blue bag", "description": "blue bag with pockets", "category": "bags_wallets"}
+        candidates = [
+            {"title": "Blue backpack", "description": "blue bag with pockets", "category": "bags_wallets"},
+            {"title": "Steel bottle", "description": "silver bottle", "category": "accessories"},
+        ]
+
+        ranked = engine.rank(lost, candidates)
+
+        self.assertEqual(fake_model.calls, 1)
+        self.assertEqual(len(fake_model.inputs), 3)
+        self.assertTrue(all(item["engine"] == "sentence_embeddings" for item in ranked))
+
+    def test_lightweight_comparison_does_not_load_optional_models(self):
+        engine = MatchingEngine()
+        engine._load_text_model = lambda: self.fail("semantic model should not load")
+        engine.image_similarity = lambda *_: self.fail("CLIP should not run")
+        report = {"title": "Blue bag", "description": "blue bag", "category": "bags_wallets"}
+
+        result = engine.compare(report, report, use_models=False)
+
+        self.assertEqual(result["engine"], "lexical_baseline")
+        self.assertIsNone(result["signals"]["image"])
+
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}
         candidates = [
