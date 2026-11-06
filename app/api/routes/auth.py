@@ -26,6 +26,83 @@ def public_config():
     }
 
 
+@router.post("/api/office/registration-invites")
+def create_registration_invite(
+    body: RegistrationInviteBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    require_office(user)
+    email = body.email.strip().lower()
+    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+        raise HTTPException(status_code=422, detail="Enter a valid campus email address.")
+
+    code = secrets.token_urlsafe(32)
+    code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    created_at = now_iso()
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat(timespec="seconds")
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if conn.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+            raise HTTPException(status_code=409, detail="An account already exists for this email address.")
+        # Reissuing an invite invalidates any earlier unused code for the same address.
+        conn.execute(
+            "UPDATE registration_invites SET used_at=? WHERE email=? AND used_at IS NULL",
+            (created_at, email),
+        )
+        invite_id = uuid.uuid4().hex
+        conn.execute(
+            """INSERT INTO registration_invites(id, email, code_hash, created_by, created_at, expires_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (invite_id, email, code_hash, user["id"], created_at, expires_at),
+        )
+        audit(conn, user["id"], "student_registration_invite_created", "registration_invite", invite_id,
+              {"email": email, "expires_at": expires_at})
+    return {
+        "email": email,
+        "invite_code": code,
+        "expires_at": expires_at,
+        "message": "One-time registration invite created. Share the code with the verified student through a trusted channel.",
+    }
+
+
+@router.post("/api/register")
+def register_student(body: StudentRegistrationBody, request: Request):
+    email = body.email.strip().lower()
+    display_name = " ".join(body.display_name.split())
+    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+        raise HTTPException(status_code=422, detail="Enter a valid email address.")
+    if len(display_name) < 2:
+        raise HTTPException(status_code=422, detail="Enter your full name.")
+
+    code_hash = hashlib.sha256(body.invite_code.strip().encode("utf-8")).hexdigest()
+    timestamp = now_iso()
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if conn.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+            raise HTTPException(status_code=409, detail="An account already exists for this email address.")
+        invite = conn.execute(
+            """SELECT id FROM registration_invites
+               WHERE email=? AND code_hash=? AND used_at IS NULL AND expires_at>?""",
+            (email, code_hash, timestamp),
+        ).fetchone()
+        if not invite:
+            raise HTTPException(status_code=400, detail="The invitation is invalid, expired, or already used.")
+        conn.execute(
+            """INSERT INTO users(email, display_name, role, password_hash, created_at)
+               VALUES (?, ?, 'student', ?, ?)""",
+            (email, display_name, hash_password(body.password), timestamp),
+        )
+        row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn.execute("UPDATE registration_invites SET used_at=? WHERE id=? AND used_at IS NULL",
+                     (timestamp, invite["id"]))
+        audit(conn, row["id"], "student_registered_with_invite", "user", str(row["id"]),
+              {"email": email, "invite_id": invite["id"]})
+        user_payload_data = user_payload(row)
+    request.session.clear()
+    request.session["user_id"] = user_payload_data["id"]
+    return {"user": user_payload_data, "message": "Student account created successfully."}
+
+
 @router.post("/api/login")
 def login(body: LoginBody, request: Request):
     email = body.email.strip().lower()
