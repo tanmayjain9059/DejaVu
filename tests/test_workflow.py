@@ -206,6 +206,24 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertNotIn("private_verification_detail", own_item)
         self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 409)
 
+        linked_lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Claim-linked backpack", "A backpack report awaiting ownership verification."),
+        )
+        self.assertEqual(linked_lost.status_code, 200, linked_lost.text)
+        linked_lost_id = linked_lost.json()["report"]["id"]
+        with main.connect_db() as conn:
+            finder_id = conn.execute("SELECT id FROM users WHERE email=?", ("finder@example.test",)).fetchone()["id"]
+            timestamp = main.now_iso()
+            conn.execute(
+                """INSERT INTO claims(id, report_id, lost_report_id, claimant_id, evidence, status, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)""",
+                ("edit-guard-claim", found_id, linked_lost_id, finder_id,
+                 "Evidence reserved for the active-claim edit guard test.", timestamp, timestamp),
+            )
+        linked_body = self.report_body("lost", "Changed linked backpack", "Changed details while a claim is pending.")
+        self.assertEqual(self.client.put(f"/api/reports/{linked_lost_id}", json=linked_body).status_code, 409)
+
     def test_office_claim_queue_uses_stable_cursor_pagination(self):
         with main.connect_db() as conn:
             office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@example.test",)).fetchone()["id"]
