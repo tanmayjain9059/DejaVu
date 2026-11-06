@@ -5,6 +5,14 @@ let currentUser = null;
 let browseCursor = null;
 let browseLoading = false;
 let browseRequestId = 0;
+let officeIntakeCursor = null;
+let officeInventoryCursor = null;
+let officeIntakeHasMore = false;
+let officeInventoryHasMore = false;
+let officeIntakeCache = [];
+let officeInventoryCache = [];
+let officeIntakeLoading = false;
+let officeInventoryLoading = false;
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -957,12 +965,18 @@ async function submitAdditionalEvidence(event) {
 
 async function loadOffice() {
   if (!currentUser || currentUser.role !== "office") return;
+  officeIntakeCursor = null;
+  officeInventoryCursor = null;
+  officeIntakeHasMore = false;
+  officeInventoryHasMore = false;
+  officeIntakeCache = [];
+  officeInventoryCache = [];
   try {
     const [summary, queueData, claimData, inventoryData] = await Promise.all([
       api("/api/office/summary"),
-      api("/api/reports?report_type=found&status=awaiting_intake"),
+      api("/api/reports?report_type=found&status=awaiting_intake&page_size=50"),
       api("/api/claims"),
-      api("/api/reports?report_type=found")
+      api("/api/reports?report_type=found&page_size=50")
     ]);
     $("#officeStats").innerHTML = [
       ["Awaiting intake", summary.awaiting_intake],
@@ -972,12 +986,13 @@ async function loadOffice() {
       ["Ready for handover", summary.approved_handover || 0],
       ["Items returned", summary.returned_items || 0]
     ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
-    const queue = queueData.reports.filter((report) => report.status === "awaiting_intake");
-    $("#intakeQueue").innerHTML = queue.map((report) => intakeCard(report)).join("");
-    $("#intakeEmpty").classList.toggle("hidden", queue.length > 0);
-    const inventory = inventoryData.reports.filter((report) => ["available", "claim_approved"].includes(report.status) && report.tag_id);
-    $("#officeInventory").innerHTML = inventory.map((report) => officeInventoryCard(report)).join("");
-    $("#officeInventoryEmpty").classList.toggle("hidden", inventory.length > 0);
+    officeIntakeCache = queueData.reports.filter((report) => report.status === "awaiting_intake");
+    officeIntakeCursor = queueData.next_cursor || null;
+    officeIntakeHasMore = Boolean(queueData.has_more && officeIntakeCursor);
+    officeInventoryCache = inventoryData.reports;
+    officeInventoryCursor = inventoryData.next_cursor || null;
+    officeInventoryHasMore = Boolean(inventoryData.has_more && officeInventoryCursor);
+    renderOfficeReportQueues();
     const active = claimData.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
     $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
     $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
@@ -986,6 +1001,56 @@ async function loadOffice() {
     $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
+}
+
+function renderOfficeReportQueues() {
+  const queue = officeIntakeCache;
+  $("#intakeQueue").innerHTML = queue.map((report) => intakeCard(report)).join("");
+  $("#intakeEmpty").classList.toggle("hidden", queue.length > 0);
+  const inventory = officeInventoryCache.filter((report) => ["available", "claim_approved"].includes(report.status) && report.tag_id);
+  $("#officeInventory").innerHTML = inventory.map((report) => officeInventoryCard(report)).join("");
+  $("#officeInventoryEmpty").classList.toggle("hidden", inventory.length > 0);
+  const intakeButton = $("#loadMoreIntake");
+  if (intakeButton) {
+    intakeButton.classList.toggle("hidden", !officeIntakeHasMore);
+    intakeButton.disabled = officeIntakeLoading;
+    intakeButton.textContent = officeIntakeLoading ? "Loading…" : "Load more intake reports";
+  }
+  const inventoryButton = $("#loadMoreInventory");
+  if (inventoryButton) {
+    inventoryButton.classList.toggle("hidden", !officeInventoryHasMore);
+    inventoryButton.disabled = officeInventoryLoading;
+    inventoryButton.textContent = officeInventoryLoading ? "Loading…" : "Load more inventory";
+  }
+}
+
+async function loadMoreOfficeReports(kind) {
+  const intake = kind === "intake";
+  const cursor = intake ? officeIntakeCursor : officeInventoryCursor;
+  if (!cursor || (intake ? officeIntakeLoading : officeInventoryLoading)) return;
+  if (intake) officeIntakeLoading = true;
+  else officeInventoryLoading = true;
+  renderOfficeReportQueues();
+  try {
+    const params = new URLSearchParams({ report_type: "found", page_size: "50", cursor });
+    if (intake) params.set("status", "awaiting_intake");
+    const data = await api("/api/reports?" + params.toString());
+    if (intake) {
+      officeIntakeCache = officeIntakeCache.concat(data.reports.filter((report) => report.status === "awaiting_intake"));
+      officeIntakeCursor = data.next_cursor || null;
+      officeIntakeHasMore = Boolean(data.has_more && officeIntakeCursor);
+    } else {
+      officeInventoryCache = officeInventoryCache.concat(data.reports);
+      officeInventoryCursor = data.next_cursor || null;
+      officeInventoryHasMore = Boolean(data.has_more && officeInventoryCursor);
+    }
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    if (intake) officeIntakeLoading = false;
+    else officeInventoryLoading = false;
+    renderOfficeReportQueues();
+  }
 }
 
 function officeInventoryCard(report) {
@@ -1524,6 +1589,8 @@ document.addEventListener("click", (event) => {
 });
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(false); });
 $("#loadMoreReports").addEventListener("click", () => loadBrowse(true));
+$("#loadMoreIntake").addEventListener("click", () => loadMoreOfficeReports("intake"));
+$("#loadMoreInventory").addEventListener("click", () => loadMoreOfficeReports("inventory"));
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
 $("#reportForm").addEventListener("submit", submitReport);
