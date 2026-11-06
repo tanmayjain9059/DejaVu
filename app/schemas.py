@@ -35,6 +35,21 @@ class ReportBody(BaseModel):
     location_area: str | None = Field(default=None, max_length=120)
 
 
+class ReportUpdateBody(BaseModel):
+    report_type: Literal["lost", "found"]
+    title: str = Field(min_length=4, max_length=100)
+    description: str = Field(min_length=10, max_length=1200)
+    category: str
+    brand: str | None = Field(default=None, max_length=80)
+    primary_color: str | None = Field(default=None, max_length=60)
+    visible_features: str | None = Field(default=None, max_length=400)
+    occurred_at: str | None = None
+    location_block: str | None = Field(default=None, max_length=80)
+    location_floor: str | None = Field(default=None, max_length=40)
+    location_room: str | None = Field(default=None, max_length=80)
+    location_area: str | None = Field(default=None, max_length=120)
+
+
 class ReportCloseBody(BaseModel):
     reason: Literal["recovered_elsewhere", "no_longer_searching", "duplicate", "found_report_withdrawn"]
     note: str | None = Field(default=None, max_length=400)
