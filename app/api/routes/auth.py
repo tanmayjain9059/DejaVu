@@ -1,11 +1,22 @@
 """HTTP route group."""
-import re
+import hashlib
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request
 from app.core.runtime import *
 from app.schemas import *
 from app.services.auth import clear_login_failures, login_lockout_remaining, record_failed_login
 
 router = APIRouter()
+
+
+def _valid_email_address(email: str) -> bool:
+    local, separator, domain = email.partition("@")
+    return bool(
+        separator and local and domain and email.count("@") == 1
+        and "." in domain and not any(character.isspace() for character in email)
+    )
 
 @router.get("/")
 def home():
@@ -34,7 +45,7 @@ def create_registration_invite(
 ):
     require_office(user)
     email = body.email.strip().lower()
-    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+    if not _valid_email_address(email):
         raise HTTPException(status_code=422, detail="Enter a valid campus email address.")
 
     code = secrets.token_urlsafe(32)
@@ -70,7 +81,7 @@ def create_registration_invite(
 def register_student(body: StudentRegistrationBody, request: Request):
     email = body.email.strip().lower()
     display_name = " ".join(body.display_name.split())
-    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+    if not _valid_email_address(email):
         raise HTTPException(status_code=422, detail="Enter a valid email address.")
     if len(display_name) < 2:
         raise HTTPException(status_code=422, detail="Enter your full name.")
