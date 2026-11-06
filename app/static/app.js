@@ -17,6 +17,10 @@ let officeClaimsCursor = null;
 let officeClaimsHasMore = false;
 let officeClaimsLoading = false;
 let officeClaimsCache = [];
+let myClaimsCursor = null;
+let myClaimsHasMore = false;
+let myClaimsLoading = false;
+let myClaimsCache = [];
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -729,8 +733,20 @@ async function loadMatches(reportId) {
 
 async function loadMyClaims() {
   if (!currentUser || currentUser.role !== "student") return;
+  myClaimsCursor = null;
+  myClaimsHasMore = false;
+  myClaimsCache = [];
   try {
-    const data = await api("/api/claims");
+    const data = await api("/api/claims?page_size=50");
+    myClaimsCache = data.claims;
+    myClaimsCursor = data.next_cursor || null;
+    myClaimsHasMore = Boolean(data.has_more && myClaimsCursor);
+    renderMyClaims();
+  } catch (error) { showToast(error.message, true); }
+}
+
+function renderMyClaims() {
+  const data = { claims: myClaimsCache };
     const activeCount = data.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
     $("#claimNavCount").textContent = String(activeCount);
     $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
@@ -775,7 +791,30 @@ async function loadMyClaims() {
         evidenceChips + evidencePhoto + '<div class="card-actions">' + addEvidence + "</div>" + disputeForm + "</article>";
     }).join("");
     $("#myClaimsEmpty").classList.toggle("hidden", data.claims.length > 0);
-  } catch (error) { showToast(error.message, true); }
+    const loadMore = $("#loadMoreMyClaims");
+    if (loadMore) {
+      loadMore.classList.toggle("hidden", !myClaimsHasMore);
+      loadMore.disabled = myClaimsLoading;
+      loadMore.textContent = myClaimsLoading ? "Loading…" : "Load more claims";
+    }
+}
+
+async function loadMoreMyClaims() {
+  if (!myClaimsCursor || myClaimsLoading) return;
+  myClaimsLoading = true;
+  renderMyClaims();
+  try {
+    const query = new URLSearchParams({ page_size: "50", cursor: myClaimsCursor });
+    const data = await api("/api/claims?" + query.toString());
+    myClaimsCache = myClaimsCache.concat(data.claims);
+    myClaimsCursor = data.next_cursor || null;
+    myClaimsHasMore = Boolean(data.has_more && myClaimsCursor);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    myClaimsLoading = false;
+    renderMyClaims();
+  }
 }
 
 async function openItemDetails(reportId) {
@@ -1630,6 +1669,7 @@ $("#loadMoreReports").addEventListener("click", () => loadBrowse(true));
 $("#loadMoreIntake").addEventListener("click", () => loadMoreOfficeReports("intake"));
 $("#loadMoreInventory").addEventListener("click", () => loadMoreOfficeReports("inventory"));
 $("#loadMoreOfficeClaims").addEventListener("click", loadMoreOfficeClaims);
+$("#loadMoreMyClaims").addEventListener("click", loadMoreMyClaims);
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
 $("#reportForm").addEventListener("submit", submitReport);
