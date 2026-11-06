@@ -110,6 +110,10 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
         raise HTTPException(status_code=422, detail="Enter an item name of at least 4 characters.")
     if len(body.description.strip()) < 10:
         raise HTTPException(status_code=422, detail="Add at least 10 characters describing the item.")
+    if len(body.title.strip()) < 4:
+        raise HTTPException(status_code=422, detail="Enter an item name of at least 4 characters.")
+    if len(body.description.strip()) < 10:
+        raise HTTPException(status_code=422, detail="Add at least 10 characters describing the item.")
     if body.occurred_at:
         try:
             datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
