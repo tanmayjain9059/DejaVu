@@ -292,7 +292,9 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 "invite_code": invite_code,
             },
         )
-        self.assertEqual(reused.status_code, 409)
+        # The one-time code is invalidated after registration; do not reveal whether
+        # the email now belongs to an existing account.
+        self.assertEqual(reused.status_code, 400)
 
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
