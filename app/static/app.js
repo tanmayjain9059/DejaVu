@@ -539,7 +539,8 @@ function itemCard(report, options) {
 }
 
 async function loadBrowse(append = false) {
-  if (!currentUser || browseLoading) return;
+  if (!currentUser) return;
+  if (append && browseLoading) return;
   if (!append) {
     browseRequestId += 1;
     browseCursor = null;
@@ -564,6 +565,7 @@ async function loadBrowse(append = false) {
   try {
     const data = await api("/api/reports" + (query ? "?" + query : ""));
     if (requestId !== browseRequestId) return;
+    lastKnownReports = append ? lastKnownReports.concat(data.reports) : data.reports;
     const markup = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
     if (append) $("#browseResults").insertAdjacentHTML("beforeend", markup);
     else $("#browseResults").innerHTML = markup;
