@@ -138,6 +138,60 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertTrue(matches)
         self.assertEqual(matches[0]["report"]["id"], "matching-candidate-0")
 
+    def test_office_invite_registers_email_bound_student_once(self):
+        self.login("finder@example.test", "finder-password")
+        denied = self.client.post(
+            "/api/office/registration-invites",
+            json={"email": "new.student@campus.example"},
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        invite = self.client.post(
+            "/api/office/registration-invites",
+            json={"email": "new.student@campus.example"},
+        )
+        self.assertEqual(invite.status_code, 200, invite.text)
+        invite_code = invite.json()["invite_code"]
+        self.assertTrue(invite_code)
+        self.logout()
+
+        wrong_email = self.client.post(
+            "/api/register",
+            json={
+                "email": "other.student@campus.example",
+                "display_name": "New Student",
+                "password": "secure-student-password",
+                "invite_code": invite_code,
+            },
+        )
+        self.assertEqual(wrong_email.status_code, 400)
+
+        registered = self.client.post(
+            "/api/register",
+            json={
+                "email": "new.student@campus.example",
+                "display_name": "New Student",
+                "password": "secure-student-password",
+                "invite_code": invite_code,
+            },
+        )
+        self.assertEqual(registered.status_code, 200, registered.text)
+        self.assertEqual(registered.json()["user"]["role"], "student")
+        self.assertEqual(self.client.get("/api/me").json()["user"]["email"], "new.student@campus.example")
+
+        reused = self.client.post(
+            "/api/register",
+            json={
+                "email": "new.student@campus.example",
+                "display_name": "New Student",
+                "password": "another-secure-password",
+                "invite_code": invite_code,
+            },
+        )
+        self.assertEqual(reused.status_code, 409)
+
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
         self.login("claimant@example.test", "claimant-password")
