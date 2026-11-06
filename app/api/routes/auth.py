@@ -1,4 +1,5 @@
 """HTTP route group."""
+import re
 from fastapi import APIRouter, HTTPException, Request
 from app.core.runtime import *
 from app.schemas import *
@@ -75,6 +76,18 @@ def register_student(body: StudentRegistrationBody, request: Request):
         raise HTTPException(status_code=422, detail="Enter your full name.")
 
     code_hash = hashlib.sha256(body.invite_code.strip().encode("utf-8")).hexdigest()
+    with connect_db() as conn:
+        invite = conn.execute(
+            """SELECT id FROM registration_invites
+               WHERE email=? AND code_hash=? AND used_at IS NULL AND expires_at>?""",
+            (email, code_hash, now_iso()),
+        ).fetchone()
+    if not invite:
+        raise HTTPException(status_code=400, detail="The invitation is invalid, expired, or already used.")
+
+    # Validate the invite before paying the password-hashing cost; re-check it
+    # inside the write transaction to prevent concurrent reuse.
+    password_hash = hash_password(body.password)
     timestamp = now_iso()
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
@@ -90,7 +103,7 @@ def register_student(body: StudentRegistrationBody, request: Request):
         conn.execute(
             """INSERT INTO users(email, display_name, role, password_hash, created_at)
                VALUES (?, ?, 'student', ?, ?)""",
-            (email, display_name, hash_password(body.password), timestamp),
+            (email, display_name, password_hash, timestamp),
         )
         row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.execute("UPDATE registration_invites SET used_at=? WHERE id=? AND used_at IS NULL",
