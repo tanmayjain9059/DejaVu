@@ -21,6 +21,10 @@ let myClaimsCursor = null;
 let myClaimsHasMore = false;
 let myClaimsLoading = false;
 let myClaimsCache = [];
+let myReportsCursor = null;
+let myReportsHasMore = false;
+let myReportsLoading = false;
+let myReportsCache = [];
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -671,8 +675,20 @@ async function submitReport(event) {
 async function loadMyReports() {
   if (!currentUser || currentUser.role !== "student") return;
   $("#matchesPanel").classList.add("hidden");
+  myReportsCursor = null;
+  myReportsHasMore = false;
+  myReportsCache = [];
   try {
-    const data = await api("/api/reports?mine=true");
+    const data = await api("/api/reports?mine=true&page_size=50");
+    myReportsCache = data.reports;
+    myReportsCursor = data.next_cursor || null;
+    myReportsHasMore = Boolean(data.has_more && myReportsCursor);
+    renderMyReports();
+  } catch (error) { showToast(error.message, true); }
+}
+
+function renderMyReports() {
+  const data = { reports: myReportsCache };
     $("#myReportsList").innerHTML = data.reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
         ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
@@ -708,7 +724,30 @@ async function loadMyReports() {
         '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
     }).join("");
     $("#myReportsEmpty").classList.toggle("hidden", data.reports.length > 0);
-  } catch (error) { showToast(error.message, true); }
+    const loadMore = $("#loadMoreMyReports");
+    if (loadMore) {
+      loadMore.classList.toggle("hidden", !myReportsHasMore);
+      loadMore.disabled = myReportsLoading;
+      loadMore.textContent = myReportsLoading ? "Loading…" : "Load more reports";
+    }
+}
+
+async function loadMoreMyReports() {
+  if (!myReportsCursor || myReportsLoading) return;
+  myReportsLoading = true;
+  renderMyReports();
+  try {
+    const query = new URLSearchParams({ mine: "true", page_size: "50", cursor: myReportsCursor });
+    const data = await api("/api/reports?" + query.toString());
+    myReportsCache = myReportsCache.concat(data.reports);
+    myReportsCursor = data.next_cursor || null;
+    myReportsHasMore = Boolean(data.has_more && myReportsCursor);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    myReportsLoading = false;
+    renderMyReports();
+  }
 }
 
 async function loadMatches(reportId) {
@@ -1670,6 +1709,7 @@ $("#loadMoreIntake").addEventListener("click", () => loadMoreOfficeReports("inta
 $("#loadMoreInventory").addEventListener("click", () => loadMoreOfficeReports("inventory"));
 $("#loadMoreOfficeClaims").addEventListener("click", loadMoreOfficeClaims);
 $("#loadMoreMyClaims").addEventListener("click", loadMoreMyClaims);
+$("#loadMoreMyReports").addEventListener("click", loadMoreMyReports);
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
 $("#reportForm").addEventListener("submit", submitReport);
