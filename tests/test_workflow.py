@@ -97,6 +97,44 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "location_area": "Library",
         }
 
+    def test_report_listing_uses_stable_cursor_pagination(self):
+        self.login("claimant@example.test", "claimant-password")
+        for index in range(53):
+            body = self.report_body(
+                "lost",
+                f"Pagination item {index:02d}",
+                f"Pagination regression item number {index:02d} with a distinct description.",
+            )
+            response = self.client.post("/api/reports", json=body)
+            self.assertEqual(response.status_code, 200, response.text)
+
+        collected = []
+        cursor = None
+        while True:
+            params = {"mine": "true", "q": "Pagination item", "page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.client.get("/api/reports", params=params)
+            self.assertEqual(page.status_code, 200, page.text)
+            payload = page.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            if not payload["has_more"]:
+                self.assertIsNone(payload["next_cursor"])
+                break
+            self.assertTrue(payload["next_cursor"])
+            cursor = payload["next_cursor"]
+
+        self.assertEqual(len(collected), 53)
+        self.assertEqual(len(set(collected)), 53)
+        self.assertEqual(
+            self.client.get("/api/reports", params={"page_size": 101}).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get("/api/reports", params={"cursor": "invalid"}).status_code,
+            422,
+        )
+
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
         self.login("claimant@example.test", "claimant-password")
