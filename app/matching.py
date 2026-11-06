@@ -360,15 +360,50 @@ class MatchingEngine:
             "engine": engine,
         }
 
+    # Cheap deterministic scoring covers every eligible report. Expensive model
+    # inference is deliberately restricted to a shortlist so corpus size does not
+    # multiply model latency without bound.
+    SEMANTIC_RERANK_LIMIT = 100
+    CLIP_RERANK_LIMIT = 25
+
     def rank(self, lost: dict[str, Any], found_reports: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
-        semantic_scores = self._batch_semantic_scores(lost, found_reports)
-        ranked = []
-        for index, report in enumerate(found_reports):
-            text_result = semantic_scores[index] if semantic_scores is not None else None
-            result = self.compare(lost, report, text_result=text_result)
-            ranked.append({"report": report, **result})
-        ranked.sort(key=lambda item: item["score"], reverse=True)
-        return ranked[:limit]
+        if not found_reports or limit < 1:
+            return []
+
+        baseline = [
+            {"report": report, **self.compare(lost, report, use_models=False)}
+            for report in found_reports
+        ]
+        baseline.sort(key=lambda item: item["score"], reverse=True)
+        shortlist = baseline[: self.SEMANTIC_RERANK_LIMIT]
+        if not shortlist:
+            return []
+
+        shortlist_reports = [item["report"] for item in shortlist]
+        semantic_scores = self._batch_semantic_scores(lost, shortlist_reports)
+        if semantic_scores is not None:
+            shortlist = [
+                {
+                    "report": report,
+                    **self.compare(lost, report, use_models=False, text_result=semantic_scores[index]),
+                }
+                for index, report in enumerate(shortlist_reports)
+            ]
+            shortlist.sort(key=lambda item: item["score"], reverse=True)
+
+        if self.clip_enabled:
+            clip_candidates = shortlist[: self.CLIP_RERANK_LIMIT]
+            reranked = []
+            for item in clip_candidates:
+                text_result = (item["signals"]["text"], item["engine"])
+                reranked.append({
+                    "report": item["report"],
+                    **self.compare(lost, item["report"], text_result=text_result),
+                })
+            shortlist = reranked + shortlist[len(clip_candidates):]
+            shortlist.sort(key=lambda item: item["score"], reverse=True)
+
+        return shortlist[:limit]
 
 
 matching_engine = MatchingEngine()
