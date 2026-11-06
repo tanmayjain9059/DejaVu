@@ -151,6 +151,74 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
             "message": "Lost report submitted." if body.report_type == "lost" else "Found-item report submitted for office intake. It will become searchable after staff confirm receipt."}
 
 
+@router.put("/api/reports/{report_id}")
+async def update_report(
+    report_id: str,
+    body: ReportUpdateBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only the report owner can edit report details.")
+    if body.occurred_at:
+        try:
+            datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Use a valid ISO date and time, or leave the date blank if unknown.")
+    if body.category not in CATEGORY_LABELS:
+        raise HTTPException(status_code=422, detail="Choose a valid item category.")
+    if not (body.location_block or body.location_area):
+        raise HTTPException(status_code=422, detail="Choose a campus block or area.")
+
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        report = read_report(conn, report_id)
+        if int(report["created_by"]) != int(user["id"]):
+            raise HTTPException(status_code=404, detail="Report not found.")
+        if body.report_type != report["report_type"]:
+            raise HTTPException(status_code=422, detail="A report's type cannot be changed after submission.")
+        editable = (
+            (report["report_type"] == "lost" and report["status"] == "open")
+            or (report["report_type"] == "found" and report["status"] == "awaiting_intake")
+        )
+        if not editable:
+            raise HTTPException(status_code=409, detail="This report can no longer be edited after it has been closed or accepted into office custody.")
+        if report["report_type"] == "lost":
+            active_claim = conn.execute(
+                """SELECT 1 FROM claims WHERE lost_report_id=?
+                   AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection') LIMIT 1""",
+                (report_id,),
+            ).fetchone()
+            if active_claim:
+                raise HTTPException(status_code=409, detail="This report is linked to a claim under review. Resolve the claim before editing its details.")
+
+        timestamp = now_iso()
+        conn.execute(
+            """UPDATE reports SET title=?, description=?, brand=?, primary_color=?, visible_features=?,
+               category=?, occurred_at=?, location_block=?, location_floor=?, location_room=?, location_area=?, updated_at=?
+               WHERE id=?""",
+            (body.title.strip(), body.description.strip(), (body.brand or "").strip() or None,
+             (body.primary_color or "").strip() or None, (body.visible_features or "").strip() or None,
+             body.category, body.occurred_at, body.location_block, body.location_floor,
+             body.location_room, body.location_area, timestamp, report_id),
+        )
+        audit(conn, user["id"], "report_details_updated", "report", report_id,
+              {"report_type": report["report_type"], "category": body.category})
+        event_suffix = uuid.uuid4().hex
+        if report["report_type"] == "found":
+            notify_role(conn, "office", "found-report-updated:" + report_id + ":" + event_suffix,
+                        "Found-item report updated",
+                        "A found-item report awaiting physical intake has updated details. Review the latest report before intake.",
+                        "report", report_id)
+            notify_user(conn, user["id"], "report-updated:" + report_id + ":" + event_suffix,
+                        "Found report updated", "Your found-item report details were updated.", "report", report_id)
+        else:
+            notify_user(conn, user["id"], "report-updated:" + report_id + ":" + event_suffix,
+                        "Lost report updated", "Your lost-item report details were updated.", "report", report_id)
+            notify_matches_for_lost_report(conn, read_report(conn, report_id))
+        updated = read_report(conn, report_id)
+    return {"report": serialise_report(updated), "message": "Report details updated successfully."}
+
+
 @router.post("/api/reports/{report_id}/close")
 async def close_report(
     report_id: str,
