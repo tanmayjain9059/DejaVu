@@ -285,7 +285,7 @@ Candidate comparison may use:
 
 When a CLIP result is available, the component weights are text 0.42, category 0.18, image 0.20, location 0.10 and time 0.10. Without an image result, text is weighted 0.50, category 0.20, location 0.15 and time 0.15. Missing location/time signals are omitted and the available component weights are normalised. These are ranking weights, not calibrated probabilities of ownership.
 
-The report matching endpoint currently retrieves up to 500 of the most recently created available found-item records, scores them in application code and returns up to five ranked candidates. This explicit candidate limit helps bound a request but means the implementation is not a full-corpus search index.
+The report matching endpoint scans all available found-item records and returns up to five ranked candidates; it does not stop at an arbitrary recent-500 window. A composite database index supports the candidate scan. The deterministic lexical/structured baseline scores the eligible corpus, while optional semantic inference is restricted to the top 100 baseline candidates and optional CLIP image reranking to the top 25 of that shortlist. This keeps expensive inference bounded while allowing reports older than the newest 500 records to remain eligible. The scan is still an in-process full-corpus operation, not a dedicated search index; if measured report volume grows substantially beyond the initial campus scale, introduce a measured retrieval index rather than assuming this query is unboundedly scalable.
 
 ### Optional pretrained models
 
@@ -352,6 +352,8 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/</code> | Serve the application interface. |
 | GET | <code>/api/config</code> | Return public configuration including category/location examples and demo settings. |
+| POST | <code>/api/office/registration-invites</code> | Office-only: issue a 72-hour, single-use invite bound to a verified student email. |
+| POST | <code>/api/register</code> | Create a student account using a valid office-issued invite and start a session. |
 | POST | <code>/api/login</code> | Authenticate and start a session. |
 | POST | <code>/api/logout</code> | End the current session. |
 | GET | <code>/api/me</code> | Return the signed-in user's public account details. |
@@ -480,6 +482,12 @@ Use the in-app role-switching control to change between student and office views
 
 The prototype database defaults to <code>data/lostlink.db</code> and local images to <code>data/uploads/</code>. Those runtime files are excluded from Git.
 
+## Student account onboarding
+
+Student accounts are created through a campus-office-issued, single-use registration invite. Office staff must verify the student's campus affiliation and email out of band before issuing an invite. Each invite is bound to one exact email address, expires after 72 hours, and is stored as a hash; the raw code is shown only once to the office user. Registration creates a student account and signs the student in. Office accounts are never created through this route and must be provisioned separately.
+
+This is an invite-based prototype onboarding flow, not institutional single sign-on or automated email verification. Connect the college identity provider before claiming institutional authentication or opening registration to the public.
+
 ## Configuration
 
 Values are loaded from environment variables and the local <code>.env</code> file.
@@ -547,7 +555,7 @@ The current application is not a production deployment and has not been assigned
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
-- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. Larger collections may require better candidate pre-filtering, a search index, cached embeddings and a separate inference worker.
+- **Matching scale:** retrieval currently scans all available found records using the indexed candidate query and deterministic in-process scoring. Optional semantic and image models run only on bounded shortlists. At substantially larger measured volumes, evaluate a dedicated retrieval index, cached embeddings and a separate inference worker.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
 - **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.
