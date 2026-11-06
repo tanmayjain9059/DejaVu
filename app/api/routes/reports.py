@@ -318,6 +318,8 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
 @router.get("/api/office/ai-status")
 def office_ai_status(user: dict[str, Any] = Depends(authenticated_user)):
     """Office-only diagnostics for the optional matching models."""
+    from app.matching import matching_engine
+
     require_office(user)
     return {
         "models": matching_engine.model_status(),
