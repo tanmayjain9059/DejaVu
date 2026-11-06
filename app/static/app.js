@@ -13,6 +13,10 @@ let officeIntakeCache = [];
 let officeInventoryCache = [];
 let officeIntakeLoading = false;
 let officeInventoryLoading = false;
+let officeClaimsCursor = null;
+let officeClaimsHasMore = false;
+let officeClaimsLoading = false;
+let officeClaimsCache = [];
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -971,11 +975,14 @@ async function loadOffice() {
   officeInventoryHasMore = false;
   officeIntakeCache = [];
   officeInventoryCache = [];
+  officeClaimsCursor = null;
+  officeClaimsHasMore = false;
+  officeClaimsCache = [];
   try {
     const [summary, queueData, claimData, inventoryData] = await Promise.all([
       api("/api/office/summary"),
       api("/api/reports?report_type=found&status=awaiting_intake&page_size=50"),
-      api("/api/claims"),
+      api("/api/claims?page_size=50"),
       api("/api/reports?report_type=found&page_size=50")
     ]);
     $("#officeStats").innerHTML = [
@@ -993,12 +1000,10 @@ async function loadOffice() {
     officeInventoryCursor = inventoryData.next_cursor || null;
     officeInventoryHasMore = Boolean(inventoryData.has_more && officeInventoryCursor);
     renderOfficeReportQueues();
-    const active = claimData.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
-    $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
-    $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
-    const handovers = claimData.claims.filter((claim) => claim.status === "approved_for_collection");
-    $("#handoverQueue").innerHTML = handovers.map((claim) => officeHandoverCard(claim)).join("");
-    $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
+    officeClaimsCache = claimData.claims;
+    officeClaimsCursor = claimData.next_cursor || null;
+    officeClaimsHasMore = Boolean(claimData.has_more && officeClaimsCursor);
+    renderOfficeClaimQueues();
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
 }
@@ -1021,6 +1026,39 @@ function renderOfficeReportQueues() {
     inventoryButton.classList.toggle("hidden", !officeInventoryHasMore);
     inventoryButton.disabled = officeInventoryLoading;
     inventoryButton.textContent = officeInventoryLoading ? "Loading…" : "Load more inventory";
+  }
+}
+
+function renderOfficeClaimQueues() {
+  const active = officeClaimsCache.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
+  $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
+  $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
+  const handovers = officeClaimsCache.filter((claim) => claim.status === "approved_for_collection");
+  $("#handoverQueue").innerHTML = handovers.map((claim) => officeHandoverCard(claim)).join("");
+  $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
+  const button = $("#loadMoreOfficeClaims");
+  if (button) {
+    button.classList.toggle("hidden", !officeClaimsHasMore);
+    button.disabled = officeClaimsLoading;
+    button.textContent = officeClaimsLoading ? "Loading…" : "Load more claims";
+  }
+}
+
+async function loadMoreOfficeClaims() {
+  if (!officeClaimsCursor || officeClaimsLoading) return;
+  officeClaimsLoading = true;
+  renderOfficeClaimQueues();
+  try {
+    const query = new URLSearchParams({ page_size: "50", cursor: officeClaimsCursor });
+    const data = await api("/api/claims?" + query.toString());
+    officeClaimsCache = officeClaimsCache.concat(data.claims);
+    officeClaimsCursor = data.next_cursor || null;
+    officeClaimsHasMore = Boolean(data.has_more && officeClaimsCursor);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    officeClaimsLoading = false;
+    renderOfficeClaimQueues();
   }
 }
 
@@ -1591,6 +1629,7 @@ $("#searchForm").addEventListener("submit", (event) => { event.preventDefault();
 $("#loadMoreReports").addEventListener("click", () => loadBrowse(true));
 $("#loadMoreIntake").addEventListener("click", () => loadMoreOfficeReports("intake"));
 $("#loadMoreInventory").addEventListener("click", () => loadMoreOfficeReports("inventory"));
+$("#loadMoreOfficeClaims").addEventListener("click", loadMoreOfficeClaims);
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
 $("#reportForm").addEventListener("submit", submitReport);
