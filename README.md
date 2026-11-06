@@ -480,6 +480,12 @@ Use the in-app role-switching control to change between student and office views
 
 The prototype database defaults to <code>data/lostlink.db</code> and local images to <code>data/uploads/</code>. Those runtime files are excluded from Git.
 
+## Student account onboarding
+
+Student accounts are created through a campus-office-issued, single-use registration invite. Office staff must verify the student's campus affiliation and email out of band before issuing an invite. Each invite is bound to one exact email address, expires after 72 hours, and is stored as a hash; the raw code is shown only once to the office user. Registration creates a student account and signs the student in. Office accounts are never created through this route and must be provisioned separately.
+
+This is an invite-based prototype onboarding flow, not institutional single sign-on or automated email verification. Connect the college identity provider before claiming institutional authentication or opening registration to the public.
+
 ## Configuration
 
 Values are loaded from environment variables and the local <code>.env</code> file.
