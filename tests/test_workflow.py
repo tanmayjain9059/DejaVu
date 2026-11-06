@@ -191,7 +191,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.logout()
 
         self.login("finder@example.test", "finder-password")
-        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 409)
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 404)
         public_found = self.client.get("/api/reports", params={"report_type": "found"})
         self.assertEqual(public_found.status_code, 200, public_found.text)
         public_item = next(item for item in public_found.json()["reports"] if item["id"] == found_id)
@@ -204,6 +204,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         own_item = next(item for item in own_found.json()["reports"] if item["id"] == found_id)
         self.assertEqual(own_item["location_room"], "A-101")
         self.assertNotIn("private_verification_detail", own_item)
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 409)
 
     def test_office_claim_queue_uses_stable_cursor_pagination(self):
         with main.connect_db() as conn:
