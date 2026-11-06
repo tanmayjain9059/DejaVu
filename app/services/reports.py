@@ -21,7 +21,7 @@ def location_label(row: sqlite3.Row, internal: bool = False) -> str:
     return " · ".join(x for x in parts if x) or "Location not specified"
 
 
-def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]:
+def serialise_report(row: sqlite3.Row, internal: bool = False, owner: bool = False) -> dict[str, Any]:
     hidden_image = row["category"] in SENSITIVE_CATEGORIES and not internal
     result = {
         "id": row["id"],
@@ -38,7 +38,7 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
         "location": location_label(row, internal=internal),
         "location_block": row["location_block"],
         "location_floor": row["location_floor"],
-        "location_room": row["location_room"] if internal else None,
+        "location_room": row["location_room"] if internal or owner else None,
         "location_area": row["location_area"],
         "image_url": None if hidden_image or not row["image_path"] else "/api/reports/" + row["id"] + "/image",
         "status": row["status"],
