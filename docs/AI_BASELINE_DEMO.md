@@ -49,7 +49,16 @@ pretrained models.
    request. The first load may download pretrained weights and therefore needs
    network access. Later starts can reuse the Hugging Face model cache.
 
-5. Sign in as an office user and inspect:
+5. Before the live demonstration, run the real-model inference smoke test:
+
+   ```bash
+   USE_SEMANTIC_MODEL=true USE_CLIP_MODEL=true python scripts/smoke_test_matching_models.py
+   ```
+
+   This verifies that both pretrained models load and execute inference. It uses
+   a generated image fixture and does not measure matching accuracy.
+
+6. Sign in as an office user and inspect:
 
    ```http
    GET /api/office/ai-status
