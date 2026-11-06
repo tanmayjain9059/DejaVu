@@ -2,6 +2,10 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
+let browseCursor = null;
+let browseHasMore = false;
+let browseLoading = false;
+let browseRequestId = 0;
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -139,7 +143,7 @@ async function mockApi(url,options){
  if(path==="/api/logout"&&method==="POST"){mockStore.session=null;return {ok:true};}
  if(path==="/api/reports"&&method==="GET"){
   const q=String(parsed.searchParams.get("q")||"").trim().toLowerCase(),mine=parsed.searchParams.get("mine")==="true",internal=currentUser&&currentUser.role==="office";
-  const filtered=mockStore.reports.filter(r=>{
+  let filtered=mockStore.reports.filter(r=>{
    if(!internal&&mine&&r.created_by!==currentUser.id)return false;
    if(!internal&&!mine&&!(r.report_type==="found"&&r.status==="available"))return false;
    for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
@@ -150,8 +154,13 @@ async function mockApi(url,options){
    if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
    if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
    return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
-  return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
+  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)||String(b.id).localeCompare(String(a.id)));
+  const pageSize=Math.min(100,Math.max(1,Number(parsed.searchParams.get("page_size")||50)));
+  const cursor=parsed.searchParams.get("cursor");
+  if(cursor){const split=cursor.lastIndexOf("|");if(split<1)throw new Error("Invalid report pagination cursor.");const createdAt=cursor.slice(0,split),id=cursor.slice(split+1);filtered=filtered.filter(r=>r.created_at<createdAt||(r.created_at===createdAt&&String(r.id)<id));}
+  const page=filtered.slice(0,pageSize+1),hasMore=page.length>pageSize,reports=page.slice(0,pageSize);
+  const last=reports[reports.length-1];
+  return {reports:reports.map(r=>mockReportView(r,Boolean(internal))),has_more:hasMore,next_cursor:hasMore&&last?last.created_at+"|"+last.id:null};
  }
  if(path==="/api/reports"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Submit reports from a student account.");
@@ -529,27 +538,54 @@ function itemCard(report, options) {
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
-async function loadBrowse() {
-  if (!currentUser) return;
+async function loadBrowse(append = false) {
+  if (!currentUser || browseLoading) return;
+  if (!append) {
+    browseRequestId += 1;
+    browseCursor = null;
+    browseHasMore = false;
+    $("#browseResults").innerHTML = "";
+  }
+  if (append && !browseCursor) return;
+  const requestId = browseRequestId;
   const query = buildQuery({
     q: $("#filterQuery").value,
     category: $("#filterCategory").value,
     block: $("#filterBlock").value,
     room: $("#filterRoom") ? $("#filterRoom").value : "",
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
-    date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
+    date_to: $("#filterDateTo") ? $("#filterDateTo").value : "",
+    page_size: 50,
+    cursor: append ? browseCursor : ""
   });
+  browseLoading = true;
+  const loadMoreButton = $("#loadMoreReports");
+  if (loadMoreButton) loadMoreButton.disabled = true;
   try {
     const data = await api("/api/reports" + (query ? "?" + query : ""));
-    lastKnownReports = data.reports;
-    $("#browseResults").innerHTML = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
-    $("#browseCount").textContent = data.reports.length + (data.reports.length === 1 ? " item" : " items");
-    $("#browseEmpty").classList.toggle("hidden", data.reports.length > 0);
+    if (requestId !== browseRequestId) return;
+    const markup = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
+    if (append) $("#browseResults").insertAdjacentHTML("beforeend", markup);
+    else $("#browseResults").innerHTML = markup;
+    browseCursor = data.next_cursor || null;
+    browseHasMore = Boolean(data.has_more && browseCursor);
+    if (loadMoreButton) {
+      loadMoreButton.classList.toggle("hidden", !browseHasMore);
+      loadMoreButton.disabled = false;
+      loadMoreButton.textContent = browseHasMore ? "Load more items" : "All items loaded";
+    }
+    const loadedCount = $$(".item-card", $("#browseResults")).length;
+    $("#browseCount").textContent = loadedCount + (loadedCount === 1 ? " item loaded" : " items loaded");
+    $("#browseEmpty").classList.toggle("hidden", loadedCount > 0);
   } catch (error) {
-    showToast(error.message, true);
+    if (requestId === browseRequestId) showToast(error.message, true);
+  } finally {
+    if (requestId === browseRequestId) {
+      browseLoading = false;
+      if (loadMoreButton) loadMoreButton.disabled = false;
+    }
   }
 }
-
 function resetSearch() {
   $("#filterQuery").value = "";
   $("#filterCategory").value = "";
@@ -1487,7 +1523,8 @@ document.addEventListener("click", (event) => {
   const certificate = event.target.closest("[data-certificate-download]");
   if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else window.location.href = "/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download"; }
 });
-$("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
+$("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(false); });
+$("#loadMoreReports").addEventListener("click", () => loadBrowse(true));
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
 $("#reportForm").addEventListener("submit", submitReport);
