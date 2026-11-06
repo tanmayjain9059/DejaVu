@@ -31,9 +31,9 @@ def public_config():
         "certificate_milestones": [{"tier": m["tier"], "threshold": m["threshold"]} for m in CERTIFICATE_MILESTONES],
         "categories": [{"value": key, "label": value} for key, value in CATEGORY_LABELS.items()],
         "locations": {
-            "blocks": ["Block A", "Block B", "Block C", "Library", "Cafeteria", "Other / not sure"],
-            "floors": ["Ground", "1", "2", "3", "Other / not sure"],
-            "note": "Sample directory for the prototype. Replace with the verified campus directory before deployment."
+            "blocks": list(CAMPUS_BLOCKS),
+            "floors": list(CAMPUS_FLOORS),
+            "note": "Campus buildings and floors are deployment-configured. Use the area field for a specific nearby place or detail."
         },
     }
 
