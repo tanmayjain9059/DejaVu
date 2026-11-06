@@ -262,6 +262,25 @@ def _migration_add_active_claim_indexes(conn) -> None:
     )
 
 
+def _migration_add_registration_invites(conn) -> None:
+    """Create single-use, email-bound onboarding invitations."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS registration_invites (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            code_hash TEXT NOT NULL UNIQUE,
+            created_by INTEGER NOT NULL REFERENCES users(id),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_registration_invites_email_expiry
+           ON registration_invites(email, expires_at)"""
+    )
+
+
 def _migration_add_matching_candidate_index(conn) -> None:
     """Support ordered scans of available found-item candidates."""
     conn.execute(
@@ -348,6 +367,7 @@ SCHEMA_MIGRATIONS = (
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
     (5, "matching_candidate_lookup_index", _migration_add_matching_candidate_index),
+    (6, "single_use_registration_invites", _migration_add_registration_invites),
 )
 
 
