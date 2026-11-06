@@ -17,6 +17,8 @@ async def list_reports(
     date_to: str | None = None,
     status: str | None = None,
     mine: bool = False,
+    cursor: str | None = None,
+    page_size: int = 50,
     user: dict[str, Any] = Depends(authenticated_user),
 ):
     conditions: list[str] = []
@@ -64,12 +66,27 @@ async def list_reports(
         conditions.append("r.status=?")
         params.append(status)
 
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=422, detail="Page size must be between 1 and 100.")
+    if cursor:
+        try:
+            cursor_created_at, cursor_id = cursor.rsplit("|", 1)
+            if not cursor_created_at or not cursor_id:
+                raise ValueError("empty cursor")
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid report pagination cursor.")
+        conditions.append("(r.created_at < ? OR (r.created_at = ? AND r.id < ?))")
+        params.extend([cursor_created_at, cursor_created_at, cursor_id])
+
     sql = "SELECT r.* FROM reports r"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY r.created_at DESC LIMIT 250"
+    sql += " ORDER BY r.created_at DESC, r.id DESC LIMIT ?"
+    params.append(page_size + 1)
     with connect_db() as conn:
-        rows = conn.execute(sql, params).fetchall()
+        fetched_rows = conn.execute(sql, params).fetchall()
+        has_more = len(fetched_rows) > page_size
+        rows = fetched_rows[:page_size]
         reports = []
         for row in rows:
             report_data = serialise_report(row, internal=internal)
@@ -81,7 +98,10 @@ async def list_reports(
                 ).fetchone()
                 report_data["has_active_linked_claim"] = active_claim is not None
             reports.append(report_data)
-    return {"reports": reports}
+    next_cursor = None
+    if has_more and rows:
+        next_cursor = str(rows[-1]["created_at"]) + "|" + str(rows[-1]["id"])
+    return {"reports": reports, "has_more": has_more, "next_cursor": next_cursor}
 
 
 @router.post("/api/reports")
