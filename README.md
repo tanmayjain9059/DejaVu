@@ -72,6 +72,7 @@ LostLink brings the process into one traceable workflow:
 ### Student-facing features
 
 - Create a lost-item report or a found-item report through separate guided paths.
+- Correct the details of an owned open lost report or a found report still awaiting office intake; editing is locked while a claim is under review or after office custody begins.
 - Record title, description, category, approximate occurrence time and campus location. Brand, primary colour, visible characteristics and a photo can add detail.
 - Browse and filter available found items by keywords, category, block, room and date.
 - Open item details and suggested-match explanations.
@@ -145,6 +146,7 @@ These are prototype recognition features; the generated certificates are not off
 | Situation | Behaviour |
 |---|---|
 | Lost report is submitted | Starts as an open search record and may receive possible-match suggestions. |
+| Eligible report details need correction | The owner can edit an open lost report or a found report awaiting intake. Edits are blocked while a linked claim is under review or after the report leaves its editable state. |
 | Found report is submitted | Starts in an awaiting-intake state and is not visible in the student found-item search. |
 | Office confirms intake | Staff record actual storage and private verification details, assign a Tag ID, and make the found item available. |
 | Stored item is moved | Office staff update the location; the change is audited. |
@@ -364,6 +366,7 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/api/reports</code> | Search/list reports with supported filters. Student visibility is restricted to available found items except their own records; office visibility is wider. |
 | POST | <code>/api/reports</code> | Create a lost or found report. |
+| PUT | <code>/api/reports/{report_id}</code> | Owner-only: edit public report details before claim review or office intake locks the report. |
 | POST | <code>/api/reports/{report_id}/close</code> | Close an eligible owned lost report or withdraw a found report before intake. |
 | POST | <code>/api/reports/{report_id}/image</code> | Upload or replace a permitted report image. |
 | GET | <code>/api/reports/{report_id}/image</code> | Retrieve an image subject to role, status and category checks. |
