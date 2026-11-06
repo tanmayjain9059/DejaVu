@@ -135,6 +135,64 @@ class LostLinkWorkflowTests(unittest.TestCase):
             422,
         )
 
+    def test_report_owner_can_edit_only_before_workflow_handoff(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Old blue backpack", "Old description for the blue backpack."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        updated_body = self.report_body("lost", "Updated blue backpack", "Updated description with a silver zipper.")
+        updated_body["brand"] = "Northline"
+        updated = self.client.put(f"/api/reports/{lost_id}", json=updated_body)
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["report"]["title"], "Updated blue backpack")
+        self.assertEqual(updated.json()["report"]["brand"], "Northline")
+
+        self.logout()
+        self.login("finder@example.test", "finder-password")
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 404)
+        self.logout()
+        self.login("office@example.test", "office-password")
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 403)
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        close = self.client.post(
+            f"/api/reports/{lost_id}/close",
+            json={"reason": "no_longer_searching"},
+        )
+        self.assertEqual(close.status_code, 200, close.text)
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 409)
+
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Found silver bottle", "Silver bottle found beside the library."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_id = found.json()["report"]["id"]
+        found_body = self.report_body("found", "Corrected silver bottle", "Corrected details for the silver bottle.")
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 200)
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(
+            f"/api/reports/{found_id}/intake",
+            json={
+                "confirmed_physical_receipt": True,
+                "storage_location": "Lost and Found Office - Shelf A1",
+                "private_detail": "Small dent under the base.",
+                "value_band": "low",
+                "sensitivity_level": 1,
+            },
+        )
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 409)
+
     def test_office_claim_queue_uses_stable_cursor_pagination(self):
         with main.connect_db() as conn:
             office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@example.test",)).fetchone()["id"]
