@@ -31,6 +31,7 @@ let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
 let lostReportOptionsRequest = 0;
 let reportSubmitting = false;
+let editingReportId = null;
 let claimSubmitting = false;
 let selectedEvidenceClaimId = null;
 let selectedStorageReportId = null;
@@ -487,6 +488,9 @@ function setReportMode(type) {
 }
 
 function resetReportMode() {
+  editingReportId = null;
+  $("#backToReportTypes").classList.remove("hidden");
+  $("#reportSubmitLabel").textContent = "Submit report";
   $("#reportForm").reset();
   $("#reportForm").classList.add("hidden");
   $("#reportTypeChooser").classList.remove("hidden");
@@ -663,7 +667,9 @@ async function submitReport(event) {
   const submitButton = $('#reportForm button[type="submit"]');
   submitButton.disabled = true;
   try {
-    const result = await api("/api/reports", { method: "POST", body });
+    const result = editingReportId
+      ? await api("/api/reports/" + encodeURIComponent(editingReportId), { method: "PUT", body })
+      : await api("/api/reports", { method: "POST", body });
     let successMessage = result.message;
     let photoFailed = false;
     if (image) {
@@ -702,11 +708,58 @@ async function loadMyReports() {
   } catch (error) { showToast(error.message, true); }
 }
 
+function openEditReport(reportId) {
+  const report = myReportsCache.find((item) => item.id === reportId);
+  if (!report) return;
+  const canEdit = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim)
+    || (report.report_type === "found" && report.status === "awaiting_intake");
+  if (!canEdit) {
+    showToast("This report can no longer be edited in its current workflow state.", true);
+    return;
+  }
+  resetReportMode();
+  navigate("report");
+  setReportMode(report.report_type);
+  editingReportId = report.id;
+  $("#reportTitle").value = report.title || "";
+  $("#reportCategory").value = report.category || "";
+  $("#reportDescription").value = report.description || "";
+  $("#reportBrand").value = report.brand || "";
+  $("#reportColor").value = report.primary_color || "";
+  $("#reportFeatures").value = report.visible_features || "";
+  $("#reportBlock").value = report.location_block || "";
+  $("#reportFloor").value = report.location_floor || "";
+  $("#reportRoom").value = report.location_room || "";
+  $("#reportArea").value = report.location_area || "";
+  if (report.occurred_at) {
+    const date = new Date(report.occurred_at);
+    if (!Number.isNaN(date.getTime())) {
+      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      $("#reportDate").value = localDate.toISOString().slice(0, 16);
+    }
+  } else {
+    $("#reportDate").value = "";
+  }
+  $("#reportModeTitle").textContent = "Edit your " + (report.report_type === "lost" ? "lost" : "found") + " report";
+  $("#reportFormStepTitle").textContent = "Update report details";
+  $("#reportFormStepHint").textContent = "Correct the public details while this report is still editable.";
+  $("#reportSubmitLabel").textContent = "Save changes";
+  $("#backToReportTypes").classList.add("hidden");
+  $("#imageLabel").textContent = report.image_url ? "Choose a replacement photo (optional)" : "Choose a photo (optional)";
+  $("#reportError").textContent = "";
+  $("#reportTitle").focus();
+}
+
 function renderMyReports() {
   const data = { reports: myReportsCache };
     $("#myReportsList").innerHTML = data.reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
         ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
+        : "";
+      const canEdit = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
+        (report.report_type === "found" && report.status === "awaiting_intake");
+      const editButton = canEdit
+        ? '<button class="button button-quiet button-small" type="button" data-edit-report="' + escapeHTML(report.id) + '">Edit details</button>'
         : "";
       const canClose = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
         (report.report_type === "found" && report.status === "awaiting_intake");
@@ -736,7 +789,7 @@ function renderMyReports() {
         '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>◷ " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
         (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") +
         linkedClaimNote +
-        '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
+        '<div class="card-actions">' + matchButton + editButton + closeButton + "</div></article>";
     }).join("");
     $("#myReportsEmpty").classList.toggle("hidden", data.reports.length > 0);
     const loadMore = $("#loadMoreMyReports");
@@ -1778,6 +1831,8 @@ document.addEventListener("click", (event) => {
   if (evidence) openAdditionalEvidence(evidence.dataset.addEvidence);
   const dispute = event.target.closest("[data-dispute-claim]");
   if (dispute) submitClaimDispute(dispute.dataset.disputeClaim);
+  const editReport = event.target.closest("[data-edit-report]");
+  if (editReport) openEditReport(editReport.dataset.editReport);
   const closeReport = event.target.closest("[data-close-report]");
   if (closeReport) openCloseReport(closeReport.dataset.closeReport, closeReport.dataset.closeType);
   const decision = event.target.closest("[data-decision]");
