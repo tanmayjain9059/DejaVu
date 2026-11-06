@@ -355,6 +355,8 @@ function startNotificationPolling() {
 
 function showLogin() {
   stopNotificationPolling();
+  if ($("#registrationForm")) $("#registrationForm").classList.add("hidden");
+  if ($("#registrationError")) $("#registrationError").textContent = "";
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
   currentUser = null;
@@ -1412,6 +1414,76 @@ async function start() {
   }
   enableMockMode(); enterApp(mockCopy(MOCK_USERS.student));
 }
+
+$("#showRegistrationForm").addEventListener("click", () => {
+  $("#registrationForm").classList.toggle("hidden");
+  $("#registrationError").textContent = "";
+  if (!$("#registrationForm").classList.contains("hidden")) $("#registrationEmail").focus();
+});
+
+$("#registrationForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("#registrationError").textContent = "";
+  const password = $("#registrationPassword").value;
+  if (password !== $("#registrationPasswordConfirm").value) {
+    $("#registrationError").textContent = "The passwords do not match.";
+    $("#registrationPasswordConfirm").focus();
+    return;
+  }
+  const submit = $('#registrationForm button[type="submit"]');
+  submit.disabled = true;
+  try {
+    const result = await api("/api/register", {
+      method: "POST",
+      body: {
+        email: $("#registrationEmail").value.trim(),
+        display_name: $("#registrationName").value.trim(),
+        password,
+        invite_code: $("#registrationInviteCode").value.trim()
+      }
+    });
+    $("#registrationForm").reset();
+    enterApp(result.user);
+    showToast(result.message, false);
+  } catch (error) {
+    $("#registrationError").textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+async function createRegistrationInvite(event) {
+  event.preventDefault();
+  $("#registrationInviteError").textContent = "";
+  $("#registrationInviteResult").classList.add("hidden");
+  $("#createRegistrationInviteButton").disabled = true;
+  try {
+    const result = await api("/api/office/registration-invites", {
+      method: "POST",
+      body: { email: $("#registrationInviteEmail").value.trim() }
+    });
+    $("#registrationInviteMessage").textContent = result.message + " Expires: " + humanDateTime(result.expires_at);
+    $("#registrationInviteCodeOutput").value = result.invite_code;
+    $("#registrationInviteResult").classList.remove("hidden");
+    $("#registrationInviteForm").reset();
+  } catch (error) {
+    $("#registrationInviteError").textContent = error.message;
+  } finally {
+    $("#createRegistrationInviteButton").disabled = false;
+  }
+}
+
+$("#registrationInviteForm").addEventListener("submit", createRegistrationInvite);
+$("#copyRegistrationInvite").addEventListener("click", async () => {
+  const field = $("#registrationInviteCodeOutput");
+  field.select();
+  try {
+    await navigator.clipboard.writeText(field.value);
+    showToast("Invitation code copied.", false);
+  } catch (_) {
+    showToast("Select the invitation code and copy it manually.", false);
+  }
+});
 
 $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
