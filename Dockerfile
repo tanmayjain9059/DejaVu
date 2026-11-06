@@ -7,8 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN groupadd --system lostlink && useradd --system --gid lostlink --home-dir /app lostlink \
-    && mkdir -p /data/uploads \
-    && chown -R lostlink:lostlink /app /data
+    && mkdir -p /data/uploads /model-cache \
+    && chown -R lostlink:lostlink /app /data /model-cache
 
 COPY requirements.txt requirements-ml.txt ./
 ARG INSTALL_ML=false
