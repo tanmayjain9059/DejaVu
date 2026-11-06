@@ -142,6 +142,24 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.client.get("/api/claims", params={"page_size": 101}).status_code,
             422,
         )
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        student_claim_ids = []
+        cursor = None
+        while True:
+            params = {"page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.client.get("/api/claims", params=params)
+            self.assertEqual(page.status_code, 200, page.text)
+            payload = page.json()
+            student_claim_ids.extend(item["id"] for item in payload["claims"])
+            if not payload["has_more"]:
+                break
+            cursor = payload["next_cursor"]
+        self.assertEqual(len(student_claim_ids), 53)
+        self.assertEqual(len(set(student_claim_ids)), 53)
 
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
