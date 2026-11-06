@@ -503,10 +503,14 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
+| <code>CAMPUS_BLOCKS</code> | JSON array of verified campus building/common-area labels used in report and browse location selectors. | Optional; defaults to only <code>Other / not sure</code>. |
+| <code>CAMPUS_FLOORS</code> | JSON array of floor labels used in report location selectors. | Optional; defaults to only <code>Other / not sure</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
 | <code>USE_CLIP_MODEL</code> | Enable CLIP-based image/image-text similarity. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>CLIP_MODEL</code> | CLIP model identifier. | <code>openai/clip-vit-base-patch32</code>. |
+
+Campus location choices are not hard-coded to sample buildings. Set <code>CAMPUS_BLOCKS</code> and <code>CAMPUS_FLOORS</code> to JSON arrays containing the institution's verified labels (for example, <code>CAMPUS_BLOCKS='["Building name","Library"]'</code>). Each array accepts 1-250 unique, non-empty labels. If omitted, the selectors offer only <code>Other / not sure</code>; students can still describe the precise nearby area in the free-text area field. Do not configure unverified campus names.
 
 Keep secrets out of source control. The committed <code>.env.example</code> intentionally contains a placeholder and is not ready to use unchanged.
 
