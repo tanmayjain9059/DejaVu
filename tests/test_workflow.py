@@ -97,6 +97,52 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "location_area": "Library",
         }
 
+    def test_office_claim_queue_uses_stable_cursor_pagination(self):
+        with main.connect_db() as conn:
+            office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@example.test",)).fetchone()["id"]
+            claimant_id = conn.execute("SELECT id FROM users WHERE email=?", ("claimant@example.test",)).fetchone()["id"]
+            report_id = "claim-pagination-report"
+            conn.execute(
+                """INSERT INTO reports(id, public_ref, report_type, title, description, category, status,
+                   created_by, created_at, updated_at) VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                (report_id, "LL-CLAIM-PAGE", "Test item", "A report used for queue pagination tests.",
+                 "other", office_id, main.now_iso(), main.now_iso()),
+            )
+            for index in range(53):
+                status = "disputed" if index < 3 else "pending"
+                timestamp = f"2026-10-{(index % 28) + 1:02d}T10:00:00"
+                conn.execute(
+                    """INSERT INTO claims(id, report_id, claimant_id, evidence, status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (f"claim-page-{index:03d}", report_id, claimant_id,
+                     "Evidence for pagination regression test.", status, timestamp, timestamp),
+                )
+
+        self.login("office@example.test", "office-password")
+        collected = []
+        cursor = None
+        while True:
+            params = {"page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend((item["id"], item["status"]) for item in payload["claims"])
+            if not payload["has_more"]:
+                self.assertIsNone(payload["next_cursor"])
+                break
+            self.assertTrue(payload["next_cursor"])
+            cursor = payload["next_cursor"]
+
+        self.assertEqual(len(collected), 53)
+        self.assertEqual(len({claim_id for claim_id, _ in collected}), 53)
+        self.assertEqual([status for _, status in collected[:3]], ["disputed"] * 3)
+        self.assertEqual(
+            self.client.get("/api/claims", params={"page_size": 101}).status_code,
+            422,
+        )
+
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
         self.login("claimant@example.test", "claimant-password")
