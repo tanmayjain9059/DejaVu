@@ -5,6 +5,7 @@ let currentUser = null;
 let browseCursor = null;
 let browseLoading = false;
 let browseRequestId = 0;
+let browseFilters = null;
 let officeIntakeCursor = null;
 let officeInventoryCursor = null;
 let officeIntakeHasMore = false;
@@ -559,23 +560,35 @@ function itemCard(report, options) {
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
-async function loadBrowse(append = false) {
-  if (!currentUser) return;
-  if (append && browseLoading) return;
-  if (!append) {
-    browseRequestId += 1;
-    browseCursor = null;
-    $("#browseResults").innerHTML = "";
-  }
-  if (append && !browseCursor) return;
-  const requestId = browseRequestId;
-  const query = buildQuery({
+function currentBrowseFilters() {
+  return {
     q: $("#filterQuery").value,
     category: $("#filterCategory").value,
     block: $("#filterBlock").value,
     room: $("#filterRoom") ? $("#filterRoom").value : "",
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
-    date_to: $("#filterDateTo") ? $("#filterDateTo").value : "",
+    date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
+  };
+}
+
+async function loadBrowse(append = false) {
+  if (!currentUser) return;
+  if (append && browseLoading) return;
+  const filters = currentBrowseFilters();
+  if (append && JSON.stringify(filters) !== JSON.stringify(browseFilters)) {
+    showToast("Your filters have changed. Press Search to apply them before loading more items.", true);
+    return;
+  }
+  if (!append) {
+    browseRequestId += 1;
+    browseCursor = null;
+    browseFilters = filters;
+    $("#browseResults").innerHTML = "";
+  }
+  if (append && !browseCursor) return;
+  const requestId = browseRequestId;
+  const query = buildQuery({
+    ...browseFilters,
     page_size: 50,
     cursor: append ? browseCursor : ""
   });
