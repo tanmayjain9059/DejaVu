@@ -80,6 +80,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_browse_pagination_rejects_filters_changed_since_first_page(self):
+        self.assertIn("let browseFilters = null;", self.js)
+        self.assertIn("function currentBrowseFilters()", self.js)
+        self.assertIn("JSON.stringify(filters) !== JSON.stringify(browseFilters)", self.js)
+        self.assertIn("Press Search to apply them before loading more items.", self.js)
+        self.assertIn("browseFilters = filters;", self.js)
+        self.assertIn("...browseFilters,", self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
