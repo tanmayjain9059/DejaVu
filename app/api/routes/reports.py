@@ -315,6 +315,16 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
     return {"matches": results, "note": "Suggestions support discovery only; they do not establish ownership."}
 
 
+@router.get("/api/office/ai-status")
+def office_ai_status(user: dict[str, Any] = Depends(authenticated_user)):
+    """Office-only diagnostics for the optional matching models."""
+    require_office(user)
+    return {
+        "models": matching_engine.model_status(),
+        "matching_policy": "AI scores rank candidates for human review; they do not establish ownership.",
+    }
+
+
 @router.post("/api/reports/{report_id}/intake")
 async def intake_found_item(
     report_id: str,
