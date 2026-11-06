@@ -3,7 +3,6 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 let currentUser = null;
 let browseCursor = null;
-let browseHasMore = false;
 let browseLoading = false;
 let browseRequestId = 0;
 let appConfig = null;
@@ -544,7 +543,6 @@ async function loadBrowse(append = false) {
   if (!append) {
     browseRequestId += 1;
     browseCursor = null;
-    browseHasMore = false;
     $("#browseResults").innerHTML = "";
   }
   if (append && !browseCursor) return;
@@ -570,11 +568,10 @@ async function loadBrowse(append = false) {
     if (append) $("#browseResults").insertAdjacentHTML("beforeend", markup);
     else $("#browseResults").innerHTML = markup;
     browseCursor = data.next_cursor || null;
-    browseHasMore = Boolean(data.has_more && browseCursor);
     if (loadMoreButton) {
-      loadMoreButton.classList.toggle("hidden", !browseHasMore);
+      loadMoreButton.classList.toggle("hidden", !(data.has_more && browseCursor));
       loadMoreButton.disabled = false;
-      loadMoreButton.textContent = browseHasMore ? "Load more items" : "All items loaded";
+      loadMoreButton.textContent = data.has_more && browseCursor ? "Load more items" : "All items loaded";
     }
     const loadedCount = $$(".item-card", $("#browseResults")).length;
     $("#browseCount").textContent = loadedCount + (loadedCount === 1 ? " item loaded" : " items loaded");
