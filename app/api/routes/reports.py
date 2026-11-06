@@ -89,7 +89,7 @@ async def list_reports(
         rows = fetched_rows[:page_size]
         reports = []
         for row in rows:
-            report_data = serialise_report(row, internal=internal)
+            report_data = serialise_report(row, internal=internal, owner=not internal and int(row["created_by"]) == int(user["id"]))
             if row["report_type"] == "lost" and int(row["created_by"]) == int(user["id"]):
                 active_claim = conn.execute(
                     """SELECT 1 FROM claims WHERE lost_report_id=?
