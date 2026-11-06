@@ -217,7 +217,6 @@ async def list_claims(
             params.extend([priority, priority, cursor_created_at, cursor_created_at, cursor_id])
         order_by = "CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, c.created_at ASC, c.id ASC"
         priority_sql = "CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END"
-        cursor_prefix = priority_sql
     else:
         conditions.append("c.claimant_id=?")
         params.append(user["id"])
@@ -231,7 +230,6 @@ async def list_claims(
             conditions.append("(c.created_at < ? OR (c.created_at = ? AND c.id < ?))")
             params.extend([cursor_created_at, cursor_created_at, cursor_id])
         order_by = "c.created_at DESC, c.id DESC"
-        cursor_prefix = None
 
     sql = (
         "SELECT c.*, u.display_name AS claimant_name, u.email AS claimant_email "
