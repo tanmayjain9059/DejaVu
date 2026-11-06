@@ -285,7 +285,7 @@ Candidate comparison may use:
 
 When a CLIP result is available, the component weights are text 0.42, category 0.18, image 0.20, location 0.10 and time 0.10. Without an image result, text is weighted 0.50, category 0.20, location 0.15 and time 0.15. Missing location/time signals are omitted and the available component weights are normalised. These are ranking weights, not calibrated probabilities of ownership.
 
-The report matching endpoint currently retrieves up to 500 of the most recently created available found-item records, scores them in application code and returns up to five ranked candidates. This explicit candidate limit helps bound a request but means the implementation is not a full-corpus search index.
+The report matching endpoint scans all available found-item records and returns up to five ranked candidates; it does not stop at an arbitrary recent-500 window. A composite database index supports the candidate scan. The deterministic lexical/structured baseline scores the eligible corpus, while optional semantic inference is restricted to the top 100 baseline candidates and optional CLIP image reranking to the top 25 of that shortlist. This keeps expensive inference bounded while allowing reports older than the newest 500 records to remain eligible. The scan is still an in-process full-corpus operation, not a dedicated search index; if measured report volume grows substantially beyond the initial campus scale, introduce a measured retrieval index rather than assuming this query is unboundedly scalable.
 
 ### Optional pretrained models
 
