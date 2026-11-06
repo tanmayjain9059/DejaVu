@@ -119,6 +119,58 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(result["engine"], "lexical_baseline")
         self.assertIsNone(result["signals"]["image"])
 
+    def test_rank_searches_candidates_beyond_previous_500_limit(self):
+        lost = {
+            "title": "Navy backpack", "description": "blue backpack with two front pockets",
+            "category": "bags_wallets", "location_block": "Block A",
+        }
+        candidates = [
+            {
+                "id": str(index), "title": f"Unrelated item {index}",
+                "description": "steel water bottle", "category": "accessories",
+            }
+            for index in range(550)
+        ]
+        candidates[0] = {
+            "id": "old-best", "title": "Navy backpack",
+            "description": "blue backpack with two front pockets", "category": "bags_wallets",
+            "location_block": "Block A",
+        }
+
+        ranked = self.engine.rank(lost, candidates, limit=5)
+
+        self.assertEqual(ranked[0]["report"]["id"], "old-best")
+        self.assertEqual(len(ranked), 5)
+
+    def test_optional_models_only_process_bounded_shortlists(self):
+        class FakeModel:
+            def __init__(self):
+                self.inputs = []
+
+            def encode(self, texts, **kwargs):
+                self.inputs = list(texts)
+                return [[1.0, 0.0] for _ in texts]
+
+        engine = MatchingEngine()
+        fake_model = FakeModel()
+        engine.semantic_enabled = True
+        engine._text_attempted = True
+        engine._text_model = fake_model
+        engine.clip_enabled = True
+        clip_calls = []
+        engine.image_similarity = lambda *_: clip_calls.append(True) or 0.8
+        lost = {"title": "Blue backpack", "description": "blue bag with pockets", "category": "bags_wallets"}
+        candidates = [
+            {"title": f"Candidate {index}", "description": "blue bag with pockets", "category": "bags_wallets"}
+            for index in range(550)
+        ]
+
+        ranked = engine.rank(lost, candidates, limit=5)
+
+        self.assertEqual(len(ranked), 5)
+        self.assertEqual(len(fake_model.inputs), engine.SEMANTIC_RERANK_LIMIT + 1)
+        self.assertEqual(len(clip_calls), engine.CLIP_RERANK_LIMIT)
+
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}
         candidates = [
