@@ -352,6 +352,8 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/</code> | Serve the application interface. |
 | GET | <code>/api/config</code> | Return public configuration including category/location examples and demo settings. |
+| POST | <code>/api/office/registration-invites</code> | Office-only: issue a 72-hour, single-use invite bound to a verified student email. |
+| POST | <code>/api/register</code> | Create a student account using a valid office-issued invite and start a session. |
 | POST | <code>/api/login</code> | Authenticate and start a session. |
 | POST | <code>/api/logout</code> | End the current session. |
 | GET | <code>/api/me</code> | Return the signed-in user's public account details. |
