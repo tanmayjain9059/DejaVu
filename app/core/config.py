@@ -1,10 +1,44 @@
 """Environment-backed configuration and shared privacy/category policy."""
 from __future__ import annotations
+import json
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _directory_values(env_name: str, fallback: list[str], max_length: int) -> list[str]:
+    """Load a bounded, de-duplicated JSON string array from the environment."""
+    raw = os.getenv(env_name, "").strip()
+    if not raw:
+        return list(fallback)
+    try:
+        values = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"{env_name} must be a JSON array of strings.") from exc
+    if not isinstance(values, list) or not values or len(values) > 250:
+        raise RuntimeError(f"{env_name} must contain between 1 and 250 values.")
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise RuntimeError(f"{env_name} values must be strings.")
+        label = " ".join(value.split())
+        key = label.casefold()
+        if not label or len(label) > max_length:
+            raise RuntimeError(f"{env_name} values must be 1-{max_length} characters.")
+        if key in seen:
+            raise RuntimeError(f"{env_name} values must be unique (case-insensitive).")
+        cleaned.append(label)
+        seen.add(key)
+    return cleaned
+
+
+# No campus-specific sample directory is assumed. Configure the verified
+# institution directory at deployment; free-text area details remain available.
+CAMPUS_BLOCKS = _directory_values("CAMPUS_BLOCKS", ["Other / not sure"], 80)
+CAMPUS_FLOORS = _directory_values("CAMPUS_FLOORS", ["Other / not sure"], 40)
 
 ROOT = Path(__file__).resolve().parents[2]  # app/core/config.py -> repository root
 DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
