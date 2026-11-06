@@ -6,14 +6,18 @@ similarity. The engine never treats a score as proof of ownership.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
+import threading
 from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 SYNONYMS = {
     "backpack": "bag", "rucksack": "bag", "purse": "wallet",
@@ -113,26 +117,62 @@ class MatchingEngine:
     def __init__(self) -> None:
         self._text_model = None
         self._text_attempted = False
+        self._text_lock = threading.Lock()
+        self._text_status = "disabled"
+        self._text_failure = None
         self._clip_model = None
         self._clip_processor = None
         self._clip_attempted = False
+        self._clip_lock = threading.Lock()
+        self._clip_status = "disabled"
+        self._clip_failure = None
         self.semantic_enabled = os.getenv("USE_SEMANTIC_MODEL", "false").lower() == "true"
         self.clip_enabled = os.getenv("USE_CLIP_MODEL", "false").lower() == "true"
+        if self.semantic_enabled:
+            self._text_status = "not_loaded"
+        if self.clip_enabled:
+            self._clip_status = "not_loaded"
+
+    def model_status(self) -> dict[str, dict[str, Any]]:
+        """Return safe model diagnostics; never expose exception messages or paths."""
+        return {
+            "text": {
+                "enabled": self.semantic_enabled,
+                "state": self._text_status,
+                "model": os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+                "failed": self._text_failure is not None,
+            },
+            "image": {
+                "enabled": self.clip_enabled,
+                "state": self._clip_status,
+                "model": os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32"),
+                "failed": self._clip_failure is not None,
+            },
+        }
 
     def _load_text_model(self):
-        if self._text_attempted:
+        # Model construction is lazy and protected because first requests can arrive
+        # concurrently in FastAPI's worker threadpool.
+        with self._text_lock:
+            if self._text_attempted:
+                return self._text_model
+            self._text_attempted = True
+            if not self.semantic_enabled:
+                self._text_status = "disabled"
+                return None
+            self._text_status = "loading"
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._text_model = SentenceTransformer(
+                    os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+                )
+                self._text_status = "ready"
+            except Exception as exc:
+                self._text_model = None
+                self._text_status = "unavailable"
+                self._text_failure = type(exc).__name__
+                logger.warning("Semantic model unavailable; using lexical fallback (%s)", type(exc).__name__)
             return self._text_model
-        self._text_attempted = True
-        if not self.semantic_enabled:
-            return None
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._text_model = SentenceTransformer(
-                os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-            )
-        except Exception:
-            self._text_model = None
-        return self._text_model
 
     def text_similarity(self, left: str, right: str) -> tuple[float, str]:
         model = self._load_text_model()
@@ -141,26 +181,37 @@ class MatchingEngine:
                 vectors = model.encode([left, right], normalize_embeddings=True)
                 cosine = float((vectors[0] * vectors[1]).sum())
                 return max(0.0, min(1.0, cosine)), "sentence_embeddings"
-            except Exception:
-                pass
+            except Exception as exc:
+                self._text_model = None
+                self._text_status = "unavailable"
+                self._text_failure = type(exc).__name__
+                logger.warning("Semantic inference failed; using lexical fallback (%s)", type(exc).__name__)
         return lexical_similarity(left, right), "lexical_baseline"
 
     def _load_clip(self):
-        if self._clip_attempted:
+        # Keep CLIP initialisation independent from MiniLM so either model can fail safely.
+        with self._clip_lock:
+            if self._clip_attempted:
+                return self._clip_model, self._clip_processor
+            self._clip_attempted = True
+            if not self.clip_enabled:
+                self._clip_status = "disabled"
+                return None, None
+            self._clip_status = "loading"
+            try:
+                from transformers import CLIPModel, CLIPProcessor
+                model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
+                self._clip_processor = CLIPProcessor.from_pretrained(model_name)
+                self._clip_model = CLIPModel.from_pretrained(model_name)
+                self._clip_model.eval()
+                self._clip_status = "ready"
+            except Exception as exc:
+                self._clip_model = None
+                self._clip_processor = None
+                self._clip_status = "unavailable"
+                self._clip_failure = type(exc).__name__
+                logger.warning("CLIP model unavailable; image signal disabled (%s)", type(exc).__name__)
             return self._clip_model, self._clip_processor
-        self._clip_attempted = True
-        if not self.clip_enabled:
-            return None, None
-        try:
-            from transformers import CLIPModel, CLIPProcessor
-            model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
-            self._clip_processor = CLIPProcessor.from_pretrained(model_name)
-            self._clip_model = CLIPModel.from_pretrained(model_name)
-            self._clip_model.eval()
-        except Exception:
-            self._clip_model = None
-            self._clip_processor = None
-        return self._clip_model, self._clip_processor
 
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
         """Use CLIP image-image similarity, or image-text similarity if one photo is absent."""
@@ -218,8 +269,11 @@ class MatchingEngine:
                 cosine = float(sum(float(a) * float(b) for a, b in zip(query_vector, vector)))
                 scores.append((max(0.0, min(1.0, cosine)), "sentence_embeddings"))
             return scores
-        except Exception:
+        except Exception as exc:
             self._text_model = None
+            self._text_status = "unavailable"
+            self._text_failure = type(exc).__name__
+            logger.warning("Batched semantic inference failed; using lexical fallback (%s)", type(exc).__name__)
             return None
 
     def compare(
