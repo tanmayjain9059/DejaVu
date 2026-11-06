@@ -310,7 +310,11 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
         if user["role"] != "office" and lost["created_by"] != user["id"]:
             raise HTTPException(status_code=403, detail="You can only view matches for your own lost reports.")
         candidates = conn.execute(
-            "SELECT * FROM reports WHERE report_type='found' AND status='available' ORDER BY created_at DESC LIMIT 500"
+            """SELECT id, title, description, brand, primary_color, visible_features, category,
+                      occurred_at, location_block, location_floor, location_room, location_area, image_path
+               FROM reports
+               WHERE report_type='found' AND status='available'
+               ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     lost_for_matching = dict(lost)
     if lost_for_matching.get("image_path"):
@@ -324,8 +328,22 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
     ranked = await run_in_threadpool(matching_engine.rank, lost_for_matching, candidate_data, limit=5)
     internal = user["role"] == "office"
     results = []
+    ranked_ids = [match["report"]["id"] for match in ranked]
+    with connect_db() as conn:
+        result_rows = {}
+        if ranked_ids:
+            placeholders = ",".join("?" for _ in ranked_ids)
+            result_rows = {
+                row["id"]: row
+                for row in conn.execute(f"SELECT * FROM reports WHERE id IN ({placeholders})", ranked_ids).fetchall()
+            }
     for match in ranked:
-        item = serialise_report(next(row for row in candidates if row["id"] == match["report"]["id"]), internal=internal)
+        result_row = result_rows.get(match["report"]["id"])
+        if result_row is None:
+            continue
+        if not internal and not report_visible_to_student(result_row, user):
+            continue
+        item = serialise_report(result_row, internal=internal)
         entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"]}
         if internal:
             entry["internal_score"] = match["score"]
