@@ -240,6 +240,22 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertTrue(matches)
         self.assertEqual(matches[0]["report"]["id"], "matching-candidate-0")
 
+    def test_public_config_uses_verified_campus_directory_settings(self):
+        old_blocks = auth_routes.CAMPUS_BLOCKS
+        old_floors = auth_routes.CAMPUS_FLOORS
+        auth_routes.CAMPUS_BLOCKS = ["Verified Main Building", "Library Annex"]
+        auth_routes.CAMPUS_FLOORS = ["Ground", "Mezzanine", "1"]
+        try:
+            response = self.client.get("/api/config")
+        finally:
+            auth_routes.CAMPUS_BLOCKS = old_blocks
+            auth_routes.CAMPUS_FLOORS = old_floors
+        self.assertEqual(response.status_code, 200, response.text)
+        locations = response.json()["locations"]
+        self.assertEqual(locations["blocks"], ["Verified Main Building", "Library Annex"])
+        self.assertEqual(locations["floors"], ["Ground", "Mezzanine", "1"])
+        self.assertIn("deployment-configured", locations["note"])
+
     def test_office_invite_registers_email_bound_student_once(self):
         self.login("finder@example.test", "finder-password")
         denied = self.client.post(
