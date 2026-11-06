@@ -10,9 +10,11 @@ RUN groupadd --system lostlink && useradd --system --gid lostlink --home-dir /ap
     && mkdir -p /data/uploads \
     && chown -R lostlink:lostlink /app /data
 
-COPY requirements.txt ./requirements.txt
+COPY requirements.txt requirements-ml.txt ./
+ARG INSTALL_ML=false
 RUN python -m pip install --upgrade pip \
-    && python -m pip install -r requirements.txt
+    && python -m pip install -r requirements.txt \
+    && if [ "$INSTALL_ML" = "true" ]; then python -m pip install -r requirements-ml.txt; fi
 
 COPY --chown=lostlink:lostlink app ./app
 COPY --chown=lostlink:lostlink scripts ./scripts
