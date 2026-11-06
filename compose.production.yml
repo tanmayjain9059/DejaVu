@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        INSTALL_ML: ${INSTALL_ML:-false}
     image: lostlink:production
     restart: unless-stopped
     init: true
@@ -21,8 +23,14 @@ services:
       UPLOAD_DIR: /data/uploads
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Set ALLOWED_HOSTS to your canonical host, comma-separated}
       PYTHONDONTWRITEBYTECODE: "1"
+      USE_SEMANTIC_MODEL: ${USE_SEMANTIC_MODEL:-false}
+      SEMANTIC_MODEL: ${SEMANTIC_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      USE_CLIP_MODEL: ${USE_CLIP_MODEL:-false}
+      CLIP_MODEL: ${CLIP_MODEL:-openai/clip-vit-base-patch32}
+      HF_HOME: /model-cache
     volumes:
       - lostlink-uploads:/data/uploads
+      - lostlink-model-cache:/model-cache
     tmpfs:
       - /tmp:size=32m,noexec,nosuid
     security_opt:
@@ -38,3 +46,4 @@ services:
 
 volumes:
   lostlink-uploads:
+  lostlink-model-cache:
