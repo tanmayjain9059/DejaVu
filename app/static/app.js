@@ -941,9 +941,18 @@ async function loadClaimLostReports(preferredReportId) {
   select.disabled = true;
   select.innerHTML = '<option value="">Loading your open lost reports…</option>';
   try {
-    const data = await api("/api/reports?mine=true&report_type=lost");
-    if (requestId !== lostReportOptionsRequest) return;
-    const openReports = data.reports.filter((item) => item.report_type === "lost" && item.status === "open");
+    const reports = [];
+    let cursor = null;
+    do {
+      const query = new URLSearchParams({ mine: "true", report_type: "lost", page_size: "100" });
+      if (cursor) query.set("cursor", cursor);
+      const page = await api("/api/reports?" + query.toString());
+      if (requestId !== lostReportOptionsRequest) return;
+      reports.push(...page.reports);
+      cursor = page.next_cursor || null;
+      if (!page.has_more) break;
+    } while (cursor);
+    const openReports = reports.filter((item) => item.report_type === "lost" && item.status === "open");
     select.innerHTML = '<option value="">No linked lost report</option>' + openReports.map((item) =>
       '<option value="' + escapeHTML(item.id) + '">' + escapeHTML(item.title + " · " + item.public_ref + " · " + humanDate(item.occurred_at)) + '</option>'
     ).join("");
