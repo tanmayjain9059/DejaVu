@@ -119,6 +119,29 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(result["engine"], "lexical_baseline")
         self.assertIsNone(result["signals"]["image"])
 
+    def test_rank_searches_candidates_beyond_previous_500_limit(self):
+        lost = {
+            "title": "Navy backpack", "description": "blue backpack with two front pockets",
+            "category": "bags_wallets", "location_block": "Block A",
+        }
+        candidates = [
+            {
+                "id": str(index), "title": f"Unrelated item {index}",
+                "description": "steel water bottle", "category": "accessories",
+            }
+            for index in range(550)
+        ]
+        candidates[0] = {
+            "id": "old-best", "title": "Navy backpack",
+            "description": "blue backpack with two front pockets", "category": "bags_wallets",
+            "location_block": "Block A",
+        }
+
+        ranked = self.engine.rank(lost, candidates, limit=5)
+
+        self.assertEqual(ranked[0]["report"]["id"], "old-best")
+        self.assertEqual(len(ranked), 5)
+
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}
         candidates = [
