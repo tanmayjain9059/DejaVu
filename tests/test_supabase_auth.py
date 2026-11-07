@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import sqlite3
+from contextlib import contextmanager
+from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
 from app.services import supabase_auth
+from app.api import dependencies as auth_dependencies
 from app.core.database import SCHEMA_MIGRATIONS, _migration_add_supabase_identity, _migration_lock_down_supabase_data_api
 
 
@@ -74,6 +79,96 @@ def test_supabase_token_rejects_invalid_identity(monkeypatch):
         supabase_auth.verify_supabase_access_token("access-token")
     assert error.value.status_code == 401
 
+
+
+def _run_supabase_profile(monkeypatch, identity, *, allowed_domains, office_emails, connection):
+    @contextmanager
+    def fake_connect_db():
+        yield connection
+
+    monkeypatch.setattr(auth_dependencies, "AUTH_PROVIDER", "supabase")
+    monkeypatch.setattr(auth_dependencies, "ALLOWED_EMAIL_DOMAINS", set(allowed_domains))
+    monkeypatch.setattr(auth_dependencies, "OFFICE_USER_EMAILS", set(office_emails))
+    monkeypatch.setattr(auth_dependencies, "verify_supabase_access_token", lambda token: identity)
+    monkeypatch.setattr(auth_dependencies, "connect_db", fake_connect_db)
+    request = SimpleNamespace(session={})
+    return asyncio.run(auth_dependencies.authenticated_user(request, authorization="Bearer test-token"))
+
+
+def _identity_database():
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.execute(
+        """CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL,
+            role TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            supabase_user_id TEXT
+        )"""
+    )
+    connection.execute(
+        "CREATE UNIQUE INDEX idx_users_supabase_user_id ON users(supabase_user_id) WHERE supabase_user_id IS NOT NULL"
+    )
+    return connection
+
+
+def test_supabase_provisioning_defaults_to_student_and_ignores_metadata_role(monkeypatch):
+    connection = _identity_database()
+    identity = {
+        "id": "auth-student-1",
+        "email": "student@college.edu",
+        "user_metadata": {"display_name": "Student User", "role": "office"},
+    }
+    user = _run_supabase_profile(
+        monkeypatch, identity, allowed_domains={"college.edu"},
+        office_emails=set(), connection=connection,
+    )
+    assert user["role"] == "student"
+    assert user["display_name"] == "Student User"
+    stored = connection.execute("SELECT supabase_user_id, role FROM users WHERE email=?", (identity["email"],)).fetchone()
+    assert stored["supabase_user_id"] == identity["id"]
+    assert stored["role"] == "student"
+    connection.close()
+
+
+def test_supabase_office_role_requires_exact_allowlist_and_can_be_revoked(monkeypatch):
+    connection = _identity_database()
+    identity = {
+        "id": "auth-office-1",
+        "email": "office@college.edu",
+        "user_metadata": {"display_name": "Office User", "role": "student"},
+    }
+    user = _run_supabase_profile(
+        monkeypatch, identity, allowed_domains={"college.edu"},
+        office_emails={"office@college.edu"}, connection=connection,
+    )
+    assert user["role"] == "office"
+    downgraded = _run_supabase_profile(
+        monkeypatch, identity, allowed_domains={"college.edu"},
+        office_emails=set(), connection=connection,
+    )
+    assert downgraded["role"] == "student"
+    connection.close()
+
+
+def test_supabase_provisioning_rejects_unapproved_email_domain(monkeypatch):
+    connection = _identity_database()
+    identity = {
+        "id": "auth-outsider-1",
+        "email": "outsider@example.net",
+        "user_metadata": {"display_name": "Outsider"},
+    }
+    with pytest.raises(HTTPException) as error:
+        _run_supabase_profile(
+            monkeypatch, identity, allowed_domains={"college.edu"},
+            office_emails=set(), connection=connection,
+        )
+    assert error.value.status_code == 403
+    assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+    connection.close()
 
 def test_supabase_identity_migration_is_registered_and_idempotent():
     import sqlite3
