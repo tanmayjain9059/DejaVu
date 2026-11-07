@@ -1,3 +1,5 @@
+from fastapi.responses import Response
+from app.core.object_storage import store_upload, read_upload, delete_upload
 """HTTP route group."""
 from fastapi import APIRouter
 from starlette.concurrency import run_in_threadpool
@@ -296,7 +298,7 @@ async def upload_report_image(
         raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
-    new_path = None
+    new_key = None
     old = None
     try:
         with connect_db() as conn:
@@ -314,10 +316,8 @@ async def upload_report_image(
                     detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
                 )
             filename = uuid.uuid4().hex + ".jpg"
-            new_path = (UPLOAD_DIR / filename).resolve()
-            if new_path.parent != UPLOAD_DIR.resolve():
-                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-            new_path.write_bytes(normalized)
+            new_key = filename
+            store_upload(new_key, normalized)
             old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
@@ -327,21 +327,19 @@ async def upload_report_image(
             updated = read_report(conn, report_id)
     except Exception:
         # Also catches commit failures from the connection context manager.
-        if new_path is not None:
+        if new_key is not None:
             try:
-                new_path.unlink(missing_ok=True)
-            except OSError:
+                delete_upload(new_key)
+            except Exception:
                 pass
         raise
 
     # Only delete the previous image after the DB transaction has committed.
-    if old:
-        old_path = (UPLOAD_DIR / old).resolve()
-        if old_path.parent == UPLOAD_DIR.resolve() and old_path != new_path:
-            try:
-                old_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+    if old and old != new_key:
+        try:
+            delete_upload(old)
+        except Exception:
+            pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
 
 @router.get("/api/reports/{report_id}/image")
@@ -355,8 +353,9 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
             raise HTTPException(status_code=404, detail="Image not available.")
         if row["category"] in SENSITIVE_CATEGORIES:
             raise HTTPException(status_code=404, detail="Images of sensitive items are restricted.")
-    path = (UPLOAD_DIR / row["image_path"]).resolve()
-    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+    try:
+        image_bytes = read_upload(row["image_path"])
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image not found.")
     headers = {
         "Cache-Control": "private, no-store",
@@ -364,9 +363,8 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
         "X-Content-Type-Options": "nosniff",
     }
     if user["role"] != "office":
-        return StreamingResponse(BytesIO(watermark_image(path, row["public_ref"])),
-                                 media_type="image/jpeg", headers=headers)
-    return FileResponse(path, media_type="image/jpeg", headers=headers)
+        image_bytes = watermark_image_bytes(image_bytes, row["public_ref"])
+    return Response(content=image_bytes, media_type="image/jpeg", headers=headers)
 
 
 @router.get("/api/reports/{report_id}/matches")
