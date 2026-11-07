@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import re
-import threading
 from typing import Any
 
 from app.core.config import CATEGORY_LABELS
@@ -36,10 +35,6 @@ PHRASE_KEYWORDS = {
     "cash_jewellery": ("cash", "money", "currency", "coin", "gold", "silver", "jewellery", "jewelry"),
     "sports_instruments": ("football", "cricket bat", "racket", "sports", "guitar", "violin", "musical instrument"),
 }
-_MODEL = None
-_MODEL_LOCK = threading.Lock()
-_MODEL_ATTEMPTED = False
-
 
 def _normalise(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", (text or "").casefold()))
@@ -57,23 +52,11 @@ def _keyword_scores(text: str) -> dict[str, float]:
 
 
 def _load_model():
-    global _MODEL, _MODEL_ATTEMPTED
+    """Reuse the matching engine's MiniLM instance to avoid duplicate model RAM."""
     if os.getenv("USE_SEMANTIC_MODEL", "false").lower() != "true":
         return None
-    if _MODEL_ATTEMPTED:
-        return _MODEL
-    with _MODEL_LOCK:
-        if _MODEL_ATTEMPTED:
-            return _MODEL
-        _MODEL_ATTEMPTED = True
-        try:
-            from sentence_transformers import SentenceTransformer
-            _MODEL = SentenceTransformer(os.getenv(
-                "SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
-            ))
-        except Exception:
-            _MODEL = None
-    return _MODEL
+    from app.matching import matching_engine
+    return matching_engine._load_text_model()
 
 
 def suggest_category(report: dict[str, Any]) -> dict[str, Any]:
