@@ -26,6 +26,7 @@ to the public internet.
 - [x] Add no-store API response headers to reduce sensitive browser-cache persistence.
 - [x] Review API route authorization for reports, claims, private evidence, notifications, certificates, activity, and office endpoints; existing private-evidence and linked-report authorization regressions cover key boundaries. [ ] Complete staging verification.
 - [x] Add a non-root production container configuration requiring HTTPS cookies, a session secret, database URL, and explicit host allowlist; [ ] validate it behind the actual production proxy.
+- [x] Integrate Supabase Auth with confirmed-email checks, an institution-configured email-domain allowlist, server-side identity-to-profile mapping, and an exact office-email allowlist. Browser-supplied role metadata is ignored; [ ] verify the policy against the institution's actual identity/onboarding requirements in staging.
 - [x] Add an institution-facing retention policy template; [ ] obtain approval for actual periods/holds and implement/test a dry-run-first deletion process.
 - [x] Add a persistent private uploads volume and encrypted uploads backup/restore utilities; [ ] verify permissions and complete a coordinated database-plus-uploads backup/restore drill.
 - [x] Add encrypted PostgreSQL dump and guarded restore scripts plus a daily systemd timer template; [ ] complete an off-host backup and restore drill and configure monitoring/incident response.
@@ -95,12 +96,16 @@ implementations must not replace the current AI baseline.
 
 ### P2 — Controlled onboarding and operations
 
-- [ ] Add office-issued, email-bound, single-use student invites only if the
-  institution confirms this onboarding model. Store only invite hashes, enforce
-  expiry and one-time use, and do not permit public office registration.
-- [ ] Require staff to verify student identity and institutional email through
-  an out-of-band process before issuing an invite; possession of an invite code
-  alone is not proof of email ownership.
+- [x] Add Supabase Auth email signup/sign-in with email confirmation and a configurable
+  institution-domain allowlist. New verified accounts default to student; only exact
+  emails in the server-side office allowlist receive office access.
+- [ ] Obtain institutional approval for domain-based student self-registration and
+  configure only approved domains. Email-domain membership is not a student-roll or
+  current-enrolment check; add SIS/roll-number or another approved eligibility check
+  if the institution requires it.
+- [ ] Provision office accounts through an out-of-band staff process and verify each
+  exact address before adding it to `OFFICE_USER_EMAILS`. Do not permit public office
+  self-registration or accept role claims from browser metadata.
 - [x] Document S3-compatible configuration, private bucket policy, migration,
   lifecycle and recovery in `docs/OBJECT_STORAGE.md`. [ ] Verify the selected
   provider's monitoring, lifecycle and restore controls in staging.
@@ -118,10 +123,12 @@ implementations must not replace the current AI baseline.
 
 ## Current known limitations
 
-- PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage and concurrency/load testing. A local development service and production-oriented container configuration are provided; no hosted production database has been provisioned.
+- PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage and concurrency/load testing. Supabase PostgreSQL is the selected managed database, but no project-specific hosted database has been provisioned or staging-verified yet.
 - Existing SQLite data is not automatically migrated at startup; an explicit utility is available but has not been rehearsed on the production dataset.
-- Image/evidence files can use the local filesystem or a private S3-compatible backend. The S3 migration tool is dry-run by default and preserves local originals; provider-specific object backup/restore and a coordinated database/object restore drill remain open.
+- Image/evidence files can use the local filesystem or private S3-compatible storage. Supabase Storage is the selected provider through its S3 endpoint; credentials, private bucket policy, object lifecycle and a coordinated database/object backup-restore drill must be verified in staging.
 - Matching benchmark data is small and synthetic; it is not evidence of real-campus accuracy.
 - The migration ledger records the legacy bootstrap baseline and applies versioned forward migrations for new changes; older additive compatibility updates still run in the legacy bootstrap, and each future migration needs an explicit recovery plan.
 - The visual pass only slightly reduces shadow, radius, and ambient contrast; it does not change product navigation or workflows.
+- Supabase Auth and role provisioning are covered by unit tests, but live email delivery, redirect URLs, domain policy and office allowlist configuration remain staging gates.
+- Vercel static frontend and Render FastAPI deployment manifests are provided; no production service or custom domain has been provisioned. Confirm the Vercel preview build, Render health checks, Supabase Auth, database migrations, private image upload/retrieval and CORS together before a public launch.
 - A passing CI run is not a security audit, load test, backup/restore test, live deployment verification, or production-readiness certification.
