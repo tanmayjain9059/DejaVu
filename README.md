@@ -283,7 +283,7 @@ Candidate comparison may use:
 - Difference between the reported occurrence times.
 - Optional image similarity if CLIP is enabled and image files are available.
 
-When a CLIP result is available, the component weights are text 0.42, category 0.18, image 0.20, location 0.10 and time 0.10. Without an image result, text is weighted 0.50, category 0.20, location 0.15 and time 0.15. Missing location/time signals are omitted and the available component weights are normalised. These are ranking weights, not calibrated probabilities of ownership.
+LostLink now uses category-aware ranking profiles rather than one fixed set of weights. Electronics give more weight to visual similarity; identity documents emphasise text and contextual signals; bags, clothing and accessories use a balanced text/image profile; keys/access cards increase location relevance; stationery gives more weight to text. Missing signals are omitted and the remaining weights are normalised for each candidate pair. These are ranking weights, not calibrated probabilities of ownership. The profiles are initial heuristics and must be tuned against a representative labelled campus dataset before operational use.
 
 The report matching endpoint currently retrieves up to 500 of the most recently created available found-item records, scores them in application code and returns up to five ranked candidates. This explicit candidate limit helps bound a request but means the implementation is not a full-corpus search index.
 
