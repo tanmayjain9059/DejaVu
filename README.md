@@ -204,7 +204,7 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
 | <code>app/api/routes/claims.py</code> | Claim creation/listing, private evidence, office decisions, disputes and physical handover. |
 | <code>app/api/routes/engagement.py</code> | Notifications, activity, leaderboard, certificate downloads and office summary. |
 | <code>app/core/config.py</code> | Environment configuration, data paths, categories, sensitivity levels and workflow constants. |
-| <code>app/core/database.py</code> | SQLite connections, schema creation, additive migrations, indexes, transactions, audit writing and optional demo seeding. |
+| <code>app/core/database.py</code> | SQLite and optional PostgreSQL connections, schema creation, additive migrations, indexes, transactions, audit writing and optional demo seeding. |
 | <code>app/core/images.py</code> | Image validation/canonicalisation, hashing, perceptual fingerprints and watermarked student previews. |
 | <code>app/core/object_storage.py</code> | Private upload adapter: local filesystem for development or S3-compatible object storage for hosted deployment. |
 | <code>app/core/security.py</code> | Password hashing and verification. |
