@@ -1329,5 +1329,65 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/claims", params={"queue": "disputed"}).status_code, 403)
 
 
+    def test_report_editing_enforces_owner_workflow_and_audits_changes(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Original lost backpack", "Original description with identifying details."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        updated_body = self.report_body(
+            "lost", "Updated lost backpack", "Updated description with a different identifying detail."
+        )
+        updated = self.client.put(f"/api/reports/{lost_id}", json=updated_body)
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["report"]["title"], "Updated lost backpack")
+        with main.connect_db() as conn:
+            audit_row = conn.execute(
+                """SELECT action FROM audit_events
+                   WHERE entity_type='report' AND entity_id=? AND action='report_details_updated'""",
+                (lost_id,),
+            ).fetchone()
+        self.assertIsNotNone(audit_row)
+
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Found item before intake", "Found item description before intake."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{found_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf E-02",
+            "private_detail": "A distinctive mark on the inner side.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        office_edit = self.client.put(
+            f"/api/reports/{found_id}",
+            json=self.report_body("found", "Office corrected item title", "Office corrected description with detail."),
+        )
+        self.assertEqual(office_edit.status_code, 200, office_edit.text)
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        forbidden_owner_edit = self.client.put(
+            f"/api/reports/{found_id}",
+            json=self.report_body("found", "Student late edit", "Student attempts edit after office intake."),
+        )
+        self.assertEqual(forbidden_owner_edit.status_code, 409, forbidden_owner_edit.text)
+        wrong_type = self.client.put(
+            f"/api/reports/{lost_id}",
+            json=self.report_body("found", "Type changed", "Attempt to change a lost report into a found report."),
+        )
+        self.assertEqual(wrong_type.status_code, 422, wrong_type.text)
+
+
 if __name__ == "__main__":
     unittest.main()
