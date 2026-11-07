@@ -1946,6 +1946,7 @@ let finnIndex = 0;
 let finnTapIndex = 0;
 let finnIdleTimer = null;
 let finnHideTimer = null;
+let finnAnchorObserver = null;
 function placeFinnForView(view) {
   if (!finnDock) return;
   const targets = {
@@ -1965,9 +1966,16 @@ function placeFinnForView(view) {
   if (!host) return;
   host.classList.add("finn-anchor");
   if (finnDock.parentElement !== host) host.appendChild(finnDock);
-  const width = host.getBoundingClientRect().width;
-  const layout = width < 390 ? "stacked" : width < 560 ? "compact" : "wide";
-  host.dataset.finnLayout = layout;
+  const updateLayout = () => {
+    const width = host.getBoundingClientRect().width;
+    host.dataset.finnLayout = width < 390 ? "stacked" : width < 560 ? "compact" : "wide";
+  };
+  updateLayout();
+  if (typeof ResizeObserver !== "undefined") {
+    if (finnAnchorObserver) finnAnchorObserver.disconnect();
+    finnAnchorObserver = new ResizeObserver(updateLayout);
+    finnAnchorObserver.observe(host);
+  }
 }
 function finnMode() {
   if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "lost";
