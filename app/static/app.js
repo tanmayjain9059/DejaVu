@@ -1861,6 +1861,14 @@ async function submitDecision(event) {
   }
 }
 
+function enterPublicPreview() {
+  // UI-only public preview: all writes are routed to the in-memory mock store.
+  // No unauthenticated request is sent to the production reporting API.
+  enableMockMode();
+  inspectedUser = null;
+  enterApp(mockCopy(MOCK_USERS.student));
+  showToast("Student preview opened. Demo changes are temporary and stay in this browser session.", false);
+}
 function showPublicHome() {
   currentUser = null;
   $("#loginView").classList.remove("hidden");
@@ -1881,12 +1889,10 @@ function showPublicDestination(type) {
 }
 function openPublicSignIn(mode = "student") {
   const office = mode === "office";
-  $("#loginPanelKicker").textContent = office ? "OFFICE STAFF ACCESS" : "STUDENT ACCESS";
-  $("#loginPanelTitle").textContent = office ? "Office sign in" : "Student sign in";
-  $("#loginPanelCopy").textContent = office
-    ? "Authorised campus staff can access intake, claims and verified handover tools."
-    : "Sign in to manage your reports, follow possible matches and track your claims.";
-  $("#loginSubmitButton").dataset.expectedRole = office ? "office" : "student";
+  $("#loginPanelKicker").textContent = "STUDENT ACCESS";
+  $("#loginPanelTitle").textContent = "Student sign in";
+  $("#loginPanelCopy").textContent = "Sign in to manage your reports, follow possible matches and track your claims.";
+  $("#loginSubmitButton").dataset.expectedRole = "student";
   $("#demoAccess").dataset.loginMode = office ? "office" : "student";
   $("[data-demo-role]").forEach((button) => {
     button.classList.toggle("hidden", button.dataset.demoRole !== (office ? "office" : "student"));
@@ -1897,12 +1903,14 @@ function openPublicSignIn(mode = "student") {
   $("#loginEmail").focus();
 }
 $("#publicSignInButton").addEventListener("click", () => openPublicSignIn("student"));
-$("#officeAccessButton").addEventListener("click", () => openPublicSignIn("office"));
 $("#closeOfficeAccess").addEventListener("click", () => {
   $("#officeLoginPanel").classList.add("hidden");
   $("#loginError").textContent = "";
 });
-document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
+document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => {
+  if (!currentUser) enterPublicPreview();
+  setReportMode(button.dataset.publicReport);
+}));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
 const finnDock = $("#finnDock");
 const finnCharacter = $("#finnCharacter");
@@ -2065,7 +2073,7 @@ $("#loginForm").addEventListener("submit", async (event) => {
       method: "POST",
       body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
     });
-    const expectedRole = $("#loginSubmitButton").dataset.expectedRole || "student";
+    const expectedRole = "student";
     if (result.user.role !== expectedRole) {
       await api("/api/logout", { method: "POST" }).catch(() => {});
       throw new Error(expectedRole === "office"
