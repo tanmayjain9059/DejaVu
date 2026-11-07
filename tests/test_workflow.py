@@ -1294,6 +1294,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(found.status_code, 200, found.text)
         report_id = found.json()["report"]["id"]
+        self.logout()
         with main.connect_db() as conn:
             claimant_id = conn.execute(
                 "SELECT id FROM users WHERE email=?", ("claimant@example.test",)
@@ -1392,6 +1393,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
             ).fetchone()
         self.assertIsNotNone(audit_row)
 
+        self.logout()
         self.login("finder@example.test", "finder-password")
         found = self.client.post(
             "/api/reports",
@@ -1472,6 +1474,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
                      "bags_wallets", finder_id, stamp, stamp),
                 )
 
+        self.logout()
         self.login("office@example.test", "office-password")
         response = self.client.get(f"/api/reports/{lost_id}/matches")
         self.assertEqual(response.status_code, 200, response.text)
