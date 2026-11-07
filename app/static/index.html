@@ -288,31 +288,39 @@
   </dialog>
 
 
-  <aside id="lostlinkMascot" class="lostlink-mascot" aria-label="LostLink guide">
+  <aside id="lostlinkMascot" class="lostlink-mascot" aria-label="LostLink detective guide">
     <div id="mascotTip" class="mascot-tip" role="status">
       <button id="mascotTipClose" class="mascot-tip-close" type="button" aria-label="Dismiss message">×</button>
-      <strong>Hi! I'm Finn 🦊</strong>
-      <p id="mascotMessage">I'll help you find your way around LostLink.</p>
-      <button id="mascotHelpOpen" class="mascot-help-link" type="button">How can I help? <span aria-hidden="true">→</span></button>
+      <strong>Need a hand, detective? 🦊</strong>
+      <p id="mascotMessage">I'm Finn. I'll help you report, search and safely reunite lost belongings.</p>
+      <button id="mascotHelpOpen" class="mascot-help-link" type="button">Ask Finn <span aria-hidden="true">→</span></button>
     </div>
-    <button id="mascotToggle" class="mascot-toggle" type="button" aria-expanded="false" aria-controls="mascotPanel" aria-label="Open Finn, your LostLink guide">
+    <button id="mascotToggle" class="mascot-toggle" type="button" aria-expanded="false" aria-controls="mascotPanel" aria-label="Open Finn, your LostLink detective guide">
       <img src="/static/mascot-fox.svg" alt="" width="88" height="88">
       <span class="mascot-online-dot" aria-hidden="true"></span>
     </button>
     <section id="mascotPanel" class="mascot-panel hidden" aria-labelledby="mascotPanelTitle">
       <header class="mascot-panel-head">
-        <img src="/static/mascot-fox.svg" alt="" width="44" height="44">
-        <div><strong id="mascotPanelTitle">Finn, your LostLink guide</strong><small>Here to help you find your way</small></div>
+        <img src="/static/mascot-fox.svg" alt="" width="52" height="52">
+        <div><strong id="mascotPanelTitle">Finn · LostLink Detective</strong><small>Campus lost-and-found companion</small></div>
         <button id="mascotPanelClose" type="button" class="mascot-panel-close" aria-label="Close guide">×</button>
       </header>
       <div class="mascot-panel-body">
-        <p id="mascotPanelMessage">Hey there! What are you trying to do?</p>
+        <p id="mascotPanelMessage" aria-live="polite">Case opened! What can I help you with?</p>
         <div class="mascot-actions">
-          <button type="button" data-mascot-action="report">Report a lost or found item</button>
-          <button type="button" data-mascot-action="browse">Browse found items</button>
-          <button type="button" data-mascot-action="claims">Understand claims & verification</button>
+          <button type="button" data-mascot-action="tour">✨ Take a quick tour</button>
+          <button type="button" data-mascot-action="report">🔎 Report a lost or found item</button>
+          <button type="button" data-mascot-action="browse">🧭 Browse found items</button>
+          <button type="button" data-mascot-action="claims">🛡️ Understand claims & safe handover</button>
+          <button type="button" data-mascot-action="faq">💡 Tips for a successful report</button>
         </div>
-        <p class="mascot-footnote">Possible matches are leads, not proof of ownership. Staff verify claims before handover.</p>
+        <div id="mascotTour" class="mascot-tour hidden" aria-live="polite">
+          <span id="mascotTourCount">Tour · 1 of 4</span>
+          <strong id="mascotTourTitle">Report</strong>
+          <p id="mascotTourText">Tell us what you lost or found, when it happened and where.</p>
+          <div class="mascot-tour-controls"><button type="button" id="mascotTourBack">Back</button><button type="button" id="mascotTourNext">Next →</button><button type="button" id="mascotTourDone">Finish</button></div>
+        </div>
+        <p class="mascot-footnote">A suggested match is only a lead. Never share passwords, PINs or one-time codes. Staff verify claims and physical handovers.</p>
       </div>
     </section>
   </aside>
