@@ -346,13 +346,32 @@ def _migration_add_report_image_enrichment(conn) -> None:
             conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
 
 
+def _migration_add_ai_embedding_cache(conn) -> None:
+    """Persist versioned semantic vectors without storing raw report descriptions."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS ai_embedding_cache (
+            model_name TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            embedding_json TEXT NOT NULL,
+            dimension INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(model_name, content_hash)
+        )"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_ai_embedding_cache_updated
+           ON ai_embedding_cache(model_name, updated_at)"""
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
-    (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
+    (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),\n    (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
 )
 
 
