@@ -1491,3 +1491,75 @@ body{color:var(--ll-ink)}
 @media(max-width:900px){.form-layout{grid-template-columns:1fr}.report-context-card{position:static;order:2}.report-context-card .guidance-rule{display:inline-flex;vertical-align:top;width:32%;margin-right:1%;gap:8px}}
 @media(max-width:620px){.report-intro{margin:8px auto 20px;text-align:left}.report-intro h2{font-size:2.15rem}.report-intro p:last-child{font-size:.88rem}.report-mode-switch{gap:5px;padding:4px}.report-mode-option{min-height:62px;padding:9px 8px;gap:8px}.report-mode-option strong{font-size:.75rem}.report-mode-option small{font-size:.62rem}.mode-option-mark{width:27px;height:27px;flex-basis:27px;font-size:.6rem}.form-layout{gap:14px}#reportForm.form-card{padding:18px 15px;border-radius:15px}#reportForm .two-columns{grid-template-columns:1fr;gap:13px}.report-context-card .guidance-rule{display:flex;width:100%;margin:0}}
 @media(prefers-reduced-motion:reduce){.report-mode-option{transition:none}}
+
+
+/* ==========================================================================
+   LOSTLINK ORIGINAL IDENTITY — WARM CAMPUS / FIELD-NOTE PALETTE
+   Preserve the Waterline navigation geometry and motion; recolour its surface.
+   ========================================================================== */
+:root {
+  --n-tint: rgba(250, 245, 236, .68);
+  --n-tint-card: rgba(250, 246, 239, .86);
+  --n-fg: #29211d;
+  --n-fg-soft: rgba(41, 33, 29, .68);
+  --n-fg-muted: rgba(41, 33, 29, .45);
+  --n-rim: rgba(255, 250, 241, .9);
+  --canvas-bg: #f2e9dc;
+  --canvas-gradient: radial-gradient(100% 90% at 50% 0%, #fbf5eb 0%, #f1e7d9 62%, #e8d9c7 100%);
+  --water-blue: #a85e32;
+  --water-deep: #8f4c2b;
+  --water-dark: #6f3925;
+  --water-glow: rgba(180, 112, 62, .2);
+  --water-rim: rgba(255, 250, 241, .88);
+  --amber: #b4813f;
+  --amber-soft: rgba(180, 129, 63, .14);
+  --shadow-nav: 0 12px 32px -14px rgba(67, 43, 28, .28), 0 2px 6px rgba(67, 43, 28, .08);
+  --shadow-liquid-card: 0 16px 40px -14px rgba(67, 43, 28, .13), 0 2px 8px rgba(67, 43, 28, .04);
+  --shadow-float-card: 0 24px 50px -16px rgba(67, 43, 28, .18), 0 4px 12px rgba(67, 43, 28, .05);
+}
+html, body { background-color: var(--canvas-bg); color: var(--n-fg); }
+body { background: var(--canvas-gradient); }
+.orb-1 { background: radial-gradient(circle, rgba(194, 126, 75, .18), rgba(224, 190, 151, .10) 60%, transparent 80%); }
+.orb-2 { background: radial-gradient(circle, rgba(142, 91, 57, .13), rgba(210, 177, 139, .08) 70%, transparent 80%); }
+.orb-3 { background: radial-gradient(circle, rgba(222, 185, 139, .18), rgba(246, 229, 204, .10) 70%, transparent 80%); }
+.nimbus-nav { --n-tint: rgba(248, 239, 225, .58); --n-fg: #30251f; --n-fg-soft: rgba(48,37,31,.65); --n-rim: rgba(255,249,239,.9); }
+.nimbus-nav .nimbus-glass {
+  box-shadow: inset 0 1px 1px var(--n-rim), inset 0 0 0 1px rgba(255,255,255,.28), var(--shadow-nav);
+}
+.nimbus-drop {
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255,255,255,.88), rgba(255,255,255,0) 55%), rgba(220, 190, 153, .62);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.95), inset 0 -2px 6px rgba(143,76,43,.12), inset 0 0 0 1px rgba(255,255,255,.65), 0 6px 16px -6px rgba(91,55,34,.24);
+}
+.nimbus-item:focus-visible { outline-color: #b4813f; }
+@keyframes nvDoor { 0% { fill: transparent; } 30% { fill: #f3d49a; } 100% { fill: rgba(180,129,63,.52); } }
+.button-liquid, .button-primary {
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255,255,255,.65), rgba(255,255,255,0) 55%), linear-gradient(135deg,#b87943 0%,#8f4c2b 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.82), inset 0 -2px 6px rgba(111,57,37,.18), inset 0 0 0 1px rgba(255,255,255,.3), 0 8px 24px -6px rgba(143,76,43,.32), 0 2px 6px rgba(67,43,28,.08);
+}
+.button-liquid:hover, .button-primary:hover { box-shadow: inset 0 1.5px 1.5px #fff, 0 12px 30px -6px rgba(143,76,43,.38), 0 3px 8px rgba(67,43,28,.1); }
+.button-quiet { color: var(--n-fg); box-shadow: inset 0 1px 1.5px var(--n-rim), inset 0 0 0 1px rgba(255,255,255,.35), 0 8px 20px -8px rgba(67,43,28,.12); }
+.button-quiet:hover, .link-btn:hover { color: var(--water-deep); }
+.brand-liquid-pill { color: var(--n-fg); }
+.brand-text, .profile-pill-name { color: var(--n-fg); }
+.liquid-logo-bubble { background: radial-gradient(120% 140% at 30% 0%, rgba(255,255,255,.9), rgba(255,255,255,0) 55%), linear-gradient(135deg,#c98750 0%,#8f4c2b 100%); box-shadow: inset 0 1px 1px rgba(255,255,255,.9), 0 4px 12px -2px rgba(143,76,43,.28); }
+.profile-role-chip { background: rgba(180,129,63,.14); color: #85552e; }
+.profile-dropdown-menu { box-shadow: var(--shadow-nav), 0 20px 48px -10px rgba(67,43,28,.2); }
+.profile-dropdown-item:hover { color: var(--water-deep); }
+.start-badge, .count-pill { color: var(--water-deep); }
+.start-glass-card:hover { box-shadow: inset 0 1.5px 2px #fff, 0 24px 60px -14px rgba(143,76,43,.18), 0 4px 14px rgba(67,43,28,.05); }
+.icon-lost { background: linear-gradient(135deg,#ead8c3,#d8b999); color: #78482e; }
+.icon-found { background: linear-gradient(135deg,#f4e4bd,#e6c98d); color: #8b5a25; }
+.button-found-action { background: linear-gradient(135deg,#c3934e 0%,#96652f 100%); box-shadow: 0 8px 24px -6px rgba(150,101,47,.3); }
+.item-card:hover { box-shadow: inset 0 1.5px 2px #fff, 0 20px 48px -12px rgba(143,76,43,.16); }
+input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0 0 0 3px rgba(180,129,63,.16), inset 0 1px 2px #fff; }
+.item-ref { color: #80502f; background: rgba(180,129,63,.08); border-color: rgba(180,129,63,.2); }
+.item-meta span { color: #514139; }
+.item-meta span b, .card-kicker, .eyebrow { color: var(--water-deep); }
+.item-detail-grid dd { color: #332720; }
+.characteristic-chip { color: #5b473a; box-shadow: 0 1px 3px rgba(67,43,28,.04); }
+.item-visual { background: linear-gradient(135deg,rgba(250,245,236,.8),rgba(224,207,184,.65)); }
+.liquid-glass-panel, .glass-card { box-shadow: inset 0 1px 1px var(--n-rim), inset 0 0 0 1px rgba(255,255,255,.2), 0 14px 36px -14px rgba(67,43,28,.14), 0 2px 6px rgba(67,43,28,.04); }
+.public-landing-shell { color: #2d211b; }
+.finn-tail-group { transform-box: fill-box; transform-origin: 88% 78%; animation: finnTailWag 2.4s ease-in-out infinite; }
+@keyframes finnTailWag { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(12deg); } }
+@media (prefers-reduced-motion: reduce) { .finn-tail-group { animation: none; } }
