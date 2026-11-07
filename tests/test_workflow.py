@@ -932,6 +932,16 @@ class LostLinkWorkflowTests(unittest.TestCase):
             legacy_columns_migration = conn.execute(
                 "SELECT name FROM schema_migrations WHERE version=4"
             ).fetchone()
+            reconciliation_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=7"
+            ).fetchone()
+            report_columns = app_database.table_columns(conn, "reports")
+            cache_table = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
+            ).fetchone()
+            candidate_index = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
+            ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
         self.assertIsNotNone(active_index_migration)
@@ -943,6 +953,15 @@ class LostLinkWorkflowTests(unittest.TestCase):
             legacy_columns_migration["name"],
             "legacy_additive_columns_and_image_fingerprints",
         )
+        self.assertIsNotNone(reconciliation_migration)
+        self.assertEqual(
+            reconciliation_migration["name"],
+            "pr3_schema_lineage_reconciliation_and_matching_indexes",
+        )
+        self.assertTrue({"ai_caption", "ai_keywords", "ai_attributes_json",
+                         "ai_enriched_at", "ai_enrichment_model"}.issubset(report_columns))
+        self.assertIsNotNone(cache_table)
+        self.assertIsNotNone(candidate_index)
 
     def test_application_refuses_unknown_future_schema_versions(self):
         with self.assertRaisesRegex(RuntimeError, "newer than this application supports"):
