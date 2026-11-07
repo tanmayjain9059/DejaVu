@@ -1255,5 +1255,79 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(invalid_size.status_code, 422)
 
 
+    def test_claim_listing_cursor_pages_are_stable_for_student_and_office(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Claim pagination test item", "A test item used to verify claim queue pagination."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        with main.connect_db() as conn:
+            claimant_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("claimant@example.test",)
+            ).fetchone()["id"]
+            timestamp = "2026-11-01T10:00:00+00:00"
+            for index in range(7):
+                status = "disputed" if index < 2 else ("pending" if index < 4 else "rejected")
+                conn.execute(
+                    """INSERT INTO claims
+                       (id, report_id, claimant_id, evidence, evidence_types, status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (f"pagination-claim-{index}", report_id, claimant_id,
+                     "This is test evidence for a cursor pagination claim.",
+                     '["distinctive_features"]', status, timestamp, timestamp),
+                )
+
+        self.login("claimant@example.test", "claimant-password")
+        collected = []
+        cursor = None
+        while True:
+            params = {"page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["claims"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                break
+        self.assertEqual(len(collected), 7)
+        self.assertEqual(len(set(collected)), 7)
+
+        self.logout()
+        self.login("office@example.test", "office-password")
+        office_collected = []
+        cursor = None
+        while True:
+            params = {"page_size": 3, "queue": "all"}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            office_collected.extend(item["id"] for item in payload["claims"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                break
+        self.assertEqual(len(office_collected), 7)
+        self.assertEqual(len(set(office_collected)), 7)
+
+        disputed = self.client.get("/api/claims", params={"queue": "disputed"})
+        self.assertEqual(disputed.status_code, 200, disputed.text)
+        self.assertEqual(len(disputed.json()["claims"]), 2)
+        pending = self.client.get("/api/claims", params={"queue": "pending"})
+        self.assertEqual(len(pending.json()["claims"]), 2)
+        student_only_queue = self.client.get("/api/claims", params={"queue": "other"})
+        self.assertEqual(student_only_queue.status_code, 200)
+
+    def test_claim_listing_rejects_bad_pagination_and_student_queue_override(self):
+        self.login("claimant@example.test", "claimant-password")
+        self.assertEqual(self.client.get("/api/claims", params={"page_size": 101}).status_code, 422)
+        self.assertEqual(self.client.get("/api/claims", params={"cursor": "invalid"}).status_code, 400)
+        self.assertEqual(self.client.get("/api/claims", params={"queue": "disputed"}).status_code, 403)
+
+
 if __name__ == "__main__":
     unittest.main()
