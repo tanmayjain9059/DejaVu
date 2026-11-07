@@ -111,8 +111,8 @@ Readiness verifies both the PostgreSQL connection and the configured private sto
 
 ## 7. Backups, limits and security
 
-- Supabase Free does not include automatic database backups. Schedule encrypted `pg_dump` exports to storage outside the Supabase project and test restores. Do not store the only backup in the same project/account.
-- Supabase Storage S3 compatibility does not provide S3 object versioning. Keep an independent encrypted copy of uploads if they become important.
+- Supabase Free does not include automatic database backups. Schedule encrypted `pg_dump` exports and `scripts/backup_supabase_storage.sh` exports to storage outside the Supabase project and test restores. Do not store the only backup in the same project/account.
+- Supabase Storage S3 compatibility does not provide S3 object versioning. Use `scripts/backup_supabase_storage.sh` to export the private bucket and create an encrypted archive; see [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md). Keep an independent encrypted copy of uploads if they become important.
 - Free-tier quotas are finite and can change. Monitor database size, storage size, egress, request counts, Oracle resource utilisation and account notices.
 - Oracle may reclaim an idle Always Free VM. Keep source code and deployment configuration in Git; keep backups outside the VM.
 - Keep CLIP and MiniLM disabled on the baseline VM until measured memory/CPU use demonstrates they fit. The deterministic matching path remains available.
