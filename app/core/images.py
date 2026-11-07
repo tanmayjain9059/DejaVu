@@ -76,9 +76,10 @@ def image_fingerprint_matches(conn: sqlite3.Connection, image_sha256: str, image
     return False
 
 
-def watermark_image(path: Path, label: str) -> bytes:
-    """Serve labelled previews to discourage saving/reusing photos as claim evidence."""
-    with Image.open(path) as source:
+def watermark_image(path: Path | bytes, label: str) -> bytes:
+    """Serve labelled previews from either local or private object storage."""
+    image_source = BytesIO(path) if isinstance(path, bytes) else path
+    with Image.open(image_source) as source:
         image = source.convert("RGB")
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()

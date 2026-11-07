@@ -15,6 +15,10 @@ def home():
 def public_config():
     return {
         "demo_mode": DEMO_MODE,
+        "auth_mode": AUTH_PROVIDER,
+        "supabase_url": SUPABASE_URL if AUTH_PROVIDER == "supabase" else None,
+        "supabase_anon_key": SUPABASE_ANON_KEY if AUTH_PROVIDER == "supabase" else None,
+        "allowed_email_domains": sorted(ALLOWED_EMAIL_DOMAINS) if AUTH_PROVIDER == "supabase" else [],
         "image_enrichment_enabled": USE_IMAGE_ENRICHMENT,
         "points": POINT_RULES,
         "certificate_milestones": [{"tier": m["tier"], "threshold": m["threshold"]} for m in CERTIFICATE_MILESTONES],
@@ -29,6 +33,8 @@ def public_config():
 
 @router.post("/api/login")
 def login(body: LoginBody, request: Request):
+    if AUTH_PROVIDER == "supabase":
+        raise HTTPException(status_code=410, detail="Use Supabase Auth to sign in.")
     email = body.email.strip().lower()
     ip_address = request.client.host if request.client else "unknown"
     subjects = ["email:" + email, "ip:" + ip_address]

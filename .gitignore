@@ -7,3 +7,8 @@ data/
 .pytest_cache/
 .coverage
 .DS_Store
+
+# Generated at Vercel build time; contains the public API origin only.
+app/static/deployment-config.js
+
+dist/

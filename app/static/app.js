@@ -2,6 +2,10 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
+let supabaseClient = null;
+let supabaseAccessToken = null;
+let supabaseSignupMode = false;
+const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -254,6 +258,77 @@ async function mockApi(url,options){
  throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
 }
 
+function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
+function imageSourceAttribute(path) {
+  if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
+  return 'src="' + escapeHTML(apiAssetUrl(path)) + '"';
+}
+let pendingAuthImages = new WeakSet();
+async function hydrateAuthImage(img) {
+  if (!supabaseClient || pendingAuthImages.has(img) || !img.dataset.authImage) return;
+  pendingAuthImages.add(img);
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data && data.session ? data.session.access_token : null;
+    if (!token) throw new Error("Sign-in required");
+    const response = await fetch(API_BASE_URL + img.dataset.authImage, {headers:{Authorization:"Bearer " + token}});
+    if (!response.ok) throw new Error("Image request failed");
+    const objectUrl = URL.createObjectURL(await response.blob());
+    img.dataset.authImageObjectUrl = objectUrl;
+    img.src = objectUrl;
+  } catch (_) {
+    img.alt = "Image unavailable";
+    img.classList.add("image-unavailable");
+  }
+}
+function observeAuthImages() {
+  const scan = (node) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches("img[data-auth-image]")) hydrateAuthImage(node);
+    if (node.querySelectorAll) node.querySelectorAll("img[data-auth-image]").forEach(hydrateAuthImage);
+  };
+  const release = (node) => {
+    if (node.nodeType !== 1) return;
+    const images = [];
+    if (node.matches("img[data-auth-image-object-url]")) images.push(node);
+    if (node.querySelectorAll) images.push(...node.querySelectorAll("img[data-auth-image-object-url]"));
+    images.forEach((img) => { URL.revokeObjectURL(img.dataset.authImageObjectUrl); delete img.dataset.authImageObjectUrl; });
+  };
+  const observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
+    mutation.addedNodes.forEach(scan);
+    mutation.removedNodes.forEach(release);
+  }));
+  observer.observe(document.body, {childList:true,subtree:true});
+  scan(document.body);
+}
+
+async function downloadAuthenticatedFile(path, filename) {
+  if (!supabaseClient) { window.location.href = apiAssetUrl(path); return; }
+  const { data } = await supabaseClient.auth.getSession();
+  const token = data && data.session ? data.session.access_token : null;
+  if (!token) throw new Error("Please sign in again to download this file.");
+  const response = await fetch(API_BASE_URL + path, {headers:{Authorization:"Bearer " + token}});
+  if (!response.ok) throw new Error("Download failed (" + response.status + ").");
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+}
+function clearAuthenticatedImages() {
+  document.querySelectorAll("img[data-auth-image]").forEach((img) => {
+    if (img.dataset.authImageObjectUrl) URL.revokeObjectURL(img.dataset.authImageObjectUrl);
+    img.removeAttribute("src");
+    img.removeAttribute("data-auth-image");
+    delete img.dataset.authImageObjectUrl;
+  });
+  pendingAuthImages = new WeakSet();
+}
+
+
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
   if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== "string") {
@@ -263,9 +338,17 @@ async function api(url, options) {
     opts.headers["Content-Type"] = "application/json";
   }
   if (usingMockApi) return mockApi(url, opts);
+  if (supabaseClient) {
+    const { data } = await supabaseClient.auth.getSession();
+    supabaseAccessToken = data && data.session ? data.session.access_token : null;
+    if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
+  }
   let response;
-  try { response = await fetch(url, opts); }
-  catch (_) { enableMockMode(); return mockApi(url, opts); }
+  try { response = await fetch(API_BASE_URL + url, opts); }
+  catch (_) {
+    if ((appConfig && appConfig.auth_mode === "supabase") || API_BASE_URL) throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+    enableMockMode(); return mockApi(url, opts);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
   return data;
@@ -317,6 +400,12 @@ function categoryLabel(value) {
 
 async function loadConfig() {
   appConfig = await api("/api/config");
+  if (appConfig.auth_mode === "supabase") {
+    if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
+    supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    $("#demoAccess").classList.add("hidden");
+    $("#signupToggle").classList.remove("hidden");
+  }
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
@@ -506,7 +595,7 @@ function itemCard(report, options) {
   const opts = options || {};
   const icon = CATEGORY_ICONS[report.category] || "◌";
   const visual = report.image_url
-    ? '<div class="item-visual"><img src="' + escapeHTML(report.image_url) + '" alt="Item photograph" loading="lazy"></div>'
+    ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
   const claimButton = opts.claim
     ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
@@ -777,7 +866,7 @@ async function loadMyClaims() {
           evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
         : "";
       const evidencePhoto = claim.evidence_image_available
-        ? '<figure class="evidence-image-preview"><img src="/api/claims/' + escapeHTML(claim.id) + '/evidence-image" alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
+        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
         : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
@@ -809,7 +898,7 @@ async function openItemDetails(reportId) {
     ["Record updated", humanDateTime(report.updated_at)]
   ].filter((fact) => fact[1]);
   const photo = report.image_url
-    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(report.image_url) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
+    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" ' + imageSourceAttribute(report.image_url) + ' alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
     : "";
   const matchDetails = report.match_reasons && report.match_reasons.length
     ? '<section class="match-detail-block"><h3>Why it was suggested</h3><p class="muted">These are comparison signals, not proof of ownership.</p><ul class="reason-list">' +
@@ -1094,9 +1183,9 @@ function officeClaimCard(claim) {
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + escapeHTML(claim.id) + "/evidence-image";
+  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
   const evidencePhoto = claim.evidence_image_available
-    ? '<figure class="evidence-image-preview"><img src="' + evidenceImageSource + '" alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
+    ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
   return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
@@ -1463,7 +1552,28 @@ async function submitDecision(event) {
 }
 
 async function start() {
-  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
+  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
+    showLogin();
+    $("#loginError").textContent = "This preview is not connected to a LostLink API yet. Configure BACKEND_ORIGIN in Vercel after the backend is deployed.";
+    return;
+  }
+  try { await loadConfig(); }
+  catch (error) {
+    if (API_BASE_URL) { showLogin(); $("#loginError").textContent = error.message; return; }
+    enableMockMode(); await loadConfig();
+  }
+  if (appConfig && appConfig.auth_mode === "supabase") {
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      supabaseAccessToken = data && data.session ? data.session.access_token : null;
+      if (!supabaseAccessToken) { showLogin(); return; }
+      const profile = await api("/api/me");
+      enterApp(profile.user);
+    } catch (error) {
+      supabaseAccessToken = null; showLogin(); $("#loginError").textContent = error.message;
+    }
+    return;
+  }
   try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
   if (!usingMockApi && appConfig && appConfig.demo_mode) {
     try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
@@ -1475,14 +1585,45 @@ $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#loginError").textContent = "";
   try {
-    const result = await api("/api/login", {
-      method: "POST",
-      body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
-    });
-    enterApp(result.user);
-    showToast("Signed in successfully.", false);
+    if (supabaseClient) {
+      const email = $("#loginEmail").value.trim().toLowerCase();
+      const password = $("#loginPassword").value;
+      if (supabaseSignupMode) {
+        const allowedDomains = appConfig.allowed_email_domains || [];
+        if (allowedDomains.length && !allowedDomains.includes(email.split("@").pop())) throw new Error("Use an approved college email address to create an account.");
+        const displayName = $("#signupName").value.trim();
+        if (!displayName) throw new Error("Enter your full name.");
+        const { data, error } = await supabaseClient.auth.signUp({email,password,options:{data:{display_name:displayName}}});
+        if (error) throw error;
+        if (!data.session) {
+          showToast("Account created. Check your email to confirm it, then sign in.", false);
+          setSupabaseSignupMode(false);
+          return;
+        }
+        supabaseAccessToken = data.session.access_token;
+      } else {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
+        if (error) throw error;
+        supabaseAccessToken = data.session.access_token;
+      }
+      const profile = await api("/api/me");
+      enterApp(profile.user);
+      showToast(supabaseSignupMode ? "Account created successfully." : "Signed in successfully.", false);
+      setSupabaseSignupMode(false);
+      return;
+    }
+    const result = await api("/api/login", {method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
+    enterApp(result.user); showToast("Signed in successfully.", false);
   } catch (error) { $("#loginError").textContent = error.message; }
 });
+function setSupabaseSignupMode(enabled) {
+  supabaseSignupMode = Boolean(enabled);
+  $("#signupNameLabel").classList.toggle("hidden", !supabaseSignupMode);
+  $("#loginSubmitButton").innerHTML = supabaseSignupMode ? "Create account" : 'Sign in <span aria-hidden="true">↗</span>';
+  $("#signupToggle").textContent = supabaseSignupMode ? "Back to sign in" : "Create a student account";
+  $("#loginPassword").autocomplete = supabaseSignupMode ? "new-password" : "current-password";
+}
+$("#signupToggle").addEventListener("click", () => setSupabaseSignupMode(!supabaseSignupMode));
 
 async function launchDemoAccount(email,password) {
   $("#loginError").textContent="";
@@ -1501,7 +1642,8 @@ $("#viewSwitchBtn").addEventListener("click",async()=>{
 $("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
 $("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
 $("#logoutButton").addEventListener("click", async () => {
-  try { await api("/api/logout", { method: "POST" }); } catch (_) {}
+  if (supabaseClient) { clearAuthenticatedImages(); await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
+  else { try { await api("/api/logout", { method: "POST" }); } catch (_) {} }
   inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
 });
 $("#studentNav").addEventListener("click", (event) => {
@@ -1548,7 +1690,7 @@ document.addEventListener("click", (event) => {
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
   const certificate = event.target.closest("[data-certificate-download]");
-  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else window.location.href = "/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download"; }
+  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
@@ -1649,4 +1791,5 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
   } catch (error) { showToast(error.message, true); }
 }
 
+observeAuthImages();
 start();
