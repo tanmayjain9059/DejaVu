@@ -21,6 +21,9 @@ class MatchingEvaluationTests(unittest.TestCase):
         self.assertEqual(result["metrics"]["mrr"],1.0)
         self.assertEqual(result["threshold_diagnostics"]["false_positives"],1)
         self.assertEqual(result["threshold_diagnostics"]["false_positive_rate"],.5)
+        self.assertEqual(result["latency"]["p50_query_ms"] >= 0, True)
+        self.assertEqual(result["latency"]["p95_query_ms"] >= result["latency"]["p50_query_ms"], True)
+        self.assertEqual(result["latency"]["max_query_ms"] >= result["latency"]["p95_query_ms"], True)
 
     def test_missed_relevant_candidate(self):
         case = {"case_id":"Q2","lost":{"category":"stationery"},
