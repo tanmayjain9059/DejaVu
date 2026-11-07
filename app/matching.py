@@ -161,12 +161,39 @@ class MatchingEngine:
             self._text_model = None
         return self._text_model
 
+    def _encode_texts_cached(self, texts: list[str], model) -> list[list[float]]:
+        """Return normalized vectors, loading and persisting only cache misses."""
+        from app.services.embedding_cache import (
+            cache_model_identifier, embedding_cache_key,
+            get_cached_embeddings, store_cached_embeddings,
+        )
+
+        model_name = cache_model_identifier(
+            os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        )
+        cached = get_cached_embeddings(model_name, texts)
+        missing = list(dict.fromkeys(
+            text for text in texts if embedding_cache_key(text) not in cached
+        ))
+        if missing:
+            encoded = model.encode(
+                missing, normalize_embeddings=True, batch_size=32,
+                show_progress_bar=False,
+            )
+            fresh = {
+                embedding_cache_key(text): [float(value) for value in vector]
+                for text, vector in zip(missing, encoded)
+            }
+            cached.update(fresh)
+            store_cached_embeddings(model_name, fresh)
+        return [cached[embedding_cache_key(text)] for text in texts]
+
     def text_similarity(self, left: str, right: str) -> tuple[float, str]:
         model = self._load_text_model()
         if model is not None:
             try:
-                vectors = model.encode([left, right], normalize_embeddings=True)
-                cosine = float((vectors[0] * vectors[1]).sum())
+                vectors = self._encode_texts_cached([left, right], model)
+                cosine = sum(a * b for a, b in zip(vectors[0], vectors[1]))
                 return max(0.0, min(1.0, cosine)), "sentence_embeddings"
             except Exception:
                 pass
@@ -236,9 +263,7 @@ class MatchingEngine:
             return None
         texts = [_text_value(lost), *(_text_value(report) for report in found_reports)]
         try:
-            embeddings = model.encode(
-                texts, normalize_embeddings=True, batch_size=32, show_progress_bar=False
-            )
+            embeddings = self._encode_texts_cached(texts, model)
             query_vector = embeddings[0]
             scores = []
             for vector in embeddings[1:]:
