@@ -58,34 +58,39 @@ implementations must not replace the current AI baseline.
 - [x] Add keyset cursor pagination to report listing, with deterministic
   `created_at DESC, id DESC` ordering, a bounded page size (1–100), opaque
   cursor validation, and existing role/visibility/search filters preserved.
-- [ ] Add keyset pagination to student claims and office claim queues. Preserve
-  office disputed-first review priority without using mutable claim status as a
-  cursor key; design and test the queue semantics before implementation.
-- [ ] Paginate office intake/inventory views with deterministic ordering and
-  bounded page sizes.
-- [ ] Replace the matching endpoint's fixed 500-row candidate window with a
-  measured retrieval strategy that preserves the current category-aware scorer,
-  MiniLM cache, batched CLIP inference, and AI caption/keyword signals. Do not
-  replace it with an unbounded in-memory full-corpus scan without capacity tests.
-- [ ] Add and validate a composite candidate lookup index for the final retrieval
-  query plan; include SQLite and PostgreSQL query-plan coverage.
-- [ ] Revalidate candidate visibility and availability immediately before
-  returning suggestions so stale or no-longer-claimable items are not exposed.
-- [ ] Preserve AI caption and keyword fields in every search and candidate query.
-- [ ] Add pagination regressions for tied timestamps, filters, cursor tampering,
-  no duplicates/skips, and changing claim status between page requests.
+- [x] Add keyset pagination to student claims and office claim queues. Cursor
+  order uses immutable creation time and ID; office staff can page disputed,
+  pending and remaining queues separately, and each row exposes a priority rank.
+  This avoids using mutable status as a cursor key.
+- [x] Office intake/inventory lists use the shared report-list cursor API with
+  deterministic creation-time/ID ordering and bounded page sizes.
+- [x] Replace the fixed 500-row cutoff with a bounded two-tier indexed shortlist
+  (75% same-category, remainder cross-category/location; default 2,000 and
+  configurable up to 10,000). Existing category-aware scoring, MiniLM cache,
+  batched CLIP inference, and AI caption/keyword fields are retained. Exhaustive
+  recall and campus capacity still require representative staging measurements.
+- [x] Add composite report candidate/recent indexes in migration v7. [ ] Record
+  SQLite and PostgreSQL query-plan and latency measurements on staging.
+- [x] Re-read top-ranked candidates after inference and drop records that are no
+  longer available or visible to the requesting student.
+- [x] Preserve AI caption and keyword fields in report search and candidate
+  retrieval; current matcher text composition includes enrichment fields.
+- [x] Add report/claim cursor regression tests for tied timestamps, filters,
+  malformed cursors, bounded page sizes, and duplicate/skip detection. [ ] Add
+  a live PostgreSQL mutation-between-pages regression before release.
 
 ### P1 — Workflow and storage
 
-- [ ] Add report editing with owner/office authorization, report-type and workflow
-  state restrictions, field validation, and an audit event for every edit.
-- [ ] Introduce private S3-compatible object storage behind a storage interface;
-  keep local filesystem storage for development and tests.
-- [ ] Route report photos and claim evidence through authenticated private
-  retrieval; never expose public bucket URLs or weaken current image visibility,
-  sensitivity, watermark, and no-store controls.
-- [ ] Add storage migration, integrity verification, and coordinated database +
-  object backup/restore tests before switching an existing deployment.
+- [x] Add report editing with owner/office authorization, immutable report type,
+  workflow-state restrictions, validation, and an audit event.
+- [x] Add a private S3-compatible object-storage adapter while retaining local
+  filesystem storage as the default development/test backend.
+- [x] Route report photos and claim evidence through the storage adapter and
+  existing authenticated routes; preserve visibility, sensitive-category,
+  watermark, and no-store checks. CLIP and BLIP read through the adapter.
+- [x] Add a dry-run-first local-to-S3 copy utility that preserves database keys
+  and local originals. [ ] Add provider-specific integrity and coordinated
+  database/object backup-restore drills before switching a populated deployment.
 
 ### P2 — Controlled onboarding and operations
 
@@ -95,8 +100,9 @@ implementations must not replace the current AI baseline.
 - [ ] Require staff to verify student identity and institutional email through
   an out-of-band process before issuing an invite; possession of an invite code
   alone is not proof of email ownership.
-- [ ] Document provider-specific deployment settings, private storage lifecycle,
-  monitoring, and recovery procedures after the storage adapter is selected.
+- [x] Document S3-compatible configuration, private bucket policy, migration,
+  lifecycle and recovery in `docs/OBJECT_STORAGE.md`. [ ] Verify the selected
+  provider's monitoring, lifecycle and restore controls in staging.
 
 ### Migration reconciliation requirement
 
@@ -112,7 +118,7 @@ invite storage. Test upgrades from databases initialized on either lineage.
 
 - PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage and concurrency/load testing. A local development service and production-oriented container configuration are provided; no hosted production database has been provisioned.
 - Existing SQLite data is not automatically migrated at startup; an explicit utility is available but has not been rehearsed on the production dataset.
-- Image/evidence files remain filesystem-backed. Production Compose provides a persistent volume, but coordinated off-host backup and restoration must be verified.
+- Image/evidence files can use the local filesystem or a private S3-compatible backend. The S3 migration tool is dry-run by default and preserves local originals; provider-specific object backup/restore and a coordinated database/object restore drill remain open.
 - Matching benchmark data is small and synthetic; it is not evidence of real-campus accuracy.
 - The migration ledger records the legacy bootstrap baseline and applies versioned forward migrations for new changes; older additive compatibility updates still run in the legacy bootstrap, and each future migration needs an explicit recovery plan.
 - The visual pass only slightly reduces shadow, radius, and ambient contrast; it does not change product navigation or workflows.
