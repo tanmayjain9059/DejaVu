@@ -782,7 +782,7 @@ function navigate(view) {
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
   refreshNotificationBadge();
-  if (typeof wakeFinn === "function") wakeFinn(finnMode());
+  placeFinnForView(view);\n  if (typeof wakeFinn === "function") wakeFinn(finnMode());
 }
 
 
@@ -1859,13 +1859,13 @@ function showPublicHome() {
   $("#publicHomeContent").classList.remove("hidden");
   $("#publicLostPage").classList.add("hidden");
   $("#publicFoundPage").classList.add("hidden");
-  if (typeof wakeFinn === "function") wakeFinn("home");
+  placeFinnForView("home");\n  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 function showPublicDestination(type) {
   $("#publicHomeContent").classList.add("hidden");
   $("#publicLostPage").classList.toggle("hidden", type !== "lost");
   $("#publicFoundPage").classList.toggle("hidden", type !== "found");
-  if (typeof wakeFinn === "function") wakeFinn(type);
+  placeFinnForView(type);\n  if (typeof wakeFinn === "function") wakeFinn(type);
 }
 $("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
 $("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
@@ -1947,6 +1947,27 @@ let finnIndex = 0;
 let finnTapIndex = 0;
 let finnIdleTimer = null;
 let finnHideTimer = null;
+function placeFinnForView(view) {
+  if (!finnDock) return;
+  const targets = {
+    home: "#publicActionPanel .public-action-heading",
+    lost: "#publicLostPage",
+    found: "#publicFoundPage",
+    start: "#startView .start-hero",
+    browse: "#browseView > .section-heading",
+    report: "#reportView > .section-heading",
+    "my-reports": "#myReportsView > .section-heading",
+    "my-claims": "#myClaimsView > .section-heading",
+    notifications: "#notificationsView > .section-heading",
+    activity: "#activityView > .section-heading",
+    office: "#officeView > .section-heading"
+  };
+  const host = document.querySelector(targets[view] || targets.home);
+  if (!host) return;
+  host.classList.add("finn-host");
+  if (finnDock.parentElement !== host) host.appendChild(finnDock);
+}
+
 function finnMode() {
   if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "lost";
   if ($("#publicFoundPage") && !$("#publicFoundPage").classList.contains("hidden")) return "found";
