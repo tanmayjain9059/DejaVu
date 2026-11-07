@@ -10,3 +10,5 @@ data/
 
 # Generated at Vercel build time; contains the public API origin only.
 app/static/deployment-config.js
+
+dist/
