@@ -282,7 +282,7 @@ class MatchingEngine:
             )
 
             reports = [lost, *found_reports]
-            image_records: dict[str, tuple[Path, bytes]] = {}
+            image_records: dict[str, Path] = {}
             report_image_keys: list[str | None] = []
             for report in reports:
                 path_value = report.get("image_path")
@@ -292,28 +292,30 @@ class MatchingEngine:
                     continue
                 raw = path.read_bytes()
                 digest = hashlib.sha256(raw).hexdigest()
-                image_records.setdefault(digest, (path, raw))
+                image_records.setdefault(digest, path)
                 report_image_keys.append(digest)
 
             image_namespace = self._clip_cache_namespace() + ":image"
             image_vectors = get_cached_vectors(image_namespace, list(image_records))
             missing_images = [key for key in image_records if key not in image_vectors]
             if missing_images:
-                images = []
-                for key in missing_images:
-                    raw = image_records[key][1]
-                    with Image.open(BytesIO(raw)) as source:
-                        images.append(source.convert("RGB").copy())
-                pixel_inputs = processor(images=images, return_tensors="pt")
-                with torch.no_grad():
-                    encoded = model.get_image_features(pixel_values=pixel_inputs["pixel_values"])
-                    encoded = torch.nn.functional.normalize(encoded, dim=-1)
-                fresh = {
-                    key: [float(value) for value in vector.detach().cpu().tolist()]
-                    for key, vector in zip(missing_images, encoded)
-                }
-                image_vectors.update(fresh)
-                store_cached_vectors(image_namespace, fresh)
+                # Bound peak memory: process a maximum of 16 uncached photos per forward pass.
+                for offset in range(0, len(missing_images), 16):
+                    batch_keys = missing_images[offset:offset + 16]
+                    images = []
+                    for key in batch_keys:
+                        with Image.open(image_records[key]) as source:
+                            images.append(source.convert("RGB").copy())
+                    pixel_inputs = processor(images=images, return_tensors="pt")
+                    with torch.no_grad():
+                        encoded = model.get_image_features(pixel_values=pixel_inputs["pixel_values"])
+                        encoded = torch.nn.functional.normalize(encoded, dim=-1)
+                    fresh = {
+                        key: [float(value) for value in vector.detach().cpu().tolist()]
+                        for key, vector in zip(batch_keys, encoded)
+                    }
+                    image_vectors.update(fresh)
+                    store_cached_vectors(image_namespace, fresh)
 
             # Only reports needing image-to-text comparison require CLIP text vectors.
             needed_texts: dict[str, str] = {}
@@ -568,6 +570,9 @@ class MatchingEngine:
     def rank(self, lost: dict[str, Any], found_reports: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
         semantic_scores = self._batch_semantic_scores(lost, found_reports)
         clip_scores = self._batch_clip_scores(lost, found_reports) if self.clip_enabled else None
+        if self.clip_enabled and clip_scores is None:
+            # Do not fall back to per-candidate inference after a batch failure.
+            clip_scores = [None] * len(found_reports)
         ranked = []
         for index, report in enumerate(found_reports):
             text_result = semantic_scores[index] if semantic_scores is not None else None
