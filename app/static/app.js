@@ -263,7 +263,7 @@ function imageSourceAttribute(path) {
   if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
   return 'src="' + escapeHTML(apiAssetUrl(path)) + '"';
 }
-const pendingAuthImages = new WeakSet();
+let pendingAuthImages = new WeakSet();
 async function hydrateAuthImage(img) {
   if (!supabaseClient || pendingAuthImages.has(img) || !img.dataset.authImage) return;
   pendingAuthImages.add(img);
@@ -301,6 +301,33 @@ function observeAuthImages() {
   observer.observe(document.body, {childList:true,subtree:true});
   scan(document.body);
 }
+
+async function downloadAuthenticatedFile(path, filename) {
+  if (!supabaseClient) { window.location.href = apiAssetUrl(path); return; }
+  const { data } = await supabaseClient.auth.getSession();
+  const token = data && data.session ? data.session.access_token : null;
+  if (!token) throw new Error("Please sign in again to download this file.");
+  const response = await fetch(API_BASE_URL + path, {headers:{Authorization:"Bearer " + token}});
+  if (!response.ok) throw new Error("Download failed (" + response.status + ").");
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+}
+function clearAuthenticatedImages() {
+  document.querySelectorAll("img[data-auth-image]").forEach((img) => {
+    if (img.dataset.authImageObjectUrl) URL.revokeObjectURL(img.dataset.authImageObjectUrl);
+    img.removeAttribute("src");
+    img.removeAttribute("data-auth-image");
+    delete img.dataset.authImageObjectUrl;
+  });
+  pendingAuthImages = new WeakSet();
+}
+
 
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
@@ -1613,7 +1640,7 @@ $("#viewSwitchBtn").addEventListener("click",async()=>{
 $("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
 $("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
 $("#logoutButton").addEventListener("click", async () => {
-  if (supabaseClient) { await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
+  if (supabaseClient) { clearAuthenticatedImages(); await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
   else { try { await api("/api/logout", { method: "POST" }); } catch (_) {} }
   inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
 });
@@ -1661,7 +1688,7 @@ document.addEventListener("click", (event) => {
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
   const certificate = event.target.closest("[data-certificate-download]");
-  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else window.location.href = "/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download"; }
+  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
