@@ -5,7 +5,7 @@ let currentUser = null;
 let supabaseClient = null;
 let supabaseAccessToken = null;
 let supabaseSignupMode = false;
-const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\\/$/, '');
+const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -258,7 +258,7 @@ async function mockApi(url,options){
  throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
 }
 
-function apiAssetUrl(path) { return API_BASE_URL + path; }
+function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
 
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
@@ -526,7 +526,7 @@ function itemCard(report, options) {
   const opts = options || {};
   const icon = CATEGORY_ICONS[report.category] || "◌";
   const visual = report.image_url
-    ? '<div class="item-visual"><img src="' + escapeHTML(report.image_url) + '" alt="Item photograph" loading="lazy"></div>'
+    ? '<div class="item-visual"><img src="' + escapeHTML(apiAssetUrl(report.image_url)) + '" alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
   const claimButton = opts.claim
     ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
@@ -829,7 +829,7 @@ async function openItemDetails(reportId) {
     ["Record updated", humanDateTime(report.updated_at)]
   ].filter((fact) => fact[1]);
   const photo = report.image_url
-    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(report.image_url) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
+    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(apiAssetUrl(report.image_url)) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
     : "";
   const matchDetails = report.match_reasons && report.match_reasons.length
     ? '<section class="match-detail-block"><h3>Why it was suggested</h3><p class="muted">These are comparison signals, not proof of ownership.</p><ul class="reason-list">' +
@@ -1483,7 +1483,23 @@ async function submitDecision(event) {
 }
 
 async function start() {
-  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
+  try { await loadConfig(); }
+  catch (error) {
+    if (API_BASE_URL) { showLogin(); $("#loginError").textContent = error.message; return; }
+    enableMockMode(); await loadConfig();
+  }
+  if (appConfig && appConfig.auth_mode === "supabase") {
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      supabaseAccessToken = data && data.session ? data.session.access_token : null;
+      if (!supabaseAccessToken) { showLogin(); return; }
+      const profile = await api("/api/me");
+      enterApp(profile.user);
+    } catch (error) {
+      supabaseAccessToken = null; showLogin(); $("#loginError").textContent = error.message;
+    }
+    return;
+  }
   try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
   if (!usingMockApi && appConfig && appConfig.demo_mode) {
     try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
