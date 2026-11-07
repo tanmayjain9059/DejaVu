@@ -496,7 +496,7 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
-| <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
+| <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings and MiniLM category suggestions. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
 | <code>USE_CLIP_MODEL</code> | Enable CLIP-based image/image-text similarity. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>USE_IMAGE_ENRICHMENT</code> | Enable BLIP image captioning and report-photo keyword/attribute suggestions. | <code>false</code>; opt in after installing ML dependencies and assessing memory/latency. |
