@@ -1858,13 +1858,13 @@ function showPublicHome() {
   $("#publicHomeContent").classList.remove("hidden");
   $("#publicLostPage").classList.add("hidden");
   $("#publicFoundPage").classList.add("hidden");
+  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 function showPublicDestination(type) {
   $("#publicHomeContent").classList.add("hidden");
   $("#publicLostPage").classList.toggle("hidden", type !== "lost");
   $("#publicFoundPage").classList.toggle("hidden", type !== "found");
-  const message = type === "lost" ? "Lost something? Let's retrace those steps." : "A found item? You're already someone's hero.";
-  $("#mascotMessage").textContent = message;
+  if (typeof wakeFinn === "function") wakeFinn(type);
 }
 $("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
 $("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
