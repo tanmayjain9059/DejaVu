@@ -387,13 +387,9 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
                ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     lost_for_matching = dict(lost)
-    if lost_for_matching.get("image_path"):
-        lost_for_matching["image_path"] = str(UPLOAD_DIR / lost_for_matching["image_path"])
     candidate_data = []
     for candidate in candidates:
         candidate_item = dict(candidate)
-        if candidate_item.get("image_path"):
-            candidate_item["image_path"] = str(UPLOAD_DIR / candidate_item["image_path"])
         candidate_data.append(candidate_item)
     ranked = await run_in_threadpool(matching_engine.rank, lost_for_matching, candidate_data, limit=5)
     internal = user["role"] == "office"
