@@ -17,6 +17,12 @@ USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "tr
 IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base").strip()
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
+try:
+    MATCHING_CANDIDATE_LIMIT = int(os.getenv("MATCHING_CANDIDATE_LIMIT", "2000"))
+except ValueError as exc:
+    raise RuntimeError("MATCHING_CANDIDATE_LIMIT must be an integer between 100 and 10000.") from exc
+if not 100 <= MATCHING_CANDIDATE_LIMIT <= 10000:
+    raise RuntimeError("MATCHING_CANDIDATE_LIMIT must be between 100 and 10000.")
 HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()] or ["*"]
 REQUIRE_REQUEST_ORIGIN = os.getenv("REQUIRE_REQUEST_ORIGIN", "false").lower() == "true"
