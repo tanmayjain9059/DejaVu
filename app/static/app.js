@@ -784,49 +784,53 @@ function navigate(view) {
   refreshNotificationBadge();
 }
 
+
 function setReportMode(type) {
   if (!["lost", "found"].includes(type)) return;
-  const wasOpen = !$("#reportForm").classList.contains("hidden");
-  if (wasOpen && $("#reportType").value && $("#reportType").value !== type) {
-    $("#reportForm").reset();
-    $("#reportError").textContent = "";
-    $("#imageLabel").textContent = "Choose a photo";
-    showToast("Switched report type. The previous draft was cleared to avoid mixing Lost and Found details.", false);
-  }
+  const previousType = $("#reportType").value;
   $("#reportType").value = type;
-  $("#reportTypeChooser").classList.add("hidden");
   $("#reportForm").classList.remove("hidden");
+  $("#reportTypeChooser").classList.remove("hidden");
   $$("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
   });
   if (type === "lost") {
-    $("#reportModeTitle").textContent = "Report a lost item";
-    $("#reportModeDescription").textContent = "Tell us what went missing. Your report stays in your account and can be compared with items registered by the office.";
+    $("#reportModeTitle").textContent = "Lost item report";
+    $("#reportModeDescription").textContent = "Share the details that can help us find what went missing.";
+    $("#reportExperienceHeading").textContent = "Let's find what you've lost.";
+    $("#reportExperienceCopy").textContent = "Tell us a little about the item. We'll help connect you with possible matches across campus.";
     $("#reportFormStepTitle").textContent = "What went missing?";
-    $("#reportFormStepHint").textContent = "Describe the item and its last known context.";
-    $("#reportDateLabel").textContent = "When did you last see it?";
-    $("#reportDateHelp").textContent = "An approximate time helps matching. Leave it blank if you are unsure.";
+    $("#reportFormStepHint").textContent = "A few useful details help us narrow the search.";
+    $("#reportDateLabel").textContent = "When did you last have it?";
+    $("#reportDateHelp").textContent = "An approximate date and time is enough.";
     $("#reportLocationHeading").textContent = "Where did you last see it?";
-    $("#reportLocationHelp").textContent = "Choose the nearest block or nearby place.";
-    $("#reportTitle").placeholder = "e.g. Black backpack I lost";
-    $("#reportSubmitLabel").textContent = "Submit lost report";
+    $("#reportLocationHelp").textContent = "Choose the closest campus location you remember.";
+    $("#reportTitle").placeholder = "e.g. Black water bottle";
+    $("#reportSubmitLabel").textContent = "Submit Lost Report";
+    $("#reportContextTitle").textContent = "Smart matching works in the background.";
+    $("#reportContextCopy").textContent = "Smart matching helps identify potentially similar found items using descriptions, categories, dates and campus locations. A possible match is only a lead, never proof of ownership.";
   } else {
-    $("#reportModeTitle").textContent = "Report a found item";
-    $("#reportModeDescription").textContent = "Record what you found and where. The item only becomes searchable after office staff confirm physical receipt and tagging.";
+    $("#reportModeTitle").textContent = "Found item report";
+    $("#reportModeDescription").textContent = "Share a few details so its rightful owner can find it.";
+    $("#reportExperienceHeading").textContent = "Found something? Make someone's day.";
+    $("#reportExperienceCopy").textContent = "Share a few details so its rightful owner can find it.";
     $("#reportFormStepTitle").textContent = "What did you find?";
-    $("#reportFormStepHint").textContent = "Describe the item without exposing private owner details.";
+    $("#reportFormStepHint").textContent = "Describe the item without revealing private owner details.";
     $("#reportDateLabel").textContent = "When did you find it?";
-    $("#reportDateHelp").textContent = "Use the approximate time you found the item. Office intake time is recorded separately.";
+    $("#reportDateHelp").textContent = "An approximate date and time is enough.";
     $("#reportLocationHeading").textContent = "Where did you find it?";
-    $("#reportLocationHelp").textContent = "Use the place where you found the item, not its eventual office storage location.";
-    $("#reportTitle").placeholder = "e.g. Silver water bottle I found";
-    $("#reportSubmitLabel").textContent = "Submit found report";
+    $("#reportLocationHelp").textContent = "Choose the closest campus location.";
+    $("#reportTitle").placeholder = "e.g. Grey wireless earbuds case";
+    $("#reportSubmitLabel").textContent = "Submit Found Report";
+    $("#reportContextTitle").textContent = "Your report can reunite an owner.";
+    $("#reportContextCopy").textContent = "Your report can help us connect this item with someone who has reported it missing. Found items become searchable only after office staff confirm physical receipt.";
   }
   if (!$("#reportDate").value) {
     const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
     $("#reportDate").value = localNow.toISOString().slice(0, 16);
   }
+  if (previousType && previousType !== type) showToast("Report mode changed. Your entered details have been kept.", false);
 }
 
 function resetReportMode() {
