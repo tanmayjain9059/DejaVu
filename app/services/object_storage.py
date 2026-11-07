@@ -158,6 +158,10 @@ def migrate_local_uploads_to_s3(keys: list[str], *, dry_run: bool = True) -> dic
             missing += 1
             continue
         if not dry_run:
-            save_upload(key, source.read_bytes())
+            source_bytes = source.read_bytes()
+            save_upload(key, source_bytes)
+            # Verify destination bytes before reporting a successful copy.
+            if read_upload(key) != source_bytes:
+                raise IOError(f"Object-storage verification failed for upload key {key!r}.")
         copied += 1
     return {"copied": copied, "missing": missing}
