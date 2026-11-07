@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -1469,6 +1470,56 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertLessEqual(payload["candidate_count"], payload["candidate_limit"])
         returned_ids = [item["report"]["id"] for item in payload["matches"]]
         self.assertIn(target_id, returned_ids)
+
+
+    def test_reconciliation_migration_repairs_pr3_v5_v6_lineage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "pr3-lineage.sqlite"
+            conn = sqlite3.connect(database_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.executescript(
+                    """
+                    CREATE TABLE schema_migrations (
+                        version INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        applied_at TEXT NOT NULL
+                    );
+                    CREATE TABLE reports (
+                        id TEXT PRIMARY KEY,
+                        report_type TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                    """
+                )
+                for version in range(1, 7):
+                    conn.execute(
+                        "INSERT INTO schema_migrations(version,name,applied_at) VALUES(?,?,?)",
+                        (version, f"pr3_historical_migration_{version}", "2026-11-01T00:00:00+00:00"),
+                    )
+                app_database._apply_versioned_schema_migrations(conn)
+                columns = app_database.table_columns(conn, "reports")
+                self.assertTrue({
+                    "ai_caption", "ai_keywords", "ai_attributes_json",
+                    "ai_enriched_at", "ai_enrichment_model",
+                }.issubset(columns))
+                self.assertIsNotNone(conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
+                ).fetchone())
+                self.assertIsNotNone(conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
+                ).fetchone())
+                applied = conn.execute(
+                    "SELECT name FROM schema_migrations WHERE version=7"
+                ).fetchone()
+                self.assertEqual(
+                    applied["name"],
+                    "pr3_schema_lineage_reconciliation_and_matching_indexes",
+                )
+            finally:
+                conn.close()
 
 
 if __name__ == "__main__":
