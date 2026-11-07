@@ -1566,7 +1566,8 @@ $("#viewSwitchBtn").addEventListener("click",async()=>{
 $("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
 $("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
 $("#logoutButton").addEventListener("click", async () => {
-  try { await api("/api/logout", { method: "POST" }); } catch (_) {}
+  if (supabaseClient) { await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
+  else { try { await api("/api/logout", { method: "POST" }); } catch (_) {} }
   inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
 });
 $("#studentNav").addEventListener("click", (event) => {
