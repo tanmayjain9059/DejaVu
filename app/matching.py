@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from datetime import datetime
 from io import BytesIO
 from difflib import SequenceMatcher
@@ -118,23 +119,30 @@ class MatchingEngine:
         self._clip_model = None
         self._clip_processor = None
         self._clip_attempted = False
+        self._text_model_lock = threading.Lock()
+        self._clip_model_lock = threading.Lock()
         self.semantic_enabled = os.getenv("USE_SEMANTIC_MODEL", "false").lower() == "true"
         self.clip_enabled = os.getenv("USE_CLIP_MODEL", "false").lower() == "true"
 
     def _load_text_model(self):
         if self._text_attempted:
             return self._text_model
-        self._text_attempted = True
-        if not self.semantic_enabled:
-            return None
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._text_model = SentenceTransformer(
-                os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-            )
-        except Exception:
-            self._text_model = None
-        return self._text_model
+        # Concurrent first requests must not observe a half-initialised model
+        # and silently fall back to lexical scoring while another thread loads it.
+        with self._text_model_lock:
+            if self._text_attempted:
+                return self._text_model
+            self._text_attempted = True
+            if not self.semantic_enabled:
+                return None
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._text_model = SentenceTransformer(
+                    os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+                )
+            except Exception:
+                self._text_model = None
+            return self._text_model
 
     def text_similarity(self, left: str, right: str) -> tuple[float, str]:
         model = self._load_text_model()
@@ -150,19 +158,22 @@ class MatchingEngine:
     def _load_clip(self):
         if self._clip_attempted:
             return self._clip_model, self._clip_processor
-        self._clip_attempted = True
-        if not self.clip_enabled:
-            return None, None
-        try:
-            from transformers import CLIPModel, CLIPProcessor
-            model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
-            self._clip_processor = CLIPProcessor.from_pretrained(model_name)
-            self._clip_model = CLIPModel.from_pretrained(model_name)
-            self._clip_model.eval()
-        except Exception:
-            self._clip_model = None
-            self._clip_processor = None
-        return self._clip_model, self._clip_processor
+        with self._clip_model_lock:
+            if self._clip_attempted:
+                return self._clip_model, self._clip_processor
+            self._clip_attempted = True
+            if not self.clip_enabled:
+                return None, None
+            try:
+                from transformers import CLIPModel, CLIPProcessor
+                model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
+                self._clip_processor = CLIPProcessor.from_pretrained(model_name)
+                self._clip_model = CLIPModel.from_pretrained(model_name)
+                self._clip_model.eval()
+            except Exception:
+                self._clip_model = None
+                self._clip_processor = None
+            return self._clip_model, self._clip_processor
 
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
         """Use CLIP image-image similarity, or image-text similarity if one photo is absent."""
