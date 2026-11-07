@@ -42,11 +42,20 @@ async def authenticated_user(
                     )
                     row = conn.execute("SELECT * FROM users WHERE supabase_user_id=?", (auth_id,)).fetchone()
             if row:
+                # Supabase only returns verified emails when confirmation is required.
+                # Keep the local profile aligned if the verified email/name changes.
+                if row["email"].strip().lower() != email:
+                    collision = conn.execute("SELECT id FROM users WHERE lower(email)=?", (email,)).fetchone()
+                    if collision and collision["id"] != row["id"]:
+                        raise HTTPException(status_code=409, detail="This email is already linked to another LostLink account.")
+                    conn.execute("UPDATE users SET email=?, display_name=? WHERE id=?", (email, display_name or email.split("@")[0], row["id"]))
+                elif display_name and row["display_name"] != display_name:
+                    conn.execute("UPDATE users SET display_name=? WHERE id=?", (display_name, row["id"]))
                 # The server-side allowlist is authoritative on every request.
                 expected_role = "office" if email in OFFICE_USER_EMAILS else "student"
                 if row["role"] != expected_role:
                     conn.execute("UPDATE users SET role=? WHERE id=?", (expected_role, row["id"]))
-                    row = conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
+                row = conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
             if not row:
                 raise HTTPException(status_code=401, detail="LostLink account could not be provisioned.")
         return user_payload(row)
