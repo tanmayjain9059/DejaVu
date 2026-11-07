@@ -11,6 +11,12 @@ DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(DATA_DIR / "lostlink.db"))).resolve()
 # Optional managed PostgreSQL database. Leave unset for local SQLite development.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "local").strip().lower()
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_REQUIRE_CONFIRMED_EMAIL = os.getenv("SUPABASE_REQUIRE_CONFIRMED_EMAIL", "true").lower() == "true"
+OFFICE_USER_EMAILS = {email.strip().lower() for email in os.getenv("OFFICE_USER_EMAILS", "").split(",") if email.strip()}
+FRONTEND_ORIGINS = [origin.strip().rstrip("/") for origin in os.getenv("FRONTEND_ORIGINS", "").split(",") if origin.strip()]
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
