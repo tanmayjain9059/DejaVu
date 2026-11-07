@@ -84,7 +84,6 @@ def save_upload(key: str, content: bytes) -> str:
             Key=_object_key(safe_key),
             Body=content,
             ContentType="image/jpeg",
-            ServerSideEncryption="AES256",
         )
     return safe_key
 
