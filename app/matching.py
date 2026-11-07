@@ -216,8 +216,58 @@ class MatchingEngine:
             self._clip_processor = None
         return self._clip_model, self._clip_processor
 
+    def _clip_cache_namespace(self) -> str:
+        from app.services.embedding_cache import cache_model_identifier
+        return cache_model_identifier(
+            os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32"),
+            "CLIP_MODEL_REVISION",
+        )
+
+    def _clip_image_vector(self, image_path: Path, model, processor, torch):
+        """Load one image vector from cache or run CLIP inference for that image."""
+        import hashlib
+        from io import BytesIO
+        from app.services.embedding_cache import get_cached_vectors, store_cached_vectors
+
+        raw = image_path.read_bytes()
+        content_hash = hashlib.sha256(raw).hexdigest()
+        namespace = self._clip_cache_namespace() + ":image"
+        cached = get_cached_vectors(namespace, [content_hash])
+        if content_hash in cached:
+            return torch.tensor(cached[content_hash], dtype=torch.float32)
+        with Image.open(BytesIO(raw)) as source:
+            pixels = processor(images=source.convert("RGB"), return_tensors="pt")
+        with torch.no_grad():
+            vector = model.get_image_features(pixel_values=pixels["pixel_values"])
+            vector = torch.nn.functional.normalize(vector, dim=-1)[0]
+        values = [float(value) for value in vector.detach().cpu().tolist()]
+        store_cached_vectors(namespace, {content_hash: values})
+        return torch.tensor(values, dtype=torch.float32)
+
+    def _clip_text_vector(self, text: str, model, processor, torch):
+        """Load a CLIP text vector from cache or encode and persist it."""
+        from app.services.embedding_cache import (
+            embedding_cache_key, get_cached_vectors, store_cached_vectors,
+        )
+
+        content_hash = embedding_cache_key(text)
+        namespace = self._clip_cache_namespace() + ":text"
+        cached = get_cached_vectors(namespace, [content_hash])
+        if content_hash in cached:
+            return torch.tensor(cached[content_hash], dtype=torch.float32)
+        inputs = processor(text=[text], return_tensors="pt", padding=True, truncation=True)
+        with torch.no_grad():
+            vector = model.get_text_features(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs.get("attention_mask"),
+            )
+            vector = torch.nn.functional.normalize(vector, dim=-1)[0]
+        values = [float(value) for value in vector.detach().cpu().tolist()]
+        store_cached_vectors(namespace, {content_hash: values})
+        return torch.tensor(values, dtype=torch.float32)
+
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
-        """Use CLIP image-image similarity, or image-text similarity if one photo is absent."""
+        """Use cached CLIP image-image similarity, or image-text similarity if one photo is absent."""
         model, processor = self._load_clip()
         if model is None or processor is None:
             return None
@@ -231,26 +281,17 @@ class MatchingEngine:
             import torch
             with torch.no_grad():
                 if lost_has_image and found_has_image:
-                    with Image.open(lost_path) as left_image, Image.open(found_path) as right_image:
-                        pixels = processor(images=[left_image.convert("RGB"), right_image.convert("RGB")], return_tensors="pt")
-                    embeddings = model.get_image_features(pixel_values=pixels["pixel_values"])
-                    embeddings = torch.nn.functional.normalize(embeddings, dim=-1)
-                    cosine = torch.sum(embeddings[0] * embeddings[1]).item()
+                    left = self._clip_image_vector(lost_path, model, processor, torch)
+                    right = self._clip_image_vector(found_path, model, processor, torch)
+                    cosine = torch.sum(left * right).item()
                 else:
                     image_path = lost_path if lost_has_image else found_path
                     text_report = found if lost_has_image else lost
-                    with Image.open(image_path) as source:
-                        pixels = processor(images=source.convert("RGB"), return_tensors="pt")
-                    text_inputs = processor(text=[_text_value(text_report)], return_tensors="pt",
-                                            padding=True, truncation=True)
-                    image_embedding = model.get_image_features(pixel_values=pixels["pixel_values"])
-                    text_embedding = model.get_text_features(
-                        input_ids=text_inputs["input_ids"],
-                        attention_mask=text_inputs.get("attention_mask"),
+                    image_vector = self._clip_image_vector(image_path, model, processor, torch)
+                    text_vector = self._clip_text_vector(
+                        _text_value(text_report), model, processor, torch
                     )
-                    image_embedding = torch.nn.functional.normalize(image_embedding, dim=-1)
-                    text_embedding = torch.nn.functional.normalize(text_embedding, dim=-1)
-                    cosine = torch.sum(image_embedding[0] * text_embedding[0]).item()
+                    cosine = torch.sum(image_vector * text_vector).item()
             return max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0))
         except Exception:
             return None
