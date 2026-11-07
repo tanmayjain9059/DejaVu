@@ -45,6 +45,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(DATA_DIR / "lostlink.db"))).resolve()
 # Optional managed PostgreSQL database. Leave unset for local SQLite development.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
