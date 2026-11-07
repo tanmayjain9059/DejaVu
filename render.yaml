@@ -45,6 +45,8 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: ALLOWED_EMAIL_DOMAINS
+        sync: false
       - key: OFFICE_USER_EMAILS
         sync: false
       - key: FRONTEND_ORIGINS
