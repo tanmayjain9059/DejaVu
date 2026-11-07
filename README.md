@@ -570,6 +570,7 @@ The current application is not a production deployment and has not been assigned
 ## Related documentation
 
 - [Architecture.md](Architecture.md) — module boundaries, request flow and implementation invariants.
+- [Matching evaluation dataset guide](docs/MATCHING_EVALUATION_DATASET.md) — benchmark schema, metric definitions and governance for future real-data evaluation.
 
 ### Run PostgreSQL locally with Docker Compose
 
