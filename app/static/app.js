@@ -1874,10 +1874,6 @@ $("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").
 $("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
 document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
-document.querySelectorAll("[data-public-next]").forEach(button => button.addEventListener("click", () => {
-  const type = button.dataset.publicNext;
-  showToast(type === "lost" ? "The Lost Report form will be designed in the next step." : "The Found Report form will be designed in the next step.", false);
-}));
 const finnDock = $("#finnDock");
 const finnCharacter = $("#finnCharacter");
 const finnMessage = $("#mascotMessage");
@@ -1967,10 +1963,12 @@ function placeFinnForView(view) {
   };
   const host = document.querySelector(targets[view] || targets.home);
   if (!host) return;
-  host.classList.add("finn-host");
+  host.classList.add("finn-anchor");
   if (finnDock.parentElement !== host) host.appendChild(finnDock);
+  const width = host.getBoundingClientRect().width;
+  const layout = width < 390 ? "stacked" : width < 560 ? "compact" : "wide";
+  host.dataset.finnLayout = layout;
 }
-
 function finnMode() {
   if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "lost";
   if ($("#publicFoundPage") && !$("#publicFoundPage").classList.contains("hidden")) return "found";
