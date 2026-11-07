@@ -1483,6 +1483,11 @@ async function submitDecision(event) {
 }
 
 async function start() {
+  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
+    showLogin();
+    $("#loginError").textContent = "This preview is not connected to a LostLink API yet. Configure BACKEND_ORIGIN in Vercel after the backend is deployed.";
+    return;
+  }
   try { await loadConfig(); }
   catch (error) {
     if (API_BASE_URL) { showLogin(); $("#loginError").textContent = error.message; return; }
