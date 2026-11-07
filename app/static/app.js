@@ -191,6 +191,20 @@ async function mockApi(url,options){
   if(report.report_type==="found")mockNotify(MOCK_USERS.office.id,"Found-item report awaiting intake","A new found-item report is waiting for physical office intake.","report",report.id,"found-report:"+report.id);
   return {report:mockReportView(report,currentUser.role==="office"),message:report.report_type==="lost"?"Lost report submitted.":"Found-item report submitted for office intake."};
  }
+ if((m=path.match(/^\/api\/reports\/([^/]+)$/))&&method==="PUT"){
+  const id=decodeURIComponent(m[1]),report=mockStore.reports.find(r=>r.id===id);
+  if(!currentUser||currentUser.role!=="student"||!report||report.created_by!==currentUser.id)throw new Error("Report not found.");
+  if((report.report_type==="lost"&&report.status!=="open")||(report.report_type==="found"&&report.status!=="awaiting_intake"))throw new Error("This report can no longer be edited.");
+  if(report.report_type==="lost"&&mockStore.claims.some(c=>c.lost_report_id===id&&["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status)))throw new Error("This report cannot be edited while a linked claim is active.");
+  if(body.report_type!==report.report_type)throw new Error("Report type cannot be changed.");
+  const title=String(body.title||"").trim(),description=String(body.description||"").trim();
+  if(title.length<4||description.length<10)throw new Error("Enter a meaningful item title and description.");
+  if(!body.category||!MOCK_CATEGORIES.some(c=>c.value===body.category))throw new Error("Choose a valid item category.");
+  if(!String(body.location_block||"").trim()&&!String(body.location_area||"").trim())throw new Error("Choose a campus block/building or enter a nearby area.");
+  Object.assign(report,{title,description,category:body.category,brand:String(body.brand||"").trim()||null,primary_color:String(body.primary_color||"").trim()||null,visible_features:String(body.visible_features||"").trim()||null,occurred_at:body.occurred_at||report.occurred_at,location_block:String(body.location_block||"").trim(),location_floor:String(body.location_floor||"").trim(),location_room:String(body.location_room||"").trim(),location_area:String(body.location_area||"").trim(),updated_at:mockTimestamp(0)});
+  mockNotify(report.report_type==="found"?MOCK_USERS.office.id:currentUser.id,report.report_type==="found"?"Found report details updated":"Lost report details updated",report.report_type==="found"?"An awaiting-intake report was edited by its owner.":"Your lost report details were updated.","report",id,"report-edited:"+id+":"+report.updated_at);
+  return {report:mockReportView(report,false),message:"Report details updated."};
+ }
  let m=path.match(/^\/api\/reports\/([^/]+)\/(image|matches|intake|storage|close)$/);
  if(m){
   const id=decodeURIComponent(m[1]),action=m[2],report=mockStore.reports.find(r=>r.id===id);if(!report)throw new Error("Report not found.");
