@@ -429,9 +429,46 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
             raise HTTPException(status_code=409, detail="Only an open lost report can be matched.")
         if user["role"] != "office" and lost["created_by"] != user["id"]:
             raise HTTPException(status_code=403, detail="You can only view matches for your own lost reports.")
-        candidates = conn.execute(
-            "SELECT * FROM reports WHERE report_type='found' AND status='available' ORDER BY created_at DESC LIMIT 500"
-        ).fetchall()
+        # Bounded two-tier retrieval: prioritise same-category records, then
+        # reserve capacity for cross-category/location candidates. Both scans use
+        # composite indexes added by schema migration v7; scoring remains in the
+        # existing category-aware MiniLM/CLIP engine and never scans the full table.
+        candidate_limit = MATCHING_CANDIDATE_LIMIT
+        category_limit = max(1, int(candidate_limit * 0.75))
+        fallback_limit = candidate_limit - category_limit
+        candidates_by_id = {}
+        if lost["category"]:
+            category_rows = conn.execute(
+                """SELECT * FROM reports
+                   WHERE report_type='found' AND status='available' AND category=?
+                   ORDER BY created_at DESC, id DESC LIMIT ?""",
+                (lost["category"], category_limit),
+            ).fetchall()
+            candidates_by_id.update({row["id"]: row for row in category_rows})
+            if fallback_limit:
+                fallback_rows = conn.execute(
+                    """SELECT * FROM reports
+                       WHERE report_type='found' AND status='available'
+                         AND (category<>? OR category IS NULL
+                              OR LOWER(COALESCE(location_block,''))=LOWER(?)
+                              OR LOWER(COALESCE(location_area,''))=LOWER(?))
+                       ORDER BY created_at DESC, id DESC LIMIT ?""",
+                    (lost["category"], lost["location_block"] or "",
+                     lost["location_area"] or "", fallback_limit),
+                ).fetchall()
+                candidates_by_id.update({row["id"]: row for row in fallback_rows})
+        else:
+            recent_rows = conn.execute(
+                """SELECT * FROM reports
+                   WHERE report_type='found' AND status='available'
+                   ORDER BY created_at DESC, id DESC LIMIT ?""",
+                (candidate_limit,),
+            ).fetchall()
+            candidates_by_id.update({row["id"]: row for row in recent_rows})
+        candidates = [
+            row for row in candidates_by_id.values()
+            if user["role"] == "office" or report_visible_to_student(row, user)
+        ]
     lost_for_matching = dict(lost)
     if lost_for_matching.get("image_path"):
         lost_for_matching["image_path"] = str(UPLOAD_DIR / lost_for_matching["image_path"])
@@ -444,15 +481,38 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
     ranked = await run_in_threadpool(matching_engine.rank, lost_for_matching, candidate_data, limit=5)
     internal = user["role"] == "office"
     results = []
+    # Re-read the top results after model inference: an item may have been
+    # claimed, withdrawn, or moved to a restricted workflow state meanwhile.
+    ranked_ids = [match["report"]["id"] for match in ranked]
+    fresh_by_id = {}
+    if ranked_ids:
+        placeholders = ",".join("?" for _ in ranked_ids)
+        with connect_db() as conn:
+            fresh_rows = conn.execute(
+                f"""SELECT * FROM reports WHERE id IN ({placeholders})
+                    AND report_type='found' AND status='available'""",
+                ranked_ids,
+            ).fetchall()
+            fresh_by_id = {row["id"]: row for row in fresh_rows}
     for match in ranked:
-        item = serialise_report(next(row for row in candidates if row["id"] == match["report"]["id"]), internal=internal)
+        fresh = fresh_by_id.get(match["report"]["id"])
+        if fresh is None or (not internal and not report_visible_to_student(fresh, user)):
+            continue
+        item = serialise_report(fresh, internal=internal)
         entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"]}
         if internal:
             entry["internal_score"] = match["score"]
             entry["signals"] = match["signals"]
             entry["matching_engine"] = match["engine"]
         results.append(entry)
-    return {"matches": results, "note": "Suggestions support discovery only; they do not establish ownership."}
+    response = {
+        "matches": results,
+        "note": "Suggestions support discovery only; they do not establish ownership.",
+    }
+    if internal:
+        response["candidate_count"] = len(candidates)
+        response["candidate_limit"] = MATCHING_CANDIDATE_LIMIT
+    return response
 
 
 @router.get("/api/office/ai-status")
