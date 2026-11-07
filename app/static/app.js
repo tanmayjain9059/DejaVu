@@ -153,6 +153,14 @@ async function mockApi(url,options){
   }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
   return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
  }
+ if(path==="/api/reports/category-suggestion"&&method==="POST"){
+  const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
+  const rules=[["electronics",/phone|mobile|laptop|tablet|charger|camera|cable|power bank/],["identity_documents",/identity card|student id|college id|passport|driving licence|debit card|credit card/],["keys_access",/key|keychain|access card/],["bags_wallets",/backpack|rucksack|handbag|wallet|purse|bag/],["stationery",/notebook|textbook|pen|pencil|calculator|ruler/],["clothing",/shirt|jacket|hoodie|sweater|jeans|shoe|uniform/],["accessories",/watch|glasses|spectacles|earbuds|headphones|bracelet|necklace/],["cash_jewellery",/cash|money|coin|gold|silver|jewellery|jewelry/],["sports_instruments",/football|cricket bat|racket|guitar|violin/]];
+  const found=rules.find((rule)=>rule[1].test(textValue));
+  const category=found?found[0]:null;
+  const label=(MOCK_CATEGORIES.find((item)=>item.value===category)||{}).label||null;
+  return {suggestion:category?{status:"suggested",category,label,alternatives:[{category,label,score:1}],engine:"demo_keyword_fallback",requires_confirmation:true}:{status:"uncertain",category:null,alternatives:[],engine:"demo_keyword_fallback",requires_confirmation:true}};
+ }
  if(path==="/api/reports"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Submit reports from a student account.");
   if(String(body.title||"").trim().length<4||String(body.description||"").trim().length<10)throw new Error("Enter a meaningful item title and description.");
@@ -558,6 +566,42 @@ function resetSearch() {
   if ($("#filterDateFrom")) $("#filterDateFrom").value = "";
   if ($("#filterDateTo")) $("#filterDateTo").value = "";
   loadBrowse();
+}
+
+async function suggestReportCategory() {
+  const button = $("#suggestCategoryButton");
+  const output = $("#categorySuggestion");
+  const payload = {
+    title: $("#reportTitle").value.trim(),
+    description: $("#reportDescription").value.trim(),
+    brand: $("#reportBrand").value.trim() || null,
+    primary_color: $("#reportColor").value.trim() || null,
+    visible_features: $("#reportFeatures").value.trim() || null
+  };
+  if ((payload.title + " " + payload.description).trim().length < 4) {
+    output.textContent = "Add an item name and a short description before requesting a suggestion.";
+    return;
+  }
+  button.disabled = true;
+  output.textContent = "Analysing the item details…";
+  try {
+    const result = await api("/api/reports/category-suggestion", { method: "POST", body: payload });
+    const suggestion = result.suggestion || {};
+    if (suggestion.status !== "suggested" || !suggestion.category) {
+      output.textContent = "The classifier is unsure. Please choose the category yourself.";
+      return;
+    }
+    const alternatives = (suggestion.alternatives || []).slice(0, 3)
+      .map((item) => escapeHTML(item.label)).join(" · ");
+    output.innerHTML = "Suggested: <strong>" + escapeHTML(suggestion.label) + "</strong>" +
+      (alternatives ? "<br>Other possibilities: " + alternatives : "") +
+      ' <button class="button button-quiet button-small" type="button" data-use-category="' +
+      escapeHTML(suggestion.category) + '">Use suggestion</button>';
+  } catch (error) {
+    output.textContent = "Category suggestion unavailable. Choose a category manually.";
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function submitReport(event) {
@@ -1467,6 +1511,11 @@ $("#studentNav").addEventListener("click", (event) => {
 document.addEventListener("click", (event) => {
   const go = event.target.closest("[data-go]");
   if (go) navigate(go.dataset.go);
+  const useCategory = event.target.closest("[data-use-category]");
+  if (useCategory) {
+    $("#reportCategory").value = useCategory.dataset.useCategory;
+    $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
+  }
   const reportKind = event.target.closest("[data-report-kind]");
   if (reportKind) setReportMode(reportKind.dataset.reportKind);
   const detailButton = event.target.closest("[data-view-details]");
@@ -1504,7 +1553,7 @@ document.addEventListener("click", (event) => {
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
-$("#reportForm").addEventListener("submit", submitReport);
+$("#reportForm").addEventListener("submit", submitReport);\n$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
 $("#backToReportTypes").addEventListener("click", resetReportMode);
 $("#reportImage").addEventListener("change", () => {
   const file = $("#reportImage").files[0];
