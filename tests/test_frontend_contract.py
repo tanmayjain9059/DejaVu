@@ -80,6 +80,13 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_match_cards_show_the_actual_matching_method(self):
+        self.assertIn('"matching_engine": match["engine"]', (ROOT / "app" / "api" / "routes" / "reports.py").read_text(encoding="utf-8"))
+        self.assertIn("matching_method: match.matching_engine || \"lexical_baseline\"", self.js)
+        self.assertIn("Semantic + visual AI", self.js)
+        self.assertIn("Structured baseline", self.js)
+        self.assertIn(".ai-method-pill", (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8"))
+
     def test_browse_pagination_rejects_filters_changed_since_first_page(self):
         self.assertIn("let browseFilters = null;", self.js)
         self.assertIn("function currentBrowseFilters()", self.js)
