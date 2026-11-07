@@ -21,6 +21,8 @@ jobs:
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
       TOKENIZERS_PARALLELISM: "false"
+      # Test-only secret required because app.main validates session configuration at import.
+      SESSION_SECRET: "lostlink-ci-only-session-secret-not-for-deployment-2026"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
