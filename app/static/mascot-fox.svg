@@ -15,4 +15,17 @@
 <path fill="#c44912" d="M272 234q22 10 28 34 7 27-15 47 37-10 49-39 10-26-6-48l-29-42z"/>
 <path fill="#ffdab8" d="M279 224q9-21 20-40 13-24 24-44 10-18 22 1 25 38 23 76-2 34-22 60 1-29-12-44-8 18-19 26 0-24-9-39-11 17-22 22z"/>
 <path fill="#5a1b0e" d="M133 286q12 8 19 0l-5 52q-2 13-14 10-10-3-8-14zm27 2q12 7 19 0l-6 49q-2 13-14 10-10-3-8-14z"/>
+
+<!-- Detective cap and magnifying glass: the LostLink guide identity -->
+<path d="M76 91 Q90 47 148 39 Q207 28 260 69 L276 96 Q223 77 174 84 Q119 88 76 105Z" fill="#70452f" stroke="#3e251b" stroke-width="5" stroke-linejoin="round"/>
+<path d="M92 76 Q111 48 151 43 L166 66 Q126 67 92 88Z" fill="#a8754b"/>
+<path d="M164 65 Q202 40 239 65 L253 83 Q210 71 174 83Z" fill="#8b5939"/>
+<path d="M76 94 Q161 73 272 94 L263 111 Q173 91 84 112Z" fill="#563524" stroke="#3e251b" stroke-width="4"/>
+<path d="M144 43 Q173 22 204 40" fill="none" stroke="#c18a5c" stroke-width="4" stroke-linecap="round"/>
+<circle cx="181" cy="38" r="5" fill="#4a2c20"/>
+<path d="M94 151 Q69 139 57 155 L84 177" fill="none" stroke="#5b3829" stroke-width="9" stroke-linecap="round"/>
+<circle cx="69" cy="143" r="27" fill="#d7e9df" fill-opacity=".72" stroke="#65432e" stroke-width="8"/>
+<circle cx="69" cy="143" r="19" fill="none" stroke="#fff4df" stroke-width="3"/>
+<path d="M87 163 L111 187" stroke="#65432e" stroke-width="10" stroke-linecap="round"/>
+<path d="M87 163 L111 187" stroke="#a8754b" stroke-width="4" stroke-linecap="round"/>
 </svg>
