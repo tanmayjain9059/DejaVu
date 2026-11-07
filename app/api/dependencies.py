@@ -36,11 +36,17 @@ async def authenticated_user(
                 else:
                     role = "office" if email in OFFICE_USER_EMAILS else "student"
                     conn.execute(
-                        """INSERT INTO users(email, display_name, role, password_hash, created_at, supabase_user_id)
+                        """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at, supabase_user_id)
                            VALUES (?, ?, ?, ?, ?, ?)""",
                         (email, display_name or email.split("@")[0], role, "supabase-managed", now_iso(), auth_id),
                     )
                     row = conn.execute("SELECT * FROM users WHERE supabase_user_id=?", (auth_id,)).fetchone()
+            if row:
+                # The server-side allowlist is authoritative on every request.
+                expected_role = "office" if email in OFFICE_USER_EMAILS else "student"
+                if row["role"] != expected_role:
+                    conn.execute("UPDATE users SET role=? WHERE id=?", (expected_role, row["id"]))
+                    row = conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
             if not row:
                 raise HTTPException(status_code=401, detail="LostLink account could not be provisioned.")
         return user_payload(row)
