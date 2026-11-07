@@ -11,12 +11,16 @@ from app.core.config import *
 from app.core.database import *
 from app.core.images import *
 from app.core.security import *
+from app.core.object_storage import object_storage_enabled
 from app.core.runtime import *
 from app.schemas import *
 from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
+
+# Fail at startup on a partially configured remote upload backend.
+object_storage_enabled()
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
