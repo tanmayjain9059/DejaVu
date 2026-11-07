@@ -88,6 +88,13 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("browseFilters = filters;", self.js)
         self.assertIn("...browseFilters,", self.js)
 
+    def test_offline_preview_supports_owner_report_edits(self):
+        self.assertIn('if((m=path.match(/^\\/api\\/reports\\/([^/]+)$/))&&method==="PUT")', self.js)
+        self.assertIn("Report type cannot be changed.", self.js)
+        self.assertIn("This report cannot be edited while a linked claim is active.", self.js)
+        self.assertIn("const title=String(body.title||\"\").trim(),description=String(body.description||\"\").trim();", self.js)
+        self.assertIn("return {report:mockReportView(report,false),message:\"Report details updated.\"};", self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
