@@ -2,6 +2,10 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
+let supabaseClient = null;
+let supabaseAccessToken = null;
+let supabaseSignupMode = false;
+const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\\/$/, '');
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -254,6 +258,8 @@ async function mockApi(url,options){
  throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
 }
 
+function apiAssetUrl(path) { return API_BASE_URL + path; }
+
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
   if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== "string") {
@@ -263,9 +269,17 @@ async function api(url, options) {
     opts.headers["Content-Type"] = "application/json";
   }
   if (usingMockApi) return mockApi(url, opts);
+  if (supabaseClient) {
+    const { data } = await supabaseClient.auth.getSession();
+    supabaseAccessToken = data && data.session ? data.session.access_token : null;
+    if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
+  }
   let response;
-  try { response = await fetch(url, opts); }
-  catch (_) { enableMockMode(); return mockApi(url, opts); }
+  try { response = await fetch(API_BASE_URL + url, opts); }
+  catch (_) {
+    if ((appConfig && appConfig.auth_mode === "supabase") || API_BASE_URL) throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+    enableMockMode(); return mockApi(url, opts);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
   return data;
@@ -317,6 +331,12 @@ function categoryLabel(value) {
 
 async function loadConfig() {
   appConfig = await api("/api/config");
+  if (appConfig.auth_mode === "supabase") {
+    if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
+    supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    $("#demoAccess").classList.add("hidden");
+    $("#signupToggle").classList.remove("hidden");
+  }
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
