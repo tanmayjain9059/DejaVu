@@ -59,7 +59,7 @@ def main() -> None:
         )
 
     if image_image_score is None or image_text_score is None:
-        raise SystemExit("CLIP did not return both image-image and image-text scores.")
+        raise SystemExit("CLIP did not return both image-image and image-text scores. " + str(engine.last_clip_error or "No exception detail recorded."))
     for name, score in (
         ("image-image", image_image_score),
         ("image-text", image_text_score),
