@@ -60,3 +60,50 @@ jobs:
           path: matching-baseline.json
           if-no-files-found: warn
           retention-days: 14
+
+  semantic-benchmark:
+    # Run the model-backed benchmark manually to avoid large model downloads on every push.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      USE_SEMANTIC_MODEL: "true"
+      USE_CLIP_MODEL: "false"
+      USE_IMAGE_ENRICHMENT: "false"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Cache pretrained model files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: lostlink-minilm-all-MiniLM-L6-v2-v1
+
+      - name: Install ML dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ml.txt
+
+      - name: Run baseline and required MiniLM benchmark
+        run: |
+          python scripts/evaluate_matching.py \
+            --dataset tests/data/matching_benchmark_v1.json \
+            --require-semantic-model \
+            --output matching-model-comparison.json
+
+      - name: Upload model comparison report
+        if: always() && hashFiles('matching-model-comparison.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: lostlink-minilm-model-comparison
+          path: matching-model-comparison.json
+          if-no-files-found: warn
+          retention-days: 14
