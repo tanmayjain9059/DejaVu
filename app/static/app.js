@@ -159,13 +159,19 @@ async function mockApi(url,options){
    for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
    if(parsed.searchParams.get("block")&&!(r.location_block||"").toLowerCase().includes(parsed.searchParams.get("block").toLowerCase()))return false;
    if(parsed.searchParams.get("room")&&!(r.location_room||"").toLowerCase().includes(parsed.searchParams.get("room").toLowerCase()))return false;
-   if(internal&&parsed.searchParams.get("status")&&r.status!==parsed.searchParams.get("status"))return false;
+   if(internal&&parsed.searchParams.get("status")){
+    const statuses=parsed.searchParams.get("status").split(",").map(x=>x.trim()).filter(Boolean);
+    if(!statuses.includes(r.status))return false;
+   }
    if(parsed.searchParams.get("date_from")&&String(r.occurred_at||"")<parsed.searchParams.get("date_from"))return false;
    if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
    if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
    return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
-  return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
+  }).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {reports:page.map(r=>mockReportView(r,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore};
  }
  if(path==="/api/reports/category-suggestion"&&method==="POST"){
   const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
@@ -207,7 +213,21 @@ async function mockApi(url,options){
   if(action==="storage"&&method==="POST"){mockRequireOffice();if(!report.tag_id)throw new Error("Only tagged items in custody can be moved.");report.storage_location=String(body.storage_location||"").trim();report.updated_at=mockTimestamp(0);return {report:mockReportView(report,true),message:"Storage location updated."};}
   if(action==="close"&&method==="POST"){if(!currentUser||currentUser.role!=="student"||report.created_by!==currentUser.id)throw new Error("Report not found.");if(report.report_type==="lost"&&report.status==="open")report.status="closed";else if(report.report_type==="found"&&report.status==="awaiting_intake"&&body.reason==="found_report_withdrawn")report.status="cancelled";else throw new Error("Only an open lost report or found report awaiting office intake can be closed.");report.updated_at=mockTimestamp(0);return {report:mockReportView(report,false),message:"Report closed."};}
  }
- if(path==="/api/claims"&&method==="GET"){const internal=currentUser&&currentUser.role==="office";return {claims:mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id).sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(c=>mockClaimView(c,Boolean(internal)))};}
+ if(path==="/api/claims"&&method==="GET"){
+  const internal=currentUser&&currentUser.role==="office",queue=parsed.searchParams.get("queue")||"all";
+  let filtered=mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id);
+  if(internal&&queue==="disputed")filtered=filtered.filter(c=>c.status==="disputed");
+  if(internal&&queue==="pending")filtered=filtered.filter(c=>c.status==="pending");
+  if(internal&&queue==="active")filtered=filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status));
+  if(internal&&queue==="handover")filtered=filtered.filter(c=>c.status==="approved_for_collection");
+  if(internal&&queue==="other")filtered=filtered.filter(c=>!["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
+  const activeCount=internal?null:filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status)).length;
+  filtered.sort((a,b)=>internal?a.created_at.localeCompare(b.created_at):b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {claims:page.map(c=>mockClaimView(c,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore,active_count:activeCount};
+ }
  if(path==="/api/claims"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Claims must be submitted from a student account.");
   const report=mockStore.reports.find(r=>r.id===body.report_id);if(!report||report.report_type!=="found"||report.status!=="available")throw new Error("This item is not accepting claims.");
