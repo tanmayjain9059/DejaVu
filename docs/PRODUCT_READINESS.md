@@ -34,6 +34,7 @@ to the public internet.
 
 - [x] Add an ordered, forward-only migration ledger (v1 legacy baseline, v2 active-claim indexes, v3 workflow uniqueness guards, v4 legacy additive columns/image fingerprint backfill), with a documented recovery policy. Core table bootstrap remains at startup; future schema changes must use versioned migrations.
 - [x] Add a conservative SQLite-to-PostgreSQL migration utility with dry-run mode, empty-destination guard, integrity/FK checks, row-count verification, sequence repair, and referenced-upload copy; [ ] rehearse it against a representative backup and independently verify results.
+- [x] Add forward-only migration v7 to reconcile AI enrichment fields, the persistent embedding cache, and composite matching indexes across the current-main and PR #3 v5/v6 histories; regression coverage simulates the PR #3 lineage.
 - [x] Add encrypted PostgreSQL backup and guarded restore scripts; [ ] test a restore against the exact PostgreSQL schema/application revision and restore matching uploads.
 - [ ] Run `scripts/probe_database_contention.py` against a representative staging workload and record p50/p95/max latency, throughput, failures, pool size, and database instance size; CI race regressions are correctness tests, not capacity measurements.
 - [x] Add liveness/readiness endpoints, local PostgreSQL setup, production container configuration, and database runbooks; [ ] verify deployment health checks and a repeatable clean-environment release test.
@@ -106,12 +107,13 @@ implementations must not replace the current AI baseline.
 
 ### Migration reconciliation requirement
 
-PR #3 and current main have incompatible migration histories. Do not renumber or
-rewrite already-applied migrations. Before porting PR #3 schema features, add a
-forward-only, idempotent reconciliation migration that ensures all required
-objects exist for both histories, including current report AI-enrichment columns,
-the persistent embedding cache, the matching-candidate index, and registration
-invite storage. Test upgrades from databases initialized on either lineage.
+- [x] Add forward-only migration v7 to reconcile current report AI-enrichment
+  columns, the persistent embedding cache, and composite matching indexes even
+  when versions 5/6 were already recorded by the PR #3 lineage. A regression test
+  simulates a database with PR #3 versions 5/6 applied but the main AI objects
+  absent, then verifies that v7 repairs the schema. Existing PR #3 invite tables
+  are left untouched if present; LostLink does not create a new invite workflow
+  until the institution approves the onboarding and identity-verification policy.
 
 
 ## Current known limitations
