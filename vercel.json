@@ -1,5 +1,5 @@
 {
   "buildCommand": "python3 scripts/build_vercel_frontend.py",
-  "outputDirectory": "app/static",
+  "outputDirectory": "dist",
   "cleanUrls": true
 }
