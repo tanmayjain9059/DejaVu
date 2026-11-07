@@ -2,11 +2,13 @@
 from __future__ import annotations
 import json
 import os
+import shutil
 from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
+DIST = ROOT / "dist"
 origin = os.environ.get("BACKEND_ORIGIN", "").strip().rstrip("/")
 parsed = urlsplit(origin)
 if parsed.scheme != "https" or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
@@ -18,4 +20,9 @@ STATIC.mkdir(parents=True, exist_ok=True)
     "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\n",
     encoding="utf-8",
 )
+if DIST.exists():
+    shutil.rmtree(DIST)
+shutil.copytree(STATIC, DIST / "static")
+shutil.copy2(STATIC / "index.html", DIST / "index.html")
+shutil.copy2(STATIC / "deployment-config.js", DIST / "deployment-config.js")
 print("Prepared Vercel static frontend for " + origin)
