@@ -76,7 +76,7 @@ app/core/runtime.py currently re-exports existing imports so the frontend/API be
 - Notification and reward event keys prevent duplicate side effects.
 - All existing /api/... paths are preserved.
 
-## Not implemented
+## AI services and limitations
 
 Image enrichment is implemented as an opt-in service. The report-photo workflow can request a BLIP caption, derive keywords and visible colour/material/shape terms, and persist them in dedicated AI fields. The fields contribute to matching and keyword search but never overwrite student-authored text. Model output is a suggestion, not verified evidence; model weights are large, so enable it only after deployment memory/latency testing.
 
