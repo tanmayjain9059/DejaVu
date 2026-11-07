@@ -1330,7 +1330,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 with main.connect_db() as conn:
                     conn.execute(
                         "UPDATE claims SET status='returned' WHERE id=?",
-                        ("pagination-claim-6",),
+                        ("pagination-claim-3",),
                     )
                 changed_status = True
             if not payload["has_more"]:
