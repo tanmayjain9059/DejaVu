@@ -1874,19 +1874,62 @@ document.querySelectorAll("[data-public-next]").forEach(button => button.addEven
   const type = button.dataset.publicNext;
   showToast(type === "lost" ? "The Lost Report form will be designed in the next step." : "The Found Report form will be designed in the next step.", false);
 }));
-const mascotLines = ["Psst… got a mystery for me?","I've got a good feeling about this case.","Magnifying glass? Check. Detective instincts? Double check.","No mystery is too small. Probably.","Let's put the clues together."];
-let mascotLineIndex = 0;
-const mascotDock = document.querySelector(".mascot-dock");
-if (mascotDock) {
-  mascotDock.addEventListener("pointerenter", () => {
-    mascotLineIndex = (mascotLineIndex + 1) % mascotLines.length;
-    $("#mascotMessage").textContent = mascotLines[mascotLineIndex];
+const finnDock = $("#finnDock");
+const finnCharacter = $("#finnCharacter");
+const finnMessage = $("#mascotMessage");
+const finnLines = {
+  home: [
+    "Psst… got a mystery for me?",
+    "A missing notebook? A runaway water bottle? I’m on the case.",
+    "Tell me what went missing. I’m excellent with clues.",
+    "I’ve polished my magnifying glass. What are we looking for?"
+  ],
+  lost: [
+    "Retrace your steps, detective. Where did you last see it?",
+    "The more details you share, the better our clues become.",
+    "I’ll help look for similar reports. A match is only a lead, though!"
+  ],
+  found: [
+    "Well spotted! Let’s help this little treasure find its person.",
+    "Where did you find it? That’s an important clue.",
+    "You’re the good kind of detective. Let’s log what you found."
+  ],
+  help: [
+    "Tap Lost Report if something of yours is missing.",
+    "Found an item? Choose Found Report and tell us where it was.",
+    "Need a hand? The campus office verifies claims and handovers."
+  ]
+};
+let finnIndex = 0;
+let finnTapIndex = 0;
+let finnIdleTimer = null;
+let finnHideTimer = null;
+function finnMode() {
+  if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "lost";
+  if ($("#publicFoundPage") && !$("#publicFoundPage").classList.contains("hidden")) return "found";
+  return "home";
+}
+function wakeFinn(mode = finnMode(), tapped = false) {
+  if (!finnDock || !finnMessage) return;
+  const lines = finnLines[mode] || finnLines.home;
+  finnIndex = tapped ? (finnTapIndex++ % lines.length) : (finnIndex + 1) % lines.length;
+  finnMessage.textContent = lines[finnIndex];
+  finnDock.classList.remove("is-awake");
+  void finnDock.offsetWidth;
+  finnDock.classList.add("is-awake");
+  clearTimeout(finnHideTimer);
+  finnHideTimer = setTimeout(() => finnDock.classList.remove("is-awake"), 1700);
+}
+if (finnDock && finnCharacter) {
+  const touchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  finnCharacter.addEventListener("pointerenter", () => {
+    if (!touchDevice) wakeFinn(finnMode());
   });
-  let mascotTapCount = 0;
-  mascotDock.addEventListener("click", () => {
-    mascotTapCount += 1;
-    $("#mascotMessage").textContent = mascotLines[mascotTapCount % mascotLines.length];
-  });
+  finnCharacter.addEventListener("focus", () => wakeFinn(finnMode()));
+  finnCharacter.addEventListener("click", () => wakeFinn("help", true));
+  if (touchDevice) {
+    finnIdleTimer = setTimeout(() => wakeFinn(finnMode()), 3200);
+  }
 }
 async function start() {
   try { initLiquidNavbar(); } catch (error) { console.error("Liquid navbar initialisation failed:", error); }
