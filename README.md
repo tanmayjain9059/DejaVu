@@ -422,6 +422,19 @@ This is a route overview, not a replacement for endpoint schema validation. The 
 - Git
 - A terminal with PowerShell on Windows, or a shell on Linux/macOS
 
+## LostLink detective mascot
+
+LostLink includes **Finn**, a small fox detective guide with a cap and magnifying glass. The guide is a lightweight frontend feature and does not require an AI API.
+
+- The floating fox opens a compact help panel and can be dismissed/minimised.
+- Contextual messages change for sign-in, browsing, reporting, claims and office views.
+- The quick tour explains reporting, adding useful clues, browsing possible matches, and safe claim verification/handover.
+- Quick actions navigate to reporting and browsing when the user is signed in.
+- The guide does not inspect private claim evidence or decide ownership. Possible matches are leads; authorised staff verify identity and the physical item's Tag ID before handover.
+- Artwork lives in `app/static/mascot-fox.svg`; markup, styles and behaviour are in `app/static/index.html`, `styles.css` and `app.js`.
+
+After pulling an update, hard-refresh the browser (Ctrl+Shift+R on Windows/Linux or Cmd+Shift+R on macOS) if the old mascot artwork or behaviour is cached.
+
 ## Local installation
 
 These instructions run LostLink locally in demo mode using SQLite and local uploads. You do not need Supabase or a cloud database.
