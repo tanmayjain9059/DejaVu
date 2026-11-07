@@ -34,7 +34,7 @@ LostLink is a web application for managing campus lost property from initial rep
 
 **The central rule is that a match is a lead, not proof of ownership.** A found item becomes visible for student discovery only after authorised staff confirm physical receipt and record custody. Claim approval and physical handover are separate steps; the application requires the exact physical LostLink Tag ID and identity/handover confirmations before recording a return.
 
-> **Project status:** working standalone prototype. It uses SQLite and local image files. It has not yet been validated for production-scale load or connected to an institutional identity provider.
+> **Project status:** working prototype with SQLite/local-file defaults for development and optional PostgreSQL plus private S3-compatible object storage for hosted deployments. The free-tier deployment path is documented in [Free-tier deployment baseline](docs/FREE_DEPLOYMENT.md). It is intended for a small demo or supervised pilot, not production handling of sensitive campus records; production-scale load and institutional identity integration remain unvalidated.
 
 ## Contents
 
@@ -178,9 +178,9 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
                          │
              ┌───────────┴───────────┐
              ▼                       ▼
-    SQLite database           Local image directory
-        ├── Users                  ├── Report images
-        ├── Reports                └── Private claim evidence
+    SQLite (local) OR PostgreSQL (hosted)
+        ├── Users
+        ├── Reports
         ├── Claims
         ├── Notifications
         ├── Storage and Tag IDs
@@ -188,6 +188,10 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
         ├── Reward ledger
         ├── Certificates
         └── Audit events
+
+    Local uploads (development) OR private S3-compatible object storage
+        ├── Report images
+        └── Private claim evidence
 
 ### Module responsibilities
 
@@ -202,6 +206,7 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
 | <code>app/core/config.py</code> | Environment configuration, data paths, categories, sensitivity levels and workflow constants. |
 | <code>app/core/database.py</code> | SQLite connections, schema creation, additive migrations, indexes, transactions, audit writing and optional demo seeding. |
 | <code>app/core/images.py</code> | Image validation/canonicalisation, hashing, perceptual fingerprints and watermarked student previews. |
+| <code>app/core/object_storage.py</code> | Private upload adapter: local filesystem for development or S3-compatible object storage for hosted deployment. |
 | <code>app/core/security.py</code> | Password hashing and verification. |
 | <code>app/services/auth.py</code> | Persistent login-failure tracking and temporary lockout calculations. |
 | <code>app/services/reports.py</code> | Report serialisation, role-aware response filtering and related report helpers. |
