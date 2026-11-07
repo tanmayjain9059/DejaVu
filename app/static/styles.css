@@ -1628,3 +1628,76 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
 .finn-muzzle { fill:#fff0dc; }
 .finn-eye { stroke:#4a2b25; }
 .public-action-card:focus-visible,.office-access-link:focus-visible,.public-back:focus-visible { outline:2px solid #b4813f; outline-offset:3px; }
+
+
+/* Finn — a small interface-native detective, perched on the case desk. */
+.mascot-dock {
+  position:absolute; z-index:8; right:24px; top:-137px;
+  width:230px; height:154px; pointer-events:auto; cursor:default;
+}
+.finn-character {
+  position:absolute; right:0; bottom:-8px; display:block;
+  width:178px; height:158px; padding:0; border:0; background:transparent;
+  cursor:pointer; overflow:visible; transform-origin:72% 100%;
+  -webkit-tap-highlight-color:transparent;
+}
+.finn-mascot { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 9px 10px rgba(73,45,28,.2)); }
+.finn-tail { fill:#d9783f; stroke:#9c4c31; stroke-width:2.3; }
+.finn-tail-tip { fill:#fff1df; }
+.finn-ear { fill:#d9783f; stroke:#9c4c31; stroke-width:2.4; stroke-linejoin:round; }
+.finn-ear-inner { fill:#f5b58d; }
+.finn-head { fill:url(#finnFur); stroke:#9c4c31; stroke-width:2.4; }
+.finn-muzzle { fill:url(#finnCream); }
+.finn-eye { fill:#34251f; }
+.finn-eye-glint { fill:#fffaf1; }
+.finn-eye-line { fill:none; stroke:#68402e; stroke-width:2.5; stroke-linecap:round; }
+.finn-nose { fill:#56352c; }
+.finn-smile { fill:none; stroke:#8f4b38; stroke-width:1.8; stroke-linecap:round; }
+.finn-coat { fill:url(#finnCoat); stroke:#55382b; stroke-width:2.3; }
+.finn-shirt { fill:#e6c8a4; stroke:#6a4532; stroke-width:1.2; }
+.finn-paw { fill:#c9784d; stroke:#9c4c31; stroke-width:2; }
+.finn-hat { fill:url(#finnHat); stroke:#3e2b23; stroke-width:2.3; }
+.finn-hat-brim { fill:#493126; stroke:#35241e; stroke-width:2.3; }
+.finn-hat-band { fill:none; stroke:#c18a4d; stroke-width:3; stroke-linecap:round; }
+.finn-lens { fill:rgba(255,248,231,.24); stroke:#b4813f; stroke-width:4.5; }
+.finn-lens-shine { fill:none; stroke:rgba(255,255,255,.85); stroke-width:1.5; }
+.finn-handle { fill:none; stroke:#8a5b38; stroke-width:7; stroke-linecap:round; }
+.finn-handle::after { stroke:#d1a36a; }
+.finn-tail-group { transform-box:fill-box; transform-origin:88% 78%; animation:finnTailWag 2.3s ease-in-out infinite; }
+.finn-ear-right { transform-box:fill-box; transform-origin:10% 90%; animation:finnEarFlick 5.5s ease-in-out infinite; }
+.finn-eyes { transform-box:fill-box; transform-origin:50% 50%; animation:finnBlink 5.8s infinite; }
+.finn-note { pointer-events:none; }
+.mascot-note {
+  z-index:2; right:126px; top:18px; width:184px; min-height:42px;
+  padding:10px 13px; border-radius:15px 15px 4px 15px;
+  border:1px solid rgba(255,255,255,.92);
+  background:linear-gradient(140deg,#fffaf2,#f1e3d1); color:#594236;
+  font-size:.73rem; font-weight:700; line-height:1.4;
+  box-shadow:0 12px 28px rgba(75,48,31,.13);
+  transform-origin:bottom right; transition:opacity .22s ease,transform .22s ease;
+}
+.mascot-note-tail { background:#f8eee1; }
+.finn-character:focus-visible { outline:2px solid #b4813f; outline-offset:3px; border-radius:24px; }
+.finn-character:hover .finn-mascot { transform:translateY(-4px) rotate(-2deg); }
+.finn-character:active .finn-mascot { transform:translateY(-1px) scale(.98); }
+.mascot-dock.is-awake .finn-mascot { animation:finnPeek .65s cubic-bezier(.2,.8,.2,1) both; }
+.mascot-dock.is-awake .finn-glass { animation:finnInspect .9s ease-in-out both; transform-origin:178px 123px; }
+.mascot-dock.is-awake .finn-ear-right { animation:finnEarFlick .7s ease-in-out 2; }
+.mascot-dock.is-awake .mascot-note { animation:finnBubbleIn .24s ease-out both; }
+@keyframes finnPeek { 0%{transform:translateY(10px) rotate(2deg)} 55%{transform:translateY(-7px) rotate(-3deg)} 100%{transform:translateY(0) rotate(0)} }
+@keyframes finnInspect { 0%,100%{transform:rotate(0)} 35%{transform:rotate(-12deg) translate(-2px,-2px)} 70%{transform:rotate(7deg)} }
+@keyframes finnEarFlick { 0%,100%{transform:rotate(0)} 35%{transform:rotate(-13deg)} 65%{transform:rotate(5deg)} }
+@keyframes finnBlink { 0%,43%,47%,100%{transform:scaleY(1)} 45%{transform:scaleY(.08)} 81%{transform:scaleY(1)} 83%{transform:scaleY(.08)} 85%{transform:scaleY(1)} }
+@keyframes finnBubbleIn { from{opacity:0;transform:translateY(5px) scale(.94)} to{opacity:1;transform:translateY(0) scale(1)} }
+@media(max-width:900px) {
+  .mascot-dock { top:-127px; right:12px; transform:scale(.88); transform-origin:bottom right; }
+}
+@media(max-width:560px) {
+  .mascot-dock { top:-112px; right:2px; transform:scale(.76); }
+  .mascot-note { right:112px; top:13px; width:158px; font-size:.68rem; }
+  .finn-character { width:166px; height:150px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .finn-tail-group,.finn-ear-right,.finn-eyes { animation:none!important; }
+  .finn-character:hover .finn-mascot,.mascot-dock.is-awake .finn-mascot { transform:none; animation:none; }
+}
