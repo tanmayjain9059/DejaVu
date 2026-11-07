@@ -1789,4 +1789,5 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
   } catch (error) { showToast(error.message, true); }
 }
 
+observeAuthImages();
 start();
