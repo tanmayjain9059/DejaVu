@@ -297,6 +297,8 @@ The report matching endpoint scans all available found-item records and returns 
 
 Semantic embeddings are compared using cosine similarity. When MiniLM is enabled, LostLink encodes the lost report and the candidate descriptions in one batch for each ranking request. The Oracle free-tier deployment enables MiniLM semantic ranking and persists its model cache; CI requires the model to load and evaluates it against the synthetic benchmark. The deterministic fallback is explicitly identified as `lexical_baseline`, not semantic AI. The model-based ranking runs in a worker thread so CPU inference does not block the FastAPI event loop. In-app notification heuristics deliberately use the lexical baseline while the database write transaction is open; the full semantic/visual ranking is shown in the match view. CLIP still evaluates available photos per candidate, so its memory and latency must be measured before enabling it on a constrained host.
 
+Match cards disclose the actual method used: `Semantic AI`, `Semantic + visual AI`, `Visual AI + baseline`, or `Structured baseline`. A configured model that fails to load is not presented as active; the card identifies the fallback instead.
+
 If an optional model cannot load or inference fails, the matcher falls back to the deterministic text baseline or omits the unavailable image signal. Optional inference consumes additional memory and CPU/GPU resources; models should not be described as active unless their flags are enabled and loading has been verified.
 
 Automatic image caption generation and keyword extraction are not implemented. CLIP similarity is not image captioning.
@@ -313,7 +315,7 @@ A recorded development evaluation produced the following retrieval measurements:
 | Top-3 hit rate | 100% (15 of 15) | 100% (15 of 15) |
 | Mean reciprocal rank | 0.8778 | 0.9667 |
 
-These measurements are a small synthetic development check—not validated real-campus accuracy, a probability that a person owns an item, or a load test. The top-3 metric is already at the benchmark's ceiling. Before operational use, matching should be evaluated on a representative, privacy-reviewed labelled campus dataset with false positives, missed matches and top-k retrieval measured separately.
+These measurements are a small synthetic development check—not validated real-campus accuracy, a probability that a person owns an item, or a load test. CI additionally loads the actual pretrained CLIP weights and smoke-tests both image-to-image and image-to-text inference using synthetic in-memory images; that verifies the inference path, not real-campus visual retrieval accuracy. The top-3 metric is already at the benchmark's ceiling. Before operational use, matching should be evaluated on a representative, privacy-reviewed labelled campus dataset with false positives, missed matches and top-k retrieval measured separately.
 
 ## Security and privacy
 
