@@ -40,8 +40,10 @@
       <p class="muted">Sign in to report, search or review a claim.</p>
       <form id="loginForm" class="form-stack">
         <label>Email address<input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu"></label>
-        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password"></label>
-        <button class="button button-primary button-full" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="Enter password"></label>
+        <label id="signupNameLabel" class="hidden">Full name<input id="signupName" type="text" maxlength="120" autocomplete="name" placeholder="Your name"></label>
+        <button id="loginSubmitButton" class="button button-primary button-full" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+        <button id="signupToggle" class="button button-quiet button-full hidden" type="button">Create a student account</button>
         <p id="loginError" class="form-error" role="alert"></p>
       </form>
       <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
@@ -283,6 +285,8 @@
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/deployment-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/static/app.js" defer></script>
 </body>
 </html>
