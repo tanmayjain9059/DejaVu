@@ -139,6 +139,7 @@ input::placeholder, textarea::placeholder { color: #a4aea7; }
 .item-meta b { color: #9aa79f; font-size: 12px; font-weight: 500; }
 .item-actions { display: flex; gap: 8px; margin-top: 13px; }
 .item-actions .button { flex: 1; }
+.ai-method-pill { padding: 5px 7px; border-radius: 7px; color: #315d76; background: #eaf3f8; font-size: 9px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
 .strength-pill { padding: 5px 7px; border-radius: 7px; color: #64746b; background: #f0f3ed; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
 .strength-strong { color: #176c57; background: #e6f6ed; }
 .strength-possible { color: #8a671f; background: #fff4dc; }
