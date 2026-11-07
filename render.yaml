@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: lostlink-api
+    runtime: python
+    region: singapore
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: AUTH_PROVIDER
+        value: supabase
+      - key: DEMO_MODE
+        value: "false"
+      - key: SESSION_HTTPS_ONLY
+        value: "true"
+      - key: REQUIRE_REQUEST_ORIGIN
+        value: "true"
+      - key: ALLOWED_HOSTS
+        value: lostlink-api.onrender.com
+      - key: UPLOAD_STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        value: lostlink-private
+      - key: S3_PREFIX
+        value: lostlink
+      - key: DATABASE_POOL_MAX_SIZE
+        value: "3"
+      - key: MATCHING_CANDIDATE_LIMIT
+        value: "2000"
+      - key: USE_SEMANTIC_MODEL
+        value: "false"
+      - key: USE_CLIP_MODEL
+        value: "false"
+      - key: USE_IMAGE_ENRICHMENT
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: OFFICE_USER_EMAILS
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
