@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluate LostLink retrieval against labelled JSON data; metrics are not ownership decisions."""
 from __future__ import annotations
-import argparse, json, os, sys
+import argparse, json, os, sys, time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
