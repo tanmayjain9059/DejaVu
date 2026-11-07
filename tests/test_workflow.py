@@ -1313,6 +1313,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.login("claimant@example.test", "claimant-password")
         collected = []
         cursor = None
+        changed_status = False
         while True:
             params = {"page_size": 2}
             if cursor:
@@ -1322,6 +1323,15 @@ class LostLinkWorkflowTests(unittest.TestCase):
             payload = response.json()
             collected.extend(item["id"] for item in payload["claims"])
             cursor = payload["next_cursor"]
+            if not changed_status and payload["has_more"]:
+                # Workflow status is mutable; it must not move a row across the
+                # chronological cursor boundary in the unfiltered student list.
+                with main.connect_db() as conn:
+                    conn.execute(
+                        "UPDATE claims SET status='disputed' WHERE id=?",
+                        ("pagination-claim-3",),
+                    )
+                changed_status = True
             if not payload["has_more"]:
                 break
         self.assertEqual(len(collected), 7)
