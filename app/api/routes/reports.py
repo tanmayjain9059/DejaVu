@@ -410,11 +410,11 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
         if not internal and not report_visible_to_student(result_row, user):
             continue
         item = serialise_report(result_row, internal=internal)
-        entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"]}
+        entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"],
+                 "matching_engine": match["engine"]}
         if internal:
             entry["internal_score"] = match["score"]
             entry["signals"] = match["signals"]
-            entry["matching_engine"] = match["engine"]
         results.append(entry)
     return {"matches": results, "note": "Suggestions support discovery only; they do not establish ownership."}
 
