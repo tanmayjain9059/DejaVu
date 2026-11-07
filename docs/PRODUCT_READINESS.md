@@ -46,6 +46,68 @@ to the public internet.
 - [ ] Confirm campus office procedures for intake, storage, sensitive items, disputes, and physical handover.
 - [ ] Run a supervised pilot with synthetic or approved test data and record acceptance criteria before scaling.
 
+
+## PR #3 integration backlog
+
+This section tracks relevant PR #3 capabilities that are not yet present on the
+integration branch. PR #3 is not merged wholesale: its older matching and migration
+implementations must not replace the current AI baseline.
+
+### P0 — Operational correctness and bounded data access
+
+- [x] Add keyset cursor pagination to report listing, with deterministic
+  `created_at DESC, id DESC` ordering, a bounded page size (1–100), opaque
+  cursor validation, and existing role/visibility/search filters preserved.
+- [ ] Add keyset pagination to student claims and office claim queues. Preserve
+  office disputed-first review priority without using mutable claim status as a
+  cursor key; design and test the queue semantics before implementation.
+- [ ] Paginate office intake/inventory views with deterministic ordering and
+  bounded page sizes.
+- [ ] Replace the matching endpoint's fixed 500-row candidate window with a
+  measured retrieval strategy that preserves the current category-aware scorer,
+  MiniLM cache, batched CLIP inference, and AI caption/keyword signals. Do not
+  replace it with an unbounded in-memory full-corpus scan without capacity tests.
+- [ ] Add and validate a composite candidate lookup index for the final retrieval
+  query plan; include SQLite and PostgreSQL query-plan coverage.
+- [ ] Revalidate candidate visibility and availability immediately before
+  returning suggestions so stale or no-longer-claimable items are not exposed.
+- [ ] Preserve AI caption and keyword fields in every search and candidate query.
+- [ ] Add pagination regressions for tied timestamps, filters, cursor tampering,
+  no duplicates/skips, and changing claim status between page requests.
+
+### P1 — Workflow and storage
+
+- [ ] Add report editing with owner/office authorization, report-type and workflow
+  state restrictions, field validation, and an audit event for every edit.
+- [ ] Introduce private S3-compatible object storage behind a storage interface;
+  keep local filesystem storage for development and tests.
+- [ ] Route report photos and claim evidence through authenticated private
+  retrieval; never expose public bucket URLs or weaken current image visibility,
+  sensitivity, watermark, and no-store controls.
+- [ ] Add storage migration, integrity verification, and coordinated database +
+  object backup/restore tests before switching an existing deployment.
+
+### P2 — Controlled onboarding and operations
+
+- [ ] Add office-issued, email-bound, single-use student invites only if the
+  institution confirms this onboarding model. Store only invite hashes, enforce
+  expiry and one-time use, and do not permit public office registration.
+- [ ] Require staff to verify student identity and institutional email through
+  an out-of-band process before issuing an invite; possession of an invite code
+  alone is not proof of email ownership.
+- [ ] Document provider-specific deployment settings, private storage lifecycle,
+  monitoring, and recovery procedures after the storage adapter is selected.
+
+### Migration reconciliation requirement
+
+PR #3 and current main have incompatible migration histories. Do not renumber or
+rewrite already-applied migrations. Before porting PR #3 schema features, add a
+forward-only, idempotent reconciliation migration that ensures all required
+objects exist for both histories, including current report AI-enrichment columns,
+the persistent embedding cache, the matching-candidate index, and registration
+invite storage. Test upgrades from databases initialized on either lineage.
+
+
 ## Current known limitations
 
 - PostgreSQL support is implemented through a compatibility adapter and needs ongoing dialect coverage and concurrency/load testing. A local development service and production-oriented container configuration are provided; no hosted production database has been provisioned.
