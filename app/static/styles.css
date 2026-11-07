@@ -1750,3 +1750,67 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
     width: 158px !important;
   }
 }
+
+
+/* Global Finn: one persistent companion across public, student and office screens. */
+#finnDock {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: 16px !important;
+  top: auto !important;
+  width: 224px !important;
+  height: 190px !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  transform: none !important;
+  isolation: isolate;
+}
+#finnDock .finn-character {
+  position: absolute !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 178px !important;
+  height: 158px !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+#finnDock .finn-mascot {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#finnDock .mascot-note {
+  position: absolute !important;
+  top: auto !important;
+  right: 124px !important;
+  bottom: 112px !important;
+  width: 190px !important;
+  min-height: 44px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+#finnDock .mascot-note-tail { display: block !important; }
+#finnDock.is-awake .mascot-note { animation: finnBubbleIn .24s ease-out both; }
+@media (max-width: 760px) {
+  #finnDock {
+    right: 6px !important;
+    bottom: 74px !important;
+    width: 170px !important;
+    height: 148px !important;
+    transform: scale(.78) !important;
+    transform-origin: bottom right !important;
+  }
+  #finnDock .finn-character { width: 164px !important; height: 146px !important; }
+  #finnDock .mascot-note {
+    right: 112px !important;
+    bottom: 98px !important;
+    width: 164px !important;
+    font-size: .68rem !important;
+  }
+}
+@media (max-width: 420px) {
+  #finnDock { right: 0 !important; bottom: 68px !important; transform: scale(.68) !important; }
+}
