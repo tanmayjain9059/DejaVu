@@ -371,7 +371,8 @@ SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
-    (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),\n    (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
+    (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
+    (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
 )
 
 
