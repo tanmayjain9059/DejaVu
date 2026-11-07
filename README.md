@@ -418,71 +418,180 @@ This is a route overview, not a replacement for endpoint schema validation. The 
 
 ## Prerequisites
 
-- Python 3.11 (tested in CI)
-- Git
-- A terminal with PowerShell on Windows, or a shell on Linux/macOS
+Install these tools before setting up LostLink:
+
+- **Python 3.11** (the version used by the project's CI checks).
+- **Git** to clone the repository.
+- **Node.js** (optional, only needed for the JavaScript syntax check).
+- Windows 10/11 with PowerShell, or macOS with Terminal.
+
+Check your Python version:
+
+- Windows PowerShell: `py -3.11 --version`
+- macOS Terminal: `python3.11 --version`
+
+If Python 3.11 is not installed, install it from [python.org](https://www.python.org/downloads/). On Windows, enable the Python Launcher during installation. On macOS, make sure the `python3.11` command is available.
 
 ## Local installation
 
-The documented launcher is for Windows PowerShell. Python 3.11 is used in CI.
+These instructions run LostLink locally in demo mode. They use SQLite and local uploads; no Supabase account, cloud VM or external database is required.
 
-### Windows PowerShell
+### 1. Clone the repository
+
+Open PowerShell (Windows) or Terminal (macOS), then run:
+
+```bash
+git clone https://github.com/tanmayjain9059/DejaVu.git
+cd DejaVu
+```
+
+If you have already cloned the repository, open a terminal in the repository folder and pull the latest changes from the branch you want to test.
+
+### 2. Windows 10/11 — PowerShell
+
+Run each command from the repository root.
+
+**Create and activate the virtual environment:**
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+If PowerShell blocks virtual-environment activation, allow it for the current terminal session only, then activate again:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+**Create your local environment file:**
+
+```powershell
+if (-not (Test-Path .env)) {
+    Copy-Item .env.example .env
+}
+```
+
+If `.env` already exists, keep it; do not overwrite your local settings.
+
+**Set a unique session secret:**
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Copy the generated value. Open `.env` in Notepad, replace the placeholder value on the `SESSION_SECRET=` line, and save the file. Do not add the generated secret to Git or share it.
+
+**Start LostLink:**
+
+```powershell
+.\scripts\run-demo.ps1
+```
+
+The launcher checks the virtual environment and configuration, performs an application import check, creates the local data directories and starts Uvicorn. It opens the browser at [http://127.0.0.1:8000](http://127.0.0.1:8000). Keep PowerShell open while testing. Press **Ctrl+C** in that terminal to stop the server.
+
+If port 8000 is already in use, stop the other LostLink/Uvicorn process before starting the demo again.
+
+### 3. macOS — Terminal (zsh)
 
 Run these commands from the repository root.
 
-1. Create a virtual environment and install runtime dependencies.
+**Create and activate the virtual environment:**
 
-       py -3.11 -m venv .venv
-       .\.venv\Scripts\Activate.ps1
-       python -m pip install --upgrade pip
-       python -m pip install -r requirements.txt
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-2. Create the local environment file if it does not already exist.
+**Create your local environment file:**
 
-       if (-not (Test-Path .env)) {
-           Copy-Item .env.example .env
-       }
+```bash
+[ -f .env ] || cp .env.example .env
+```
 
-   If you already have a local <code>.env</code>, keep it rather than overwriting it.
+If `.env` already exists, keep it; do not overwrite your local settings.
 
-3. Generate a unique session secret.
+**Generate a unique session secret:**
 
-       python -c "import secrets; print(secrets.token_urlsafe(48))"
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
-   Open <code>.env</code> with Notepad, replace the placeholder on the <code>SESSION_SECRET=</code> line with the generated value, save the file and close the editor. Do not commit the local <code>.env</code> file.
+Open the environment file:
 
-4. Start the single-server local demo.
+```bash
+nano .env
+```
 
-       .\scripts\run-demo.ps1
+Replace the placeholder value on the `SESSION_SECRET=` line with the generated value. Save with **Ctrl+O**, press **Enter**, then exit with **Ctrl+X**. Do not commit or share this secret.
 
-The launcher checks the virtual-environment Python, verifies the secret, performs an import preflight, creates the local data directories and starts one Uvicorn process at <code>http://127.0.0.1:8000</code>. Keep the terminal open while using the application and press Ctrl+C to stop it. Stop any older local server that is occupying port 8000 before starting.
+**Start LostLink:**
 
-### Linux or macOS (manual run)
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-Create and activate a virtual environment, install dependencies, create the environment file and set a secret as described above. Then start the server manually:
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. Keep Terminal open while testing. Press **Ctrl+C** to stop the server.
 
-       python3 -m venv .venv
-       source .venv/bin/activate
-       python -m pip install --upgrade pip
-       python -m pip install -r requirements.txt
-       [ -f .env ] || cp .env.example .env
-       python -c "import secrets; print(secrets.token_urlsafe(48))"
-       python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+### 4. Sign in to the local demo
 
-Before launching, edit <code>.env</code> and replace the placeholder session secret. If the file already exists, do not overwrite it. The PowerShell launcher is Windows-specific; on other platforms set the environment options in <code>.env</code> and run Uvicorn directly.
-
-### Local-only demo accounts
-
-When <code>DEMO_MODE=true</code>, startup creates demonstration users and sample records. The built-in demo accounts are intended for local development only:
+When `DEMO_MODE=true`, LostLink creates local demonstration users and sample records:
 
 | Role | Email | Password |
 |---|---|---|
-| Student | <code>student@lostlink.local</code> | <code>student123</code> |
-| Office staff | <code>office@lostlink.local</code> | <code>office123</code> |
+| Student | `student@lostlink.local` | `student123` |
+| Office staff | `office@lostlink.local` | `office123` |
 
-Use the in-app role-switching control to change between student and office views in the same browser session. Both roles operate against the same database. Reopen or revisit a view after switching to refresh its data. Do not use these credentials for a public deployment and do not expose the local development server to the public internet.
+Use the in-app role switcher to move between student and office views in the same browser session. Both roles use the same local database. Revisit or refresh a view after switching to load its current data.
 
-The prototype database defaults to <code>data/lostlink.db</code> and local images to <code>data/uploads/</code>. Those runtime files are excluded from Git.
+These credentials are for local testing only. Do not use them for a public deployment or expose the local development server to the internet.
+
+By default, local data is stored in:
+
+- SQLite database: `data/lostlink.db`
+- Uploaded images and private evidence: `data/uploads/`
+
+The `data/` directory and local `.env` file are excluded from Git.
+
+### 5. Run the automated tests (Windows and macOS)
+
+With the virtual environment activated, install the development dependencies:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+Run the test suite from the repository root:
+
+```bash
+python -m compileall -q app tests
+python -m unittest discover -s tests -v
+```
+
+If Node.js is installed, also check the frontend JavaScript syntax:
+
+```bash
+node --check app/static/app.js
+```
+
+The automated tests cover application workflows, matching, rewards and frontend contracts. Optional AI models are not required for the default local demo or baseline test suite.
+
+### Troubleshooting
+
+| Problem | What to do |
+|---|---|
+| `py` is not recognised (Windows) | Re-run the Python installer and enable the Python Launcher, or use the full Python 3.11 installation path. |
+| `python3.11` is not found (macOS) | Install Python 3.11 from [python.org](https://www.python.org/downloads/) and reopen Terminal. |
+| PowerShell says script execution is disabled | Run the process-scoped execution-policy command in the Windows instructions, then activate again. |
+| `No module named ...` | Activate `.venv` and run `python -m pip install -r requirements.txt` again. |
+| `SESSION_SECRET` placeholder/configuration error | Generate a new secret and replace the placeholder in the local `.env` file. |
+| Port 8000 is already in use | Stop the previous server with Ctrl+C or stop the process using port 8000, then restart LostLink. |
+| Browser cannot connect | Confirm Uvicorn is still running in the terminal and open `http://127.0.0.1:8000`. |
 
 ## Configuration
 
