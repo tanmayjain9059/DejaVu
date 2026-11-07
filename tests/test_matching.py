@@ -102,7 +102,10 @@ class MatchingTests(unittest.TestCase):
             {"title": "Steel bottle", "description": "silver bottle", "category": "accessories"},
         ]
 
-        ranked = engine.rank(lost, candidates)
+        from unittest.mock import patch
+        with patch("app.services.embedding_cache.get_cached_embeddings", return_value={}):
+            with patch("app.services.embedding_cache.store_cached_embeddings"):
+                ranked = engine.rank(lost, candidates)
 
         self.assertEqual(fake_model.calls, 1)
         self.assertEqual(len(fake_model.inputs), 3)
