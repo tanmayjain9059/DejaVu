@@ -320,11 +320,26 @@ class MatchingEngine:
     def _batch_clip_scores(
         self, lost: dict[str, Any], found_reports: list[dict[str, Any]]
     ) -> list[float | None] | None:
-        """Encode unique uncached candidate photos in batches, then score each pair."""
-        if not found_reports or not any(
-            report.get("image_path") and Path(str(report["image_path"])).is_file()
-            for report in [lost, *found_reports]
-        ):
+        """Encode unique photos in batches from local paths or private storage loaders."""
+        reports = [lost, *found_reports]
+
+        def has_image(report: dict[str, Any]) -> bool:
+            path_value = report.get("image_path")
+            if path_value and Path(str(path_value)).is_file():
+                return True
+            return bool(report.get("image_key") and callable(report.get("image_loader")))
+
+        def load_image_bytes(report: dict[str, Any]) -> bytes:
+            path_value = report.get("image_path")
+            if path_value and Path(str(path_value)).is_file():
+                return Path(str(path_value)).read_bytes()
+            loader = report.get("image_loader")
+            key = report.get("image_key")
+            if key and callable(loader):
+                return loader(key)
+            raise FileNotFoundError("Matching image is unavailable.")
+
+        if not found_reports or not any(has_image(report) for report in reports):
             return [None] * len(found_reports)
         model, processor = self._load_clip()
         if model is None or processor is None:
@@ -337,30 +352,28 @@ class MatchingEngine:
                 embedding_cache_key, get_cached_vectors, store_cached_vectors,
             )
 
-            reports = [lost, *found_reports]
-            image_records: dict[str, Path] = {}
+            # Retain only report references and hashes; never keep the entire
+            # candidate photo corpus in memory.
+            image_records: dict[str, dict[str, Any]] = {}
             report_image_keys: list[str | None] = []
             for report in reports:
-                path_value = report.get("image_path")
-                path = Path(str(path_value or ""))
-                if not path_value or not path.is_file():
+                if not has_image(report):
                     report_image_keys.append(None)
                     continue
-                raw = path.read_bytes()
-                digest = hashlib.sha256(raw).hexdigest()
-                image_records.setdefault(digest, path)
+                digest = hashlib.sha256(load_image_bytes(report)).hexdigest()
+                image_records.setdefault(digest, report)
                 report_image_keys.append(digest)
 
             image_namespace = self._clip_cache_namespace() + ":image"
             image_vectors = get_cached_vectors(image_namespace, list(image_records))
             missing_images = [key for key in image_records if key not in image_vectors]
             if missing_images:
-                # Bound peak memory: process a maximum of 16 uncached photos per forward pass.
+                # Bound peak decoded-image memory to 16 photos per forward pass.
                 for offset in range(0, len(missing_images), 16):
                     batch_keys = missing_images[offset:offset + 16]
                     images = []
                     for key in batch_keys:
-                        with Image.open(image_records[key]) as source:
+                        with Image.open(BytesIO(load_image_bytes(image_records[key]))) as source:
                             images.append(source.convert("RGB").copy())
                     pixel_inputs = processor(images=images, return_tensors="pt")
                     with torch.no_grad():
@@ -373,7 +386,6 @@ class MatchingEngine:
                     image_vectors.update(fresh)
                     store_cached_vectors(image_namespace, fresh)
 
-            # Only reports needing image-to-text comparison require CLIP text vectors.
             needed_texts: dict[str, str] = {}
             for index, report in enumerate(found_reports, start=1):
                 lost_has_image = report_image_keys[0] is not None
@@ -423,8 +435,8 @@ class MatchingEngine:
                     continue
                 scores.append(max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0)))
             return scores
-        except Exception:
-            # Ranking can continue with text/category/location/time if CLIP fails.
+        except Exception as exc:
+            logger.warning("Batched CLIP scoring failed; image signal disabled (%s)", type(exc).__name__)
             return None
 
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:

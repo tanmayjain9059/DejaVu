@@ -21,6 +21,14 @@ services:
       DEMO_MODE: "false"
       DATA_DIR: /data
       UPLOAD_DIR: /data/uploads
+      UPLOAD_STORAGE_BACKEND: ${UPLOAD_STORAGE_BACKEND:-local}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PREFIX: ${S3_PREFIX:-lostlink-private}
+      S3_REGION: ${S3_REGION:-}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      MATCHING_CANDIDATE_LIMIT: ${MATCHING_CANDIDATE_LIMIT:-2000}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Set ALLOWED_HOSTS to your canonical host, comma-separated}
       PYTHONDONTWRITEBYTECODE: "1"
       USE_SEMANTIC_MODEL: ${USE_SEMANTIC_MODEL:-false}

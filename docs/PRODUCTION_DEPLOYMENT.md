@@ -6,7 +6,7 @@ This is a deployment baseline. A successful container start is not a security au
 
 - A supported PostgreSQL instance with automated backups, TLS, restricted network access, and a tested restore procedure.
 - A public HTTPS reverse proxy/load balancer with a valid certificate. The application container binds to localhost only; terminate TLS at the proxy and preserve the original host. Do not expose port 8000 directly to the internet.
-- Persistent, private storage for report images and claim evidence. This compose file uses a named Docker volume. Back up that volume together with the database; database dumps alone do not include images.
+- Persistent, private storage for report images and claim evidence. The default Compose configuration uses a named Docker volume; an S3-compatible private backend is also available. Back up the local volume or configure provider versioning/replication for S3, always coordinated with the database.
 - Secret management for `SESSION_SECRET` and `DATABASE_URL`. Never commit actual credentials or put them in logs.
 - A verified canonical hostname and DNS, monitoring/alerts, a retention/deletion policy, and an incident response owner.
 
@@ -23,6 +23,8 @@ DATABASE_POOL_MAX_SIZE=5
 ```
 
 Replace the example hostname and URL with real provider values. URL-encode special characters in the database password. Do not use the local development password. Ensure the PostgreSQL provider accepts connections only from the deployment host/network.
+
+For private S3-compatible storage, also set `UPLOAD_STORAGE_BACKEND=s3`, `S3_BUCKET`, `S3_PREFIX`, `S3_REGION`, and the secret access key variables. Pass `S3_ENDPOINT_URL` for a compatible non-AWS provider. Follow [Private object storage operations](OBJECT_STORAGE.md) to migrate existing uploads and verify access. The bucket must block public access.
 
 Build and start:
 
@@ -51,7 +53,7 @@ See [database and upload backup operations](DATABASE_OPERATIONS.md). PostgreSQL 
 ## Limits that require environment-specific validation
 
 - This repository cannot provision your provider, DNS, TLS certificate, secret store, monitoring, or off-host backup destination.
-- The app currently stores upload paths in the database and image bytes on the configured filesystem. The uploads volume must be included in backups and kept private.
+- The app stores opaque upload keys in the database. The selected local or S3-compatible backend must remain private; local volume backups or S3 versioning/replication must be coordinated with database backups.
 - The existing SQL compatibility adapter and advisory lock need workload testing; run concurrency/load tests on staging before high-traffic use.
 - Existing SQLite records are not moved automatically. Use the reviewed migration script and verify images and row counts.
 - Matching quality needs a representative, privacy-reviewed labelled dataset; a passing synthetic benchmark is not proof of production accuracy.

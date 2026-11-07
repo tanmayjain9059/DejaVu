@@ -13,6 +13,7 @@ from app.core.images import *
 from app.core.security import *
 from app.core.runtime import *
 from app.schemas import *
+from app.services.object_storage import storage_backend
 from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
@@ -31,7 +32,8 @@ if HTTPS_ONLY and not REQUIRE_REQUEST_ORIGIN:
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Release shared PostgreSQL connections gracefully when the app shuts down."""
+    """Validate storage configuration and release shared connections on shutdown."""
+    storage_backend()
     try:
         yield
     finally:

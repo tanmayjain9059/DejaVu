@@ -285,7 +285,7 @@ Candidate comparison may use:
 
 LostLink now uses category-aware ranking profiles rather than one fixed set of weights. Electronics give more weight to visual similarity; identity documents emphasise text and contextual signals; bags, clothing and accessories use a balanced text/image profile; keys/access cards increase location relevance; stationery gives more weight to text. Missing signals are omitted and the remaining weights are normalised for each candidate pair. These are ranking weights, not calibrated probabilities of ownership. The profiles are initial heuristics and must be tuned against a representative labelled campus dataset before operational use.
 
-The report matching endpoint currently retrieves up to 500 of the most recently created available found-item records, scores them in application code and returns up to five ranked candidates. This explicit candidate limit helps bound a request but means the implementation is not a full-corpus search index.
+The report matching endpoint uses bounded two-tier retrieval: up to 75% of the configured shortlist is drawn from the lost report's category and the remainder from cross-category/relevant-location candidates. The default shortlist is 2,000 records (`MATCHING_CANDIDATE_LIMIT`, configurable from 100 to 10,000), selected through composite indexes and then ranked by the existing category-aware lexical/MiniLM/CLIP pipeline. This removes the old 500-record cutoff without loading the entire report corpus into application memory. It is still a bounded retrieval strategy, not a guarantee of exhaustive full-corpus recall; measure retrieval recall and query latency on an approved campus dataset before increasing the limit.
 
 ### Optional pretrained models
 
@@ -361,8 +361,9 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | <code>/api/reports</code> | Search/list reports with supported filters. Student visibility is restricted to available found items except their own records; office visibility is wider. |
+| GET | <code>/api/reports</code> | Search/list reports with supported filters and keyset pagination (`page_size` 1–100, opaque `cursor`, `next_cursor`, `has_more`). Student visibility is restricted to available found items except their own records; office visibility is wider. |
 | POST | <code>/api/reports</code> | Create a lost or found report. |
+| PUT | <code>/api/reports/{report_id}</code> | Edit public details while owner/office authorization and report workflow state permit it; every edit is audited. |
 | POST | <code>/api/reports/{report_id}/close</code> | Close an eligible owned lost report or withdraw a found report before intake. |
 | POST | <code>/api/reports/{report_id}/image</code> | Upload or replace a permitted report image. |
 | GET | <code>/api/reports/{report_id}/image</code> | Retrieve an image subject to role, status and category checks. |
@@ -370,12 +371,14 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 | POST | <code>/api/reports/{report_id}/intake</code> | Office-only: confirm physical receipt, record storage/verification data and assign the Tag ID. |
 | POST | <code>/api/reports/{report_id}/storage</code> | Office-only: update the item's recorded storage location. |
 
+Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter can isolate `disputed`, `pending`, or `other` claims, so staff can work the highest-priority queue first without putting mutable status into the cursor sort key. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision.
+
 ### Claims, evidence and handover
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | <code>/api/claims</code> | Create a claim with a private explanation and evidence categories. |
-| GET | <code>/api/claims</code> | List claims visible to the current user; office staff can review the office queue. |
+| GET | <code>/api/claims</code> | Keyset-paginated claims (`page_size`, `cursor`, `next_cursor`, `has_more`). Office staff can select `queue=disputed`, `pending`, or `other`; cursor ordering uses immutable creation time and ID, with `priority_rank` metadata. |
 | POST | <code>/api/claims/{claim_id}/evidence</code> | Update claim evidence text. |
 | POST | <code>/api/claims/{claim_id}/evidence-image</code> | Upload private supporting evidence image. |
 | GET | <code>/api/claims/{claim_id}/evidence-image</code> | Retrieve the evidence image subject to claimant/office access rules. |
@@ -496,6 +499,9 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
+| <code>UPLOAD_STORAGE_BACKEND</code> | Private upload backend: <code>local</code> or <code>s3</code>. | Defaults to <code>local</code>; S3 requires a private bucket and credentials. |
+| <code>S3_BUCKET</code>, <code>S3_PREFIX</code>, <code>S3_REGION</code>, <code>S3_ENDPOINT_URL</code> | S3-compatible private bucket and endpoint configuration. | Required bucket when S3 backend is selected; endpoint is optional for AWS. Store access credentials as deployment secrets. |
+| <code>MATCHING_CANDIDATE_LIMIT</code> | Maximum bounded candidate shortlist for matching. | Defaults to <code>2000</code>; accepted range <code>100-10000</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings and MiniLM category suggestions. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
 | <code>SEMANTIC_MODEL_REVISION</code> | Explicit cache namespace revision; increment after changing model weights/tokenisation. | <code>default</code>. |
@@ -556,8 +562,8 @@ The report form includes an optional category suggestion action. It analyses the
 The current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
-- **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
-- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). Larger collections may still require better candidate pre-filtering, a search index and a separate inference worker. CLIP image and text vectors are cached separately by content hash and `CLIP_MODEL_REVISION` (20,000 vectors per model/modality namespace). Candidate ranking batches uncached CLIP photos in groups of 16 to bound inference memory.
+- **File storage:** local filesystem storage remains the default. An S3-compatible private object-storage adapter is available through `UPLOAD_STORAGE_BACKEND=s3`; report photos and claim evidence are read only through authenticated API routes, never public object URLs. Set bucket public access blocking and encryption policies at the provider, then use `scripts/migrate_uploads_to_s3.py` (dry-run by default, `--apply` to copy) before switching a populated deployment. Keep local source files until bucket integrity and coordinated backup/restore have been independently verified. Local backup scripts do not back up S3 objects; enable provider versioning/replication or an approved separate backup process.
+- **Matching scale:** retrieval ranks a bounded, indexed shortlist (default 2,000, configurable up to 10,000) rather than scanning the entire corpus in application memory. Same-category candidates receive 75% of the shortlist and cross-category/location candidates receive the remainder. This improves coverage beyond 500 records but does not establish exhaustive recall; tune shortlist composition and capacity from measured campus data. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). CLIP image and text vectors are cached separately by content hash and `CLIP_MODEL_REVISION` (20,000 vectors per model/modality namespace). Candidate ranking batches uncached CLIP photos in groups of 16 to bound inference memory.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
 - **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.
@@ -579,6 +585,7 @@ For local development without creating a hosted database, see [Local PostgreSQL 
 ### Production deployment and database operations
 
 - [Production deployment runbook](docs/PRODUCTION_DEPLOYMENT.md) — non-root container, managed PostgreSQL, canonical host allowlist, HTTPS proxy, persistent private uploads, and pre-launch checks.
+- [Private object storage operations](docs/OBJECT_STORAGE.md) — S3-compatible bucket configuration, dry-run-first upload migration, access controls and recovery.
 - [Database operations](docs/DATABASE_OPERATIONS.md) — explicit SQLite-to-PostgreSQL dry-run/migration, encrypted PostgreSQL backups, and guarded restore drills.
 - [Retention policy template](docs/RETENTION_POLICY_TEMPLATE.md) — institution approval is required before automated deletion can be enabled.
 - [Production Compose file](compose.production.yml) — binds the app only to localhost for a TLS reverse proxy; requires real `DATABASE_URL`, `SESSION_SECRET`, and `ALLOWED_HOSTS` environment values.

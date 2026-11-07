@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -22,6 +23,7 @@ import app.main as main
 from app.core import runtime as app_runtime
 from app.services import notifications as app_notifications
 from app.services import reports as app_reports_service
+from app.services import object_storage as app_object_storage
 from app.api.routes import auth as auth_routes
 from app.api.routes import reports as reports_routes
 from app.api.routes import claims as claims_routes
@@ -33,7 +35,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.modules = [main, app_config, app_database, app_runtime, app_notifications,
-                        app_reports_service, auth_routes, reports_routes, claims_routes, engagement_routes]
+                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
                         "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
@@ -932,6 +934,26 @@ class LostLinkWorkflowTests(unittest.TestCase):
             legacy_columns_migration = conn.execute(
                 "SELECT name FROM schema_migrations WHERE version=4"
             ).fetchone()
+            reconciliation_migration = conn.execute(
+                "SELECT name FROM schema_migrations WHERE version=7"
+            ).fetchone()
+            report_columns = app_database.table_columns(conn, "reports")
+            if TEST_WITH_POSTGRES:
+                cache_table = conn.execute(
+                    "SELECT table_name AS name FROM information_schema.tables "
+                    "WHERE table_schema=current_schema() AND table_name='ai_embedding_cache'"
+                ).fetchone()
+                candidate_index = conn.execute(
+                    "SELECT indexname AS name FROM pg_indexes "
+                    "WHERE schemaname=current_schema() AND indexname='idx_reports_match_candidates'"
+                ).fetchone()
+            else:
+                cache_table = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
+                ).fetchone()
+                candidate_index = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
+                ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
         self.assertIsNotNone(active_index_migration)
@@ -943,6 +965,15 @@ class LostLinkWorkflowTests(unittest.TestCase):
             legacy_columns_migration["name"],
             "legacy_additive_columns_and_image_fingerprints",
         )
+        self.assertIsNotNone(reconciliation_migration)
+        self.assertEqual(
+            reconciliation_migration["name"],
+            "pr3_schema_lineage_reconciliation_and_matching_indexes",
+        )
+        self.assertTrue({"ai_caption", "ai_keywords", "ai_attributes_json",
+                         "ai_enriched_at", "ai_enrichment_model"}.issubset(report_columns))
+        self.assertIsNotNone(cache_table)
+        self.assertIsNotNone(candidate_index)
 
     def test_application_refuses_unknown_future_schema_versions(self):
         with self.assertRaisesRegex(RuntimeError, "newer than this application supports"):
@@ -1211,6 +1242,330 @@ class LostLinkWorkflowTests(unittest.TestCase):
                     "VALUES (?,?,?,?,?,?,?)",
                     ("reward-unique-2", user_id, event_key, 5, "test", None, main.now_iso()),
                 )
+
+
+    def test_report_listing_uses_stable_cursor_pages_without_duplicates(self):
+        self.login("claimant@example.test", "claimant-password")
+        expected_ids = []
+        for index in range(7):
+            response = self.client.post(
+                "/api/reports",
+                json=self.report_body(
+                    "lost",
+                    f"Pagination item {index}",
+                    f"Pagination test item number {index} with a unique identifying detail.",
+                ),
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            expected_ids.append(response.json()["report"]["id"])
+
+        collected = []
+        cursor = None
+        while True:
+            params = {"mine": "true", "page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/reports", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                self.assertIsNone(cursor)
+                break
+
+        self.assertEqual(set(collected), set(expected_ids))
+        self.assertEqual(len(collected), len(set(collected)))
+        self.assertEqual(len(collected), len(expected_ids))
+
+    def test_report_listing_rejects_invalid_cursor_and_page_size(self):
+        self.login("claimant@example.test", "claimant-password")
+        invalid_cursor = self.client.get("/api/reports", params={"cursor": "not-a-valid-cursor"})
+        self.assertEqual(invalid_cursor.status_code, 400)
+        invalid_size = self.client.get("/api/reports", params={"page_size": 101})
+        self.assertEqual(invalid_size.status_code, 422)
+
+
+    def test_claim_listing_cursor_pages_are_stable_for_student_and_office(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Claim pagination test item", "A test item used to verify claim queue pagination."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+        with main.connect_db() as conn:
+            claimant_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("claimant@example.test",)
+            ).fetchone()["id"]
+            timestamp = "2026-11-01T10:00:00+00:00"
+            for index in range(7):
+                status = "disputed" if index < 2 else ("pending" if index < 4 else "rejected")
+                conn.execute(
+                    """INSERT INTO claims
+                       (id, report_id, claimant_id, evidence, evidence_types, status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (f"pagination-claim-{index}", report_id, claimant_id,
+                     "This is test evidence for a cursor pagination claim.",
+                     '["distinctive_features"]', status, timestamp, timestamp),
+                )
+
+        self.login("claimant@example.test", "claimant-password")
+        collected = []
+        cursor = None
+        changed_status = False
+        while True:
+            params = {"page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["claims"])
+            cursor = payload["next_cursor"]
+            if not changed_status and payload["has_more"]:
+                # Workflow status is mutable; it must not move a row across the
+                # chronological cursor boundary in the unfiltered student list.
+                with main.connect_db() as conn:
+                    conn.execute(
+                        "UPDATE claims SET status='returned' WHERE id=?",
+                        ("pagination-claim-3",),
+                    )
+                changed_status = True
+            if not payload["has_more"]:
+                break
+        self.assertEqual(len(collected), 7)
+        self.assertEqual(len(set(collected)), 7)
+
+        self.logout()
+        self.login("office@example.test", "office-password")
+        office_collected = []
+        cursor = None
+        while True:
+            params = {"page_size": 3, "queue": "all"}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            office_collected.extend(item["id"] for item in payload["claims"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                break
+        self.assertEqual(len(office_collected), 7)
+        self.assertEqual(len(set(office_collected)), 7)
+
+        disputed = self.client.get("/api/claims", params={"queue": "disputed"})
+        self.assertEqual(disputed.status_code, 200, disputed.text)
+        self.assertEqual(len(disputed.json()["claims"]), 2)
+        pending = self.client.get("/api/claims", params={"queue": "pending"})
+        self.assertEqual(len(pending.json()["claims"]), 1)
+        student_only_queue = self.client.get("/api/claims", params={"queue": "other"})
+        self.assertEqual(student_only_queue.status_code, 200)
+
+    def test_claim_listing_rejects_bad_pagination_and_student_queue_override(self):
+        self.login("claimant@example.test", "claimant-password")
+        self.assertEqual(self.client.get("/api/claims", params={"page_size": 101}).status_code, 422)
+        self.assertEqual(self.client.get("/api/claims", params={"cursor": "invalid"}).status_code, 400)
+        self.assertEqual(self.client.get("/api/claims", params={"queue": "disputed"}).status_code, 403)
+
+
+    def test_report_editing_enforces_owner_workflow_and_audits_changes(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Original lost backpack", "Original description with identifying details."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        updated_body = self.report_body(
+            "lost", "Updated lost backpack", "Updated description with a different identifying detail."
+        )
+        updated = self.client.put(f"/api/reports/{lost_id}", json=updated_body)
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["report"]["title"], "Updated lost backpack")
+        wrong_type = self.client.put(
+            f"/api/reports/{lost_id}",
+            json=self.report_body("found", "Type changed", "Attempt to change a lost report into a found report."),
+        )
+        self.assertEqual(wrong_type.status_code, 422, wrong_type.text)
+        with main.connect_db() as conn:
+            audit_row = conn.execute(
+                """SELECT action FROM audit_events
+                   WHERE entity_type='report' AND entity_id=? AND action='report_details_updated'""",
+                (lost_id,),
+            ).fetchone()
+        self.assertIsNotNone(audit_row)
+
+        self.logout()
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Found item before intake", "Found item description before intake."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_id = found.json()["report"]["id"]
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{found_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf E-02",
+            "private_detail": "A distinctive mark on the inner side.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        office_edit = self.client.put(
+            f"/api/reports/{found_id}",
+            json=self.report_body("found", "Office corrected item title", "Office corrected description with detail."),
+        )
+        self.assertEqual(office_edit.status_code, 200, office_edit.text)
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        forbidden_owner_edit = self.client.put(
+            f"/api/reports/{found_id}",
+            json=self.report_body("found", "Student late edit", "Student attempts edit after office intake."),
+        )
+        self.assertEqual(forbidden_owner_edit.status_code, 409, forbidden_owner_edit.text)
+
+    def test_matching_retrieval_includes_relevant_same_category_candidate_beyond_500(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body(
+                "lost", "Lost blue hiking backpack",
+                "Blue hiking backpack with a torn orange zipper pull and a stitched mountain patch.",
+            ),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        with main.connect_db() as conn:
+            finder_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("finder@example.test",)
+            ).fetchone()["id"]
+            target_id = "old-relevant-candidate-501"
+            conn.execute(
+                """INSERT INTO reports
+                   (id, public_ref, report_type, title, description, category, status,
+                    created_by, created_at, updated_at)
+                   VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                (target_id, "LL-OLD-501", "Blue hiking backpack",
+                 "Blue hiking backpack with a torn orange zipper pull and a stitched mountain patch.",
+                 "bags_wallets", finder_id, "2020-01-01T00:00:00+00:00",
+                 "2020-01-01T00:00:00+00:00"),
+            )
+            for index in range(600):
+                stamp = f"2026-10-{(index % 28) + 1:02d}T10:00:00+00:00"
+                conn.execute(
+                    """INSERT INTO reports
+                       (id, public_ref, report_type, title, description, category, status,
+                        created_by, created_at, updated_at)
+                       VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                    (f"recent-filler-{index:03d}", f"LL-FILL-{index:03d}",
+                     f"Unrelated item {index}",
+                     f"Unrelated description with generic detail number {index}.",
+                     "bags_wallets", finder_id, stamp, stamp),
+                )
+
+        self.logout()
+        self.login("office@example.test", "office-password")
+        response = self.client.get(f"/api/reports/{lost_id}/matches")
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertGreater(payload["candidate_count"], 500)
+        self.assertLessEqual(payload["candidate_count"], payload["candidate_limit"])
+        returned_ids = [item["report"]["id"] for item in payload["matches"]]
+        self.assertIn(target_id, returned_ids)
+
+
+    def test_reconciliation_migration_repairs_pr3_v5_v6_lineage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "pr3-lineage.sqlite"
+            conn = sqlite3.connect(database_path)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.executescript(
+                    """
+                    CREATE TABLE schema_migrations (
+                        version INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        applied_at TEXT NOT NULL
+                    );
+                    CREATE TABLE reports (
+                        id TEXT PRIMARY KEY,
+                        report_type TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                    """
+                )
+                for version in range(1, 7):
+                    conn.execute(
+                        "INSERT INTO schema_migrations(version,name,applied_at) VALUES(?,?,?)",
+                        (version, f"pr3_historical_migration_{version}", "2026-11-01T00:00:00+00:00"),
+                    )
+                app_database._apply_versioned_schema_migrations(conn)
+                columns = app_database.table_columns(conn, "reports")
+                self.assertTrue({
+                    "ai_caption", "ai_keywords", "ai_attributes_json",
+                    "ai_enriched_at", "ai_enrichment_model",
+                }.issubset(columns))
+                self.assertIsNotNone(conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
+                ).fetchone())
+                self.assertIsNotNone(conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
+                ).fetchone())
+                applied = conn.execute(
+                    "SELECT name FROM schema_migrations WHERE version=7"
+                ).fetchone()
+                self.assertEqual(
+                    applied["name"],
+                    "pr3_schema_lineage_reconciliation_and_matching_indexes",
+                )
+            finally:
+                conn.close()
+
+
+    def test_office_intake_inventory_uses_report_cursor_pagination(self):
+        self.login("finder@example.test", "finder-password")
+        expected_ids = []
+        for index in range(5):
+            response = self.client.post(
+                "/api/reports",
+                json=self.report_body(
+                    "found",
+                    f"Inventory item {index}",
+                    f"Found inventory item {index} with a distinct physical description.",
+                ),
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            expected_ids.append(response.json()["report"]["id"])
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        collected = []
+        cursor = None
+        while True:
+            params = {"status": "awaiting_intake", "page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/reports", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                break
+        self.assertEqual(set(collected), set(expected_ids))
+        self.assertEqual(len(collected), len(set(collected)))
 
 
 if __name__ == "__main__":

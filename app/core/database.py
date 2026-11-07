@@ -365,6 +365,34 @@ def _migration_add_ai_embedding_cache(conn) -> None:
     )
 
 
+def _migration_reconcile_pr3_schema(conn) -> None:
+    """Reconcile schema objects from either historical migration lineage.
+
+    PR #3 used versions 5 and 6 for different objects. This forward migration
+    re-ensures the current AI schema and candidate indexes without rewriting
+    or renumbering any applied migration records.
+    """
+    for column, declaration in (
+        ("ai_caption", "TEXT"),
+        ("ai_keywords", "TEXT"),
+        ("ai_attributes_json", "TEXT"),
+        ("ai_enriched_at", "TEXT"),
+        ("ai_enrichment_model", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+    _migration_add_ai_embedding_cache(conn)
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_reports_match_candidates
+           ON reports(report_type, status, category, created_at, id)"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_reports_match_recent
+           ON reports(report_type, status, created_at, id)"""
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
@@ -373,6 +401,7 @@ SCHEMA_MIGRATIONS = (
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
     (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
     (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
+    (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
 )
 
 

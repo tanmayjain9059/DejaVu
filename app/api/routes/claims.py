@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 from app.core.runtime import *
 from app.schemas import *
+from app.services.object_storage import delete_upload, read_upload, save_upload
 
 router = APIRouter()
 
@@ -116,7 +117,7 @@ async def upload_claim_evidence_image(
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
-    image_path = None
+    image_key = None
     try:
         with connect_db() as conn:
             # Serialize duplicate checks across simultaneous student and office processes.
@@ -134,15 +135,12 @@ async def upload_claim_evidence_image(
                     detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
                 )
             filename = "claim-" + uuid.uuid4().hex + ".jpg"
-            image_path = (UPLOAD_DIR / filename).resolve()
-            if image_path.parent != UPLOAD_DIR.resolve():
-                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-            image_path.write_bytes(normalized)
+            image_key = save_upload(filename, normalized)
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (uuid.uuid4().hex, claim_id, user["id"], filename, image_sha256, image_phash, now_iso()),
+                (uuid.uuid4().hex, claim_id, user["id"], image_key, image_sha256, image_phash, now_iso()),
             )
             audit(conn, user["id"], "claim_evidence_image_added", "claim", claim_id,
                   {"sha256_prefix": image_sha256[:12]})
@@ -151,10 +149,10 @@ async def upload_claim_evidence_image(
                         "claim", claim_id)
     except Exception:
         # Also catches commit failures from the connection context manager.
-        if image_path is not None:
+        if image_key is not None:
             try:
-                image_path.unlink(missing_ok=True)
-            except OSError:
+                delete_upload(image_key)
+            except Exception:
                 pass
         raise
     return {"ok": True, "message": "Private evidence image attached."}
@@ -175,8 +173,9 @@ async def get_claim_evidence_image(
         ).fetchone()
     if not image_row:
         raise HTTPException(status_code=404, detail="No evidence image is attached.")
-    path = (UPLOAD_DIR / image_row["image_path"]).resolve()
-    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+    try:
+        raw_image = read_upload(image_row["image_path"])
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Evidence image not found.")
     headers = {
         "Cache-Control": "private, no-store",
@@ -184,24 +183,85 @@ async def get_claim_evidence_image(
         "X-Content-Type-Options": "nosniff",
     }
     label = "PRIVATE CLAIM " + claim_id[:8].upper()
-    return StreamingResponse(BytesIO(watermark_image(path, label)),
+    return StreamingResponse(BytesIO(watermark_image(raw_image, label)),
                              media_type="image/jpeg", headers=headers)
 
 
 @router.get("/api/claims")
-async def list_claims(user: dict[str, Any] = Depends(authenticated_user)):
+async def list_claims(
+    page_size: int = 50,
+    cursor: str | None = None,
+    queue: str = "all",
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    import base64
+    import json as json_module
+
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=422, detail="page_size must be between 1 and 100.")
+    if queue not in {"all", "disputed", "pending", "other"}:
+        raise HTTPException(status_code=422, detail="queue must be all, disputed, pending, or other.")
     internal = user["role"] == "office"
-    with connect_db() as conn:
+    if not internal and queue != "all":
+        raise HTTPException(status_code=403, detail="Queue filters are available to office staff only.")
+
+    cursor_values = None
+    if cursor:
+        try:
+            padded = cursor + ("=" * (-len(cursor) % 4))
+            decoded = json_module.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+            if (not isinstance(decoded, list) or len(decoded) != 2
+                    or not all(isinstance(value, str) for value in decoded)):
+                raise ValueError("invalid cursor")
+            cursor_values = decoded
+        except (ValueError, TypeError, UnicodeDecodeError, json_module.JSONDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid claim pagination cursor.")
+
+    where = []
+    params: list[Any] = []
+    if internal:
+        if queue == "disputed":
+            where.append("c.status='disputed'")
+        elif queue == "pending":
+            where.append("c.status='pending'")
+        elif queue == "other":
+            where.append("c.status NOT IN ('disputed','pending')")
+    else:
+        where.append("c.claimant_id=?")
+        params.append(user["id"])
+
+    # Cursor order is immutable with respect to workflow state. Office priority is
+    # exposed as metadata and can be consumed as separate status queues without
+    # allowing a status transition to move a row across the active cursor.
+    if cursor_values is not None:
         if internal:
-            rows = conn.execute(
-                """SELECT c.*, u.display_name AS claimant_name, u.email AS claimant_email
-                   FROM claims c JOIN users u ON u.id=c.claimant_id
-                   ORDER BY CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, c.created_at"""
-            ).fetchall()
+            where.append("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))")
         else:
-            rows = conn.execute(
-                "SELECT * FROM claims WHERE claimant_id=? ORDER BY created_at DESC", (user["id"],)
-            ).fetchall()
+            where.append("(c.created_at < ? OR (c.created_at = ? AND c.id < ?))")
+        params.extend([cursor_values[0], cursor_values[0], cursor_values[1]])
+
+    sql = """SELECT c.*, u.display_name AS claimant_name, u.email AS claimant_email
+             FROM claims c JOIN users u ON u.id=c.claimant_id"""
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += (" ORDER BY c.created_at ASC, c.id ASC" if internal
+            else " ORDER BY c.created_at DESC, c.id DESC")
+    sql += " LIMIT ?"
+    params.append(page_size + 1)
+
+    with connect_db() as conn:
+        rows = conn.execute(sql, params).fetchall()
+        has_more = len(rows) > page_size
+        if has_more:
+            rows = rows[:page_size]
+        next_cursor = None
+        if has_more and rows:
+            last = rows[-1]
+            raw = json_module.dumps(
+                [str(last["created_at"]), str(last["id"])], separators=(",", ":")
+            ).encode()
+            next_cursor = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
         output = []
         for claim in rows:
             report = read_report(conn, claim["report_id"])
@@ -215,7 +275,7 @@ async def list_claims(user: dict[str, Any] = Depends(authenticated_user)):
                     "status": linked_row["status"],
                 }
             try:
-                evidence_types = json.loads(claim["evidence_types"] or "[]")
+                evidence_types = json_module.loads(claim["evidence_types"] or "[]")
             except (TypeError, ValueError):
                 evidence_types = []
             evidence_image = conn.execute(
@@ -224,6 +284,7 @@ async def list_claims(user: dict[str, Any] = Depends(authenticated_user)):
             entry = {
                 "id": claim["id"],
                 "status": claim["status"],
+                "priority_rank": 0 if claim["status"] == "disputed" else (1 if claim["status"] == "pending" else 2),
                 "evidence_types": evidence_types,
                 "evidence_image_available": evidence_image is not None,
                 "created_at": claim["created_at"],
@@ -241,7 +302,12 @@ async def list_claims(user: dict[str, Any] = Depends(authenticated_user)):
                     "reviewer_note": claim["reviewer_note"],
                 })
             output.append(entry)
-    return {"claims": output}
+    return {
+        "claims": output,
+        "next_cursor": next_cursor,
+        "has_more": has_more,
+        "queue": queue if internal else "mine",
+    }
 
 
 @router.post("/api/claims/{claim_id}/evidence")
