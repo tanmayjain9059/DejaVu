@@ -193,7 +193,9 @@ class MatchingTests(unittest.TestCase):
         class FakeProcessor:
             def __call__(self, images=None, **kwargs): return {"pixel_values": object()}
         class FakeModel:
-            def get_image_features(self, **kwargs): return FakeTensor([[1.0, 0.0], [1.0, 0.0]])
+            visual_projection = staticmethod(lambda tensor: tensor)
+            def get_image_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0], [1.0, 0.0]]))
         image = Image.new("RGB", (8, 8), (30, 90, 150))
         stream = BytesIO(); image.save(stream, format="JPEG")
         image_bytes = stream.getvalue()
@@ -227,8 +229,12 @@ class MatchingTests(unittest.TestCase):
                 if images is not None: return {"pixel_values": object()}
                 return {"input_ids": object(), "attention_mask": object()}
         class FakeModel:
-            def get_image_features(self, **kwargs): return FakeTensor([[1.0, 0.0]])
-            def get_text_features(self, **kwargs): return FakeTensor([[1.0, 0.0]])
+            visual_projection = staticmethod(lambda tensor: tensor)
+            text_projection = staticmethod(lambda tensor: tensor)
+            def get_image_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0]]))
+            def get_text_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0]]))
         image = Image.new("RGB", (8, 8), (30, 90, 150))
         stream = BytesIO(); image.save(stream, format="JPEG")
         image_bytes = stream.getvalue()
