@@ -1213,5 +1213,47 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 )
 
 
+    def test_report_listing_uses_stable_cursor_pages_without_duplicates(self):
+        self.login("claimant@example.test", "claimant-password")
+        expected_ids = []
+        for index in range(7):
+            response = self.client.post(
+                "/api/reports",
+                json=self.report_body(
+                    "lost",
+                    f"Pagination item {index}",
+                    f"Pagination test item number {index} with a unique identifying detail.",
+                ),
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            expected_ids.append(response.json()["report"]["id"])
+
+        collected = []
+        cursor = None
+        while True:
+            params = {"mine": "true", "page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/reports", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                self.assertIsNone(cursor)
+                break
+
+        self.assertEqual(set(collected), set(expected_ids))
+        self.assertEqual(len(collected), len(set(collected)))
+        self.assertEqual(len(collected), len(expected_ids))
+
+    def test_report_listing_rejects_invalid_cursor_and_page_size(self):
+        self.login("claimant@example.test", "claimant-password")
+        invalid_cursor = self.client.get("/api/reports", params={"cursor": "not-a-valid-cursor"})
+        self.assertEqual(invalid_cursor.status_code, 400)
+        invalid_size = self.client.get("/api/reports", params={"page_size": 101})
+        self.assertEqual(invalid_size.status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()
