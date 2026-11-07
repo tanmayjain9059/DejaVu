@@ -52,8 +52,9 @@ async def list_reports(
             OR LOWER(COALESCE(r.primary_color,'')) LIKE ? OR LOWER(COALESCE(r.visible_features,'')) LIKE ?
             OR LOWER(COALESCE(r.location_block,'')) LIKE ? OR LOWER(COALESCE(r.location_floor,'')) LIKE ?
             OR LOWER(COALESCE(r.location_room,'')) LIKE ?
+            OR LOWER(COALESCE(r.ai_caption,'')) LIKE ? OR LOWER(COALESCE(r.ai_keywords,'')) LIKE ?
         )""")
-        params.extend([term] * 10)
+        params.extend([term] * 12)
     if date_from:
         conditions.append("COALESCE(r.occurred_at,'') >= ?")
         params.append(date_from)
@@ -251,6 +252,36 @@ async def upload_report_image(
             except OSError:
                 pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
+
+@router.post("/api/reports/{report_id}/enrichment")
+async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
+    """Generate private-to-owner image suggestions; never overwrite student-authored fields."""
+    from app.services.image_enrichment import enrich_image
+
+    with connect_db() as conn:
+        row = read_report(conn, report_id)
+        if user["role"] != "office" and row["created_by"] != user["id"]:
+            raise HTTPException(status_code=404, detail="Report not found.")
+        if not row["image_path"]:
+            raise HTTPException(status_code=409, detail="Upload an item photo before requesting image enrichment.")
+        image_path = (UPLOAD_DIR / row["image_path"]).resolve()
+        if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
+            raise HTTPException(status_code=404, detail="The report photo is unavailable.")
+
+    result = await run_in_threadpool(enrich_image, image_path)
+    if result.get("status") != "completed":
+        return {"enrichment": result}
+    with connect_db() as conn:
+        conn.execute(
+            """UPDATE reports SET ai_caption=?, ai_keywords=?, ai_attributes_json=?,
+               ai_enriched_at=?, ai_enrichment_model=?, updated_at=? WHERE id=?""",
+            (result["caption"], json.dumps(result["keywords"]), json.dumps(result["attributes"]),
+             now_iso(), result["model"], now_iso(), report_id),
+        )
+        audit(conn, user["id"], "report_image_ai_enriched", "report", report_id,
+              {"model": result["model"], "keyword_count": len(result["keywords"])})
+    return {"enrichment": result}
+
 
 @router.get("/api/reports/{report_id}/image")
 async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
