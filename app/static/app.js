@@ -1907,5 +1907,43 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
   } catch (error) { showToast(error.message, true); }
 }
 
+
+/* Finn mascot: lightweight contextual help, no access to private claim evidence. */
+(function initLostLinkMascot(){
+  const root=$("#lostlinkMascot"); if(!root)return;
+  const tip=$("#mascotTip"), panel=$("#mascotPanel"), toggle=$("#mascotToggle");
+  const messages={
+    login:"Welcome to LostLink! Sign in to report an item, browse found belongings or track a claim.",
+    browse:"Browse found-item records and check the details. A possible match is only a lead—not proof of ownership.",
+    report:"Let's make a clear report. Add the item's details, where it was lost or found, and when it happened.",
+    "my-claims":"You can follow claim decisions here. Only authorised office staff verify ownership and arrange handover.",
+    office:"Welcome to the office workspace. Finn can point you toward intake, inventory, claims and handover steps.",
+    default:"I'm Finn! I can help you report an item, browse found items or understand the verification process."
+  };
+  const setContext=()=>{
+    const active=$("#appView")&&!$("#appView").classList.contains("hidden");
+    const view=active?($("[data-view].active")[0]?.dataset.view||"browse"):"login";
+    const message=messages[view]||messages.default;
+    $("#mascotMessage").textContent=message; $("#mascotPanelMessage").textContent=message;
+  };
+  const open=()=>{panel.classList.remove("hidden");toggle.setAttribute("aria-expanded","true");tip.classList.add("hidden");};
+  const close=()=>{panel.classList.add("hidden");toggle.setAttribute("aria-expanded","false");};
+  toggle.addEventListener("click",()=>panel.classList.contains("hidden")?open():close());
+  $("#mascotHelpOpen").addEventListener("click",open);
+  $("#mascotTipClose").addEventListener("click",()=>tip.classList.add("hidden"));
+  $("#mascotPanelClose").addEventListener("click",close);
+  root.addEventListener("click",event=>{
+    const action=event.target.closest("[data-mascot-action]");if(!action)return;
+    const kind=action.dataset.mascotAction;
+    if(kind==="report"){close();if(currentUser)navigate("report");else $("#loginEmail")?.focus();}
+    if(kind==="browse"){close();if(currentUser)navigate("browse");else $("#loginEmail")?.focus();}
+    if(kind==="claims"){const msg="Claims are reviewed by authorised office staff. A possible match never proves ownership; physical release requires staff verification of identity and the item's exact Tag ID.";$("#mascotPanelMessage").textContent=msg;}
+  });
+  const observer=new MutationObserver(setContext);
+  ["#loginView","#appView","#browseView","#reportView","#myClaimsView","#officeView"].forEach(sel=>{const el=$(sel);if(el)observer.observe(el,{attributes:true,attributeFilter:["class"]});});
+  setContext();
+  if(!sessionStorage.getItem("lostlink-finn-welcomed")){sessionStorage.setItem("lostlink-finn-welcomed","1");}
+})();
+
 observeAuthImages();
 start();
