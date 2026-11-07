@@ -89,7 +89,8 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("...browseFilters,", self.js)
 
     def test_offline_preview_supports_owner_report_edits(self):
-        self.assertIn('if((m=path.match(/^\\/api\\/reports\\/([^/]+)$/))&&method==="PUT")', self.js)
+        self.assertIn('const editMatch=path.match(/^\\/api\\/reports\\/([^/]+)$/);', self.js)
+        self.assertIn('if(editMatch&&method==="PUT")', self.js)
         self.assertIn("Report type cannot be changed.", self.js)
         self.assertIn("This report cannot be edited while a linked claim is active.", self.js)
         self.assertIn("const title=String(body.title||\"\").trim(),description=String(body.description||\"\").trim();", self.js)
