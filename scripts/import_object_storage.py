@@ -10,6 +10,10 @@ import argparse
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from app.core.object_storage import _safe_key, object_storage_enabled, store_upload
 
 
