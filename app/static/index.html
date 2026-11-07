@@ -66,39 +66,39 @@
                 <span class="public-action-arrow" aria-hidden="true">↗</span>
               </button>
             </div>
-            <div class="mascot-dock" aria-label="Finn, the LostLink campus detective">
-              <div class="mascot-note"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
-              <svg class="finn-mascot" viewBox="0 0 220 190" role="img" aria-label="Finn, a friendly fox detective">
-                <defs>
-                  <linearGradient id="foxFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6a35e"/><stop offset=".58" stop-color="#d8753f"/><stop offset="1" stop-color="#a94e31"/></linearGradient>
-                  <linearGradient id="foxCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ec"/><stop offset="1" stop-color="#e9d6bd"/></linearGradient>
-                  <linearGradient id="foxCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8b5637"/><stop offset="1" stop-color="#4e3027"/></linearGradient>
-                  <linearGradient id="foxHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6d4732"/><stop offset="1" stop-color="#39271f"/></linearGradient>
-                  <filter id="foxShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#24384d" flood-opacity=".2"/></filter>
-                </defs>
-                <g class="finn-tail-group">
-                  <path d="M54 148C20 151 8 128 17 102c8-24 32-31 52-17 13 9 15 23 7 33-8 10-20 8-27 1 1 13 12 22 28 24Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
-                  <path d="M18 111c9-17 28-21 43-12-2 15-15 25-32 23Z" fill="url(#foxCream)"/>
-                </g>
-                <g filter="url(#foxShadow)">
-                  <path d="M69 122 57 42Q81 49 94 75L126 73Q139 44 163 37L153 125Q146 153 111 157 76 154 69 122Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
-                  <path d="M70 69 64 51Q78 58 84 76Z M145 73 158 48Q165 64 151 83Z" fill="#f4b18a"/>
-                  <path d="M69 111Q69 78 109 75 151 72 157 111 160 143 126 153 89 158 72 132Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
-                  <path d="M80 116Q95 102 111 115 128 102 145 116 143 140 113 143 86 142 80 116Z" fill="url(#foxCream)"/>
-                  <path d="M91 106q8-9 17 0M122 106q8-9 17 0" fill="none" stroke="#59372e" stroke-width="3" stroke-linecap="round"/>
-                  <ellipse cx="102" cy="111" rx="3.5" ry="5" fill="#293545"/><ellipse cx="132" cy="111" rx="3.5" ry="5" fill="#293545"/>
-                  <path d="M113 120q5-5 10 0-5 7-10 0Z" fill="#55352d"/>
-                  <path d="M118 126q-7 8-14 1m14-1q7 8 14 1" fill="none" stroke="#8d4b3a" stroke-width="1.8" stroke-linecap="round"/>
-                  <path d="M74 87Q82 55 116 54 149 53 158 83L150 91Q113 77 80 96Z" fill="url(#foxHat)" stroke="#4b3025" stroke-width="2.5"/>
-                  <path d="M68 91Q111 75 164 88 173 91 176 99 126 91 73 108Z" fill="#4b3025" stroke="#39271f" stroke-width="2.5"/>
-                  <path d="M83 91Q116 80 149 88" fill="none" stroke="#c69a70" stroke-width="2" opacity=".7"/>
-                  <path d="M71 148Q89 135 111 140 139 134 157 151L168 184H59Z" fill="url(#foxCoat)" stroke="#24394f" stroke-width="2.5"/>
-                  <path d="m101 143 13 21 14-21-13-5Z" fill="#b87969"/><path d="M114 163v20" stroke="#e7cdb0" stroke-width="2" opacity=".65"/>
-                  <circle cx="167" cy="126" r="22" fill="rgba(245,225,197,.38)" stroke="#b4813f" stroke-width="5"/>
-                  <circle cx="167" cy="126" r="15" fill="rgba(255,250,241,.28)" stroke="rgba(255,250,241,.8)" stroke-width="1.5"/>
-                  <path d="m183 143 18 21" stroke="#5a3a2b" stroke-width="9" stroke-linecap="round"/><path d="m183 143 18 21" stroke="#b4813f" stroke-width="3" stroke-linecap="round"/>
-                </g>
-              </svg>
+            <div class="mascot-dock" id="finnDock" aria-label="Finn, your LostLink campus detective">
+              <div class="mascot-note" id="finnNote" role="status" aria-live="polite"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
+              <button class="finn-character" id="finnCharacter" type="button" aria-label="Wake Finn for a little help">
+                <svg class="finn-mascot" viewBox="0 0 240 205" role="img" aria-label="Finn the fox detective, peeking over the LostLink case desk">
+                  <defs>
+                    <linearGradient id="finnFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6b16e"/><stop offset=".55" stop-color="#d8783f"/><stop offset="1" stop-color="#a94f30"/></linearGradient>
+                    <linearGradient id="finnCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ed"/><stop offset="1" stop-color="#ead5bb"/></linearGradient>
+                    <linearGradient id="finnCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#916344"/><stop offset="1" stop-color="#51362b"/></linearGradient>
+                    <linearGradient id="finnHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#78533a"/><stop offset="1" stop-color="#3e2b23"/></linearGradient>
+                    <filter id="finnDrop" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#4b3020" flood-opacity=".22"/></filter>
+                  </defs>
+                  <g class="finn-tail-group"><path class="finn-tail" d="M65 167C23 170 10 142 23 111c12-28 40-31 60-12 13 13 11 29-1 38-10 7-22 3-29-5 1 18 17 28 34 28Z"/><path class="finn-tail-tip" d="M23 119c12-17 31-19 47-9-4 17-20 26-38 22Z"/></g>
+                  <g class="finn-body" filter="url(#finnDrop)">
+                    <path class="finn-coat" d="M65 174Q75 145 111 145q39-4 66 27l9 30H55Z"/>
+                    <path class="finn-shirt" d="m101 151 20 29 19-29-19-10Z"/>
+                    <path class="finn-paw finn-paw-left" d="M74 157q-16 5-14 19 2 10 17 9l17-10Z"/>
+                    <path class="finn-paw finn-paw-right" d="M157 157q16 5 14 19-2 10-17 9l-17-10Z"/>
+                    <path class="finn-ear" d="M72 89 52 20Q86 34 102 73Z"/><path class="finn-ear-inner" d="m69 66-7-31q18 14 25 32Z"/>
+                    <path class="finn-ear finn-ear-right" d="m143 73 31-54q5 42-12 75Z"/><path class="finn-ear-inner" d="m153 69 14-30q0 25-9 39Z"/>
+                    <path class="finn-head" d="M57 103Q59 55 119 53q61-1 66 50 5 51-45 65-22 7-43-1-44-13-40-64Z"/>
+                    <path class="finn-muzzle" d="M79 119q17-18 40-5 22-13 43 5-5 31-42 32-36-1-41-32Z"/>
+                    <path class="finn-eye-line" d="M83 105q12-12 24 0m20 0q12-12 24 0"/>
+                    <g class="finn-eyes"><ellipse class="finn-eye" cx="98" cy="109" rx="5" ry="7"/><ellipse class="finn-eye" cx="139" cy="109" rx="5" ry="7"/><circle class="finn-eye-glint" cx="100" cy="106" r="1.7"/><circle class="finn-eye-glint" cx="141" cy="106" r="1.7"/></g>
+                    <path class="finn-nose" d="M113 126q7-7 14 0-7 9-14 0Z"/><path class="finn-smile" d="M120 132q-9 10-17 2m17-2q9 10 17 2"/>
+                    <path class="finn-hat" d="M64 79Q78 40 119 39q42-1 57 37l-12 13q-43-23-88 3Z"/><path class="finn-hat-brim" d="M53 88q63-25 137-2 11 4 13 13-77-10-148 15Z"/>
+                    <path class="finn-hat-band" d="M79 78q39-18 77-3" />
+                    <g class="finn-glass">
+                      <circle class="finn-lens" cx="178" cy="123" r="22"/><circle class="finn-lens-shine" cx="178" cy="123" r="15"/>
+                      <path class="finn-handle" d="m194 140 22 24"/>
+                    </g>
+                  </g>
+                </svg>
+              </button>
             </div>
           </div>
 
