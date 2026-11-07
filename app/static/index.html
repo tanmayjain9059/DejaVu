@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#dcebf5">
-  <meta name="description" content="LostLink campus lost and found reporting and claim verification. Apple-grade liquid glass interface.">
+  <meta name="description" content="Report lost and found items on campus, discover possible matches, and complete verified handovers with LostLink.">
   <title>LostLink · Campus Lost &amp; Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,33 +43,83 @@
         <span class="brand-live-dot" title="Active Campus System"></span>
       </div>
 
-      <div class="story-copy">
-        <p class="eyebrow"><span class="pulse-dot"></span> Verified Campus Custody</p>
-        <h1>Lost something?<br><span>Start here.</span></h1>
-        <p class="lede">A calm, verified campus lost and found workflow. Report an item, search registered custody, and track claims privately.</p>
-        
-        <div class="story-points">
-          <div class="glass-point">
-            <span class="point-icon">01</span>
-            <div><strong>Report clearly</strong><small>Add useful visible details without exposing private proof.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">02</span>
-            <div><strong>Find likely matches</strong><small>AI-assisted discovery helps surface office-held items.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">03</span>
-            <div><strong>Verify before release</strong><small>Physical inspection and verified tag check before handover.</small></div>
-          </div>
-        </div>
-      </div>
+      <div class="story-copy public-story">
+        <section id="publicHomeContent" class="public-home-content">
+          <p class="eyebrow"><span class="pulse-dot"></span> YOUR CAMPUS. YOUR LOST &amp; FOUND.</p>
+          <h1 class="public-title">Lost something?<br><span>Let's bring it back.</span></h1>
+          <p class="public-lede">LostLink connects lost belongings with the people looking for them — with a little help from campus and one very curious detective.</p>
 
+          <div class="public-action-panel" id="publicActionPanel">
+            <div class="public-action-heading">
+              <span class="public-kicker">WHAT BRINGS YOU HERE?</span>
+              <span class="public-case-id">CASE DESK · 01</span>
+            </div>
+            <div class="public-actions">
+              <button class="public-action-card lost-action" type="button" data-public-report="lost">
+                <span class="public-action-icon" aria-hidden="true">⌕</span>
+                <span class="public-action-copy"><strong>Lost Report</strong><small>Something went missing? Let's look for it.</small></span>
+                <span class="public-action-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="public-action-card found-action" type="button" data-public-report="found">
+                <span class="public-action-icon" aria-hidden="true">✦</span>
+                <span class="public-action-copy"><strong>Found Report</strong><small>Found something? Help it find its owner.</small></span>
+                <span class="public-action-arrow" aria-hidden="true">↗</span>
+              </button>
+            </div>
+            <div class="mascot-dock" aria-label="Finn, the LostLink campus detective">
+              <div class="mascot-note"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
+              <svg class="finn-mascot" viewBox="0 0 190 170" role="img" aria-label="Finn the fox detective with a magnifying glass">
+                <path class="finn-tail" d="M30 135C3 115 9 76 39 69c18-4 28 9 22 23-5 10-17 12-25 6 2 17 14 26 29 30Z" />
+                <path class="finn-tail-tip" d="M18 91c8-17 28-20 39-9-4 14-17 21-31 17Z"/>
+                <path class="finn-ear" d="M53 67 47 20Q73 31 78 60Z"/><path class="finn-ear-inner" d="m57 51-2-19q12 8 15 20Z"/>
+                <path class="finn-ear" d="m111 60 17-43q17 22 3 51Z"/><path class="finn-ear-inner" d="m120 51 8-22q8 15 1 25Z"/>
+                <path class="finn-head" d="M42 76q-2-42 40-47 45-5 54 36 6 35-23 53-36 21-65-7-10-15-6-35Z"/>
+                <path class="finn-muzzle" d="M50 86q22-19 48-4 20-9 34 8-5 28-37 31-30-1-45-20Z"/>
+                <path class="finn-eye" d="M70 76q10-12 20 0-8 13-20 0Z"/><circle cx="81" cy="76" r="3.5" fill="#2c1b1a"/>
+                <path class="finn-eye" d="M105 74q10-12 20 0-8 13-20 0Z"/><circle cx="116" cy="74" r="3.5" fill="#2c1b1a"/>
+                <path d="M91 91q5-5 10 0-4 7-10 0Z" fill="#38211d"/><path d="M96 98q-7 7-14 1" fill="none" stroke="#7d3e2b" stroke-width="2" stroke-linecap="round"/>
+                <path class="finn-hat" d="M43 53q4-23 34-30 31-8 49 13l-4 12q-38-12-77 13Z"/><path class="finn-hat-brim" d="M37 57q38-22 91-8 10 3 13 10-49-8-98 13Z"/>
+                <path class="finn-coat" d="M40 122q20-17 48-12 33-6 53 17l9 35H29Z"/><path d="m76 116 17 22 17-22" fill="#713a3a"/>
+                <path class="finn-arm" d="M43 137q-18 0-22 15 12 11 29 1Z"/>
+                <circle class="finn-lens" cx="151" cy="91" r="22"/><circle cx="151" cy="91" r="15" fill="#b8d8e5" opacity=".45"/><path d="m166 107 15 17" stroke="#75462c" stroke-width="8" stroke-linecap="round"/>
+                <path d="m166 107 15 17" stroke="#d9a45c" stroke-width="3" stroke-linecap="round"/>
+                <path class="finn-pen" d="m28 117 25 26" stroke="#d9a45c" stroke-width="4" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="public-trust-row">
+            <div><strong>01</strong><span>Report in minutes</span></div>
+            <div><strong>02</strong><span>Discover possible matches</span></div>
+            <div><strong>03</strong><span>Verified campus handover</span></div>
+          </div>
+          <p class="public-footnote">A match is a helpful lead — ownership is confirmed through the campus office.</p>
+        </section>
+
+        <section id="publicLostPage" class="public-destination hidden">
+          <button class="public-back" type="button" data-public-home>← Back to home</button>
+          <p class="eyebrow">CASE TYPE · LOST</p>
+          <h1 class="public-title">Let's find<br><span>what's missing.</span></h1>
+          <p class="public-lede">Tell us a little about the item and where you last remember having it. Finn will help you get the clues in order.</p>
+          <div class="destination-card"><span class="destination-symbol">⌕</span><div><strong>Lost item report</strong><p>Your guided reporting experience will start here. We'll keep it simple and phone-friendly.</p></div></div>
+          <button class="button button-liquid button-full" type="button" data-public-next="lost">Continue to Lost Report <span aria-hidden="true">↗</span></button>
+        </section>
+
+        <section id="publicFoundPage" class="public-destination hidden">
+          <button class="public-back" type="button" data-public-home>← Back to home</button>
+          <p class="eyebrow">CASE TYPE · FOUND</p>
+          <h1 class="public-title">You found it.<br><span>Let's reunite it.</span></h1>
+          <p class="public-lede">A quick report can help the right person find their belongings. Add what you noticed and where you found it.</p>
+          <div class="destination-card"><span class="destination-symbol">✦</span><div><strong>Found item report</strong><p>Your guided reporting experience will start here, designed for quick use on a phone.</p></div></div>
+          <button class="button button-liquid button-full button-found-action" type="button" data-public-next="found">Continue to Found Report <span aria-hidden="true">↗</span></button>
+        </section>
+      </div>
       <div class="story-footer">
         <span>LostLink · Campus Property Assistance Protocol</span>
       </div>
     </section>
 
-    <section class="login-panel liquid-glass-panel">
+    <section id="officeLoginPanel" class="login-panel liquid-glass-panel hidden">
       <div class="panel-specular-light" aria-hidden="true"></div>
       <div class="panel-kicker">
         <span class="status-dot"></span>
