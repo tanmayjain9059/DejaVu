@@ -3,12 +3,14 @@ import unittest
 from unittest.mock import patch
 
 from app.services import category_classification as classifier
+from app.matching import matching_engine
 
 
 class CategoryClassificationTests(unittest.TestCase):
     def setUp(self):
-        classifier._MODEL = None
-        classifier._MODEL_ATTEMPTED = False
+        matching_engine._text_model = None
+        matching_engine._text_attempted = False
+        matching_engine.semantic_enabled = False
 
     def tearDown(self):
         classifier._MODEL = None
