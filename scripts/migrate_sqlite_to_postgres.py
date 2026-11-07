@@ -32,6 +32,9 @@ TABLE_ORDER = (
     "claim_verifications",
     "claim_evidence_images",
 )
+# Embeddings are disposable derived data. They are intentionally rebuilt on the
+# destination instead of copied during a database migration.
+IGNORED_SOURCE_TABLES = {"schema_migrations", "ai_embedding_cache"}
 BATCH_SIZE = 500
 
 
@@ -50,6 +53,11 @@ def sqlite_tables(connection):
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         )
     }
+
+
+def unsupported_source_tables(source_tables: set[str]) -> set[str]:
+    """Return unrecognised source tables; schema history and derived cache are excluded."""
+    return set(source_tables) - set(TABLE_ORDER) - IGNORED_SOURCE_TABLES
 
 
 def safe_upload_path(root: Path, filename: str) -> Path:
@@ -91,7 +99,7 @@ def main():
         raise SystemExit(f"Source SQLite has foreign-key violations: {len(foreign_key_errors)}")
 
     source_tables = sqlite_tables(source)
-    unsupported = source_tables - set(TABLE_ORDER) - {"schema_migrations"}
+    unsupported = unsupported_source_tables(source_tables)
     if unsupported:
         raise SystemExit("Unknown source tables need explicit migration handling: " + ", ".join(sorted(unsupported)))
 
