@@ -87,7 +87,7 @@ Image enrichment is implemented as an opt-in service. The report-photo workflow 
 
 ## Matching evaluation
 
-`tests/data/matching_benchmark.json` contains 15 manually labelled synthetic retrieval scenarios with one relevant candidate and five distractors per query. `scripts/evaluate_matching.py` reports top-1/top-3 hit rates and mean reciprocal rank for the lexical baseline, then for Sentence Transformers if its model loads. These figures are a development sanity check only; they do not estimate performance on real campus reports.
+`tests/data/matching_benchmark.json` contains 15 manually labelled synthetic retrieval scenarios with one relevant candidate and five distractors per query. `scripts/evaluate_matching.py` reports macro Precision@K, Recall@K, HitRate@K, MRR, category breakdowns, and candidate-pair false-positive diagnostics at a configurable threshold for the lexical baseline and, when available, Sentence Transformers. The threshold is diagnostic only and never authorises ownership or claim approval. These synthetic figures are a development sanity check only; they do not estimate performance on real campus reports. The harness accepts another labelled JSON dataset through `--dataset`; real records must be anonymised, consented and governed by the institution's retention policy.
 
 
 ## AI category suggestion
