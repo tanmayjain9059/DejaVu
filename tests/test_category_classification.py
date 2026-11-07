@@ -8,13 +8,21 @@ from app.matching import matching_engine
 
 class CategoryClassificationTests(unittest.TestCase):
     def setUp(self):
+        self.original_model_state = (
+            matching_engine._text_model,
+            matching_engine._text_attempted,
+            matching_engine.semantic_enabled,
+        )
         matching_engine._text_model = None
         matching_engine._text_attempted = False
         matching_engine.semantic_enabled = False
 
     def tearDown(self):
-        classifier._MODEL = None
-        classifier._MODEL_ATTEMPTED = False
+        (
+            matching_engine._text_model,
+            matching_engine._text_attempted,
+            matching_engine.semantic_enabled,
+        ) = self.original_model_state
 
     def test_keyword_fallback_suggests_electronics(self):
         with patch.dict(os.environ, {"USE_SEMANTIC_MODEL": "false"}):
