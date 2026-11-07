@@ -1,87 +1,125 @@
-# Free-tier deployment baseline
+# Oracle Cloud + Supabase deployment
 
-This guide targets a **$0/month demonstration or small supervised pilot**, not a production deployment for sensitive campus records. Free-tier limits and provider terms can change; check the linked provider pages before provisioning.
+This is LostLink's target self-managed hosting path. Render was used for the prototype; it is not the production deployment target.
 
-## Recommended split
+The baseline aims for **$0/month within provider free-tier quotas** for a small demo or supervised pilot. Free-tier capacity, regional availability, account eligibility and terms can change. It is not an uptime or backup guarantee and is not approved for sensitive institutional data.
 
-| Component | Free-tier option | Why |
+## Target architecture
+
+| Layer | Service | Responsibility |
 |---|---|---|
-| FastAPI application | Render Free Web Service | Runs the existing Python application from this repository's Dockerfile |
-| Relational database | Neon Free PostgreSQL | Keeps application records outside the web service's disposable filesystem |
-| Private image/evidence storage | Cloudflare R2 Standard | Keeps report photos and private claim evidence outside the disposable app container |
+| Domain and DNS | Your domain registrar/DNS provider | Public hostname points to the Oracle VM |
+| Compute | Oracle Cloud Infrastructure Always Free Ampere A1 | Runs Docker Compose, FastAPI and Caddy |
+| Database | Supabase Free PostgreSQL | Users, reports, claims, evidence metadata, audit and rewards |
+| Object storage | Supabase Storage private bucket | Report photos and private claim evidence |
+| TLS/reverse proxy | Caddy on the Oracle VM | Automatic HTTPS and reverse proxy to FastAPI |
 
-Do **not** use Render's Free PostgreSQL for this project: it expires 30 days after creation and has no backups. Render Free Web Services also spin down after 15 minutes without traffic, may restart, and lose local filesystem changes on restart, redeploy, or spin-down. They can take about a minute to wake up. Use Neon for the database and a private S3-compatible bucket for uploads instead.
+Oracle documents an Always Free Ampere A1 allowance equivalent to 2 OCPUs and 12 GB RAM, subject to tenancy and home-region capacity. Oracle may reclaim idle Always Free compute instances when the documented low-utilisation conditions are met. Do not treat this as guaranteed hosting capacity. See [Oracle Always Free resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) and [Oracle Free Tier FAQ](https://www.oracle.com/apac/cloud/free/faq/).
 
-Provider references:
-- [Render free service limits](https://render.com/docs/free)
-- [Neon Free plan limits](https://neon.com/docs/introduction/plans)
-- [Cloudflare R2 pricing and free allowance](https://developers.cloudflare.com/r2/pricing/)
+Supabase Free currently provides a small managed PostgreSQL database and Storage allowance, but free projects can be paused after a period of inactivity. Free tier does not include automatic database backups. Check [Supabase pricing](https://supabase.com/pricing) and [Free plan limits](https://supabase.com/docs/guides/platform/billing-on-supabase).
 
-## Provision the services
+## Why this fits the current code
 
-1. Create a Neon project and database. Copy its **pooled** PostgreSQL connection string. Neon Free currently lists 1 GB storage per project, 100 compute-hours per month, and 5 GB public network transfer per month. Compute can scale to zero; the first request after inactivity may wait for it to wake.
-2. Create a Cloudflare R2 bucket. Keep it **private**; do not enable public bucket access. Create an API token restricted to this bucket with object read/write permissions. Copy the S3 endpoint and access credentials.
-3. Create a Render Web Service from this GitHub repository and select the Free instance. Use the repository Dockerfile. Set the branch to the integration branch you intend to deploy after testing and merging.
+- LostLink already supports PostgreSQL through `DATABASE_URL`; local SQLite remains the development default.
+- `app/core/object_storage.py` supports private S3-compatible object storage. Supabase exposes an S3-compatible endpoint, but it requires path-style addressing. The adapter configures that explicitly.
+- Supabase's S3 endpoint uses AWS Signature Version 4. Its S3 access keys bypass Storage RLS and have broad bucket access, so keep them only in the FastAPI server environment. Never put them in frontend JavaScript.
+- Report photos and claim evidence continue to be served through LostLink's authenticated, access-checked routes. Do not make the bucket public.
+- Caddy terminates HTTPS for your domain. FastAPI is exposed only on the internal Docker network.
 
-## Render environment variables
+Provider documentation:
+- [Supabase S3 compatibility](https://supabase.com/docs/guides/storage/s3/compatibility)
+- [Supabase S3 authentication and required path-style addressing](https://supabase.com/docs/guides/storage/s3/authentication)
+- [Supabase Storage access controls](https://supabase.com/docs/guides/storage/security/access-control)
+- [Oracle Always Free compute](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
 
-Set these in the Render service dashboard. Do not commit real credentials.
+## 1. Create the Supabase project
 
-\`\`\`dotenv
-DATABASE_URL=<Neon pooled PostgreSQL URL with sslmode=require>
-DATABASE_POOL_MAX_SIZE=2
-SESSION_SECRET=<unique random secret, at least 32 random bytes>
-SESSION_HTTPS_ONLY=true
-REQUIRE_REQUEST_ORIGIN=true
-DEMO_MODE=false
-ALLOWED_HOSTS=<your exact Render hostname>
-OBJECT_STORAGE_BUCKET=<private R2 bucket name>
-OBJECT_STORAGE_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
-OBJECT_STORAGE_ACCESS_KEY_ID=<R2 access key>
-OBJECT_STORAGE_SECRET_ACCESS_KEY=<R2 secret key>
-OBJECT_STORAGE_REGION=auto
-USE_SEMANTIC_MODEL=false
-USE_CLIP_MODEL=false
-\`\`\`
+1. Create a Supabase project in a region reasonably close to your expected users and Oracle VM. Record the database password securely.
+2. Open **Project Settings → Database → Connection string**. Select the **Session pooler** connection string for an IPv4-compatible VM connection. Use the URI format shown by Supabase and append/retain `sslmode=require`. Do not use the direct database host if your VM network cannot reach its IPv6 endpoint. Keep the pooler mode consistent with the selected connection string.
+3. Open **Storage** and create a private bucket named `lostlink-private`. Do not enable public access.
+4. Open **Storage → S3** settings, enable the S3 protocol if prompted, and generate S3 access credentials. Save the access key and secret immediately.
+5. Copy the S3 endpoint and region exactly as displayed. The endpoint normally has this shape: `https://<project-ref>.storage.supabase.co/storage/v1/s3`. Do not guess the region.
+6. Keep the database password, S3 secret and service credentials out of Git and out of the browser.
 
-Generate a session secret locally:
+Supabase S3 access keys bypass Storage RLS. The LostLink server therefore owns the bucket credentials and enforces the existing report/claim privacy checks before returning any image.
 
-\`\`\`bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-\`\`\`
+## 2. Create the Oracle VM
 
-The application uses SQLite and local uploads only when no external database/object storage is configured. On Render Free, **do not leave either fallback enabled for real records or uploaded images**: local files are disposable. The S3-compatible storage adapter stores report photos and private claim evidence in the private bucket, then serves them through LostLink's authenticated, access-checked routes. Images are not served from public bucket URLs.
+1. Create an Oracle Cloud account and use the Always Free resources in your tenancy's **home region**.
+2. Attempt an Ampere A1 VM with 2 OCPUs and 12 GB RAM if available. Host capacity is not guaranteed; if the shape is unavailable, retry later or choose another supported Always Free shape/size.
+3. Use Ubuntu 22.04/24.04 ARM64 (aarch64). The repository's Python Docker base image supports ARM64.
+4. Assign a public IPv4 address. Configure an ingress rule/security-list rule for TCP 80 and 443 only. Do not expose port 8000 or the Docker daemon.
+5. Use SSH keys; disable password SSH login after verifying key access. Apply OS security updates.
+6. Install Docker Engine and the Docker Compose plugin using the official Ubuntu instructions.
+7. Reserve/retain a stable public IP if your tenancy/network configuration supports it; otherwise update DNS if the VM's public IP changes.
 
-The \`DATABASE_URL\` must be a PostgreSQL URL. Keep the Neon pooled connection string and a small application pool size to avoid exhausting free compute connections. The application creates/updates its schema on startup; confirm readiness after the first deploy.
+## 3. Point your domain to the VM
 
-## Verify before sharing the demo
+At your DNS provider, create:
+- An `A` record for the chosen hostname (for example `lostlink.example.in`) pointing to the VM public IPv4 address.
+- Optionally, a `www` record pointing to the canonical hostname.
 
-1. Confirm \`/health/live\` and \`/health/ready\` return success.
-2. Create a student account using an office-issued registration invite.
-3. Submit a lost report and a found report; upload an image to each.
-4. Confirm a student cannot view private claim evidence or restricted-category photos, and that office staff can review evidence through the application.
-5. Submit a claim with an evidence photo and verify that it remains available after a Render redeploy or service spin-down.
-6. Confirm that report metadata remains after a Render restart and a new application deployment.
-7. Check Neon storage/compute/network quotas and R2 storage/operation usage.
+Wait for DNS to resolve before starting Caddy. The hostname must be the exact value used in the `DOMAIN` environment variable. Caddy obtains and renews the HTTPS certificate automatically when ports 80 and 443 are reachable.
 
-## Cost and operational limits
+## 4. Configure the deployment
 
-- This is a free-tier demo target, not an uptime guarantee. Render Free sleeps after inactivity and can cold-start slowly.
-- Neon Free can suspend compute after monthly compute or network-transfer quotas are reached. Its storage limit is finite; monitor usage.
-- R2's free Standard allowance is 10 GB-month storage, 1 million Class A operations and 10 million Class B operations per month. Usage beyond the free allowance can incur charges; set account billing/usage alerts and monitor it.
-- Render warns that unusually high service-initiated external traffic, including traffic to databases and object storage, can lead to a free service being suspended. Keep the pilot's traffic modest.
-- Free tiers do not provide the backup, retention, incident response, availability, or contractual assurances needed for institutional personal data. Do not enter real identity documents, sensitive ownership evidence, or other production personal data until the college approves the deployment and a tested backup/restore plan exists.
-- Matching models remain disabled by default. Do not enable CLIP/MiniLM on the small free web instance; their model downloads and memory use can exceed free compute limits.
-- If the pilot becomes important or data-sensitive, move to paid persistent compute, managed PostgreSQL with backups, and object storage with a documented backup/retention policy before continuing.
+On the VM, clone the repository and check out the integration branch only after you have reviewed and merged PR #3 yourself. Do not deploy from an unmerged branch for a public pilot.
 
-## Existing data
+Create `.env.oracle` from `.env.oracle.example`. Fill in:
+- `DOMAIN`: your real public hostname.
+- `DATABASE_URL`: the Supabase Session Pooler URI with URL-encoded password and `sslmode=require`.
+- `OBJECT_STORAGE_BUCKET`: the private bucket name.
+- `OBJECT_STORAGE_ENDPOINT_URL`: the exact Supabase S3 endpoint.
+- `OBJECT_STORAGE_ACCESS_KEY_ID` and `OBJECT_STORAGE_SECRET_ACCESS_KEY`: server-side S3 credentials.
+- `OBJECT_STORAGE_REGION`: the exact Supabase S3 region.
+- `SESSION_SECRET`: generate a unique random secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
 
-This guide does not automatically migrate a local SQLite database or its upload directory. Use the reviewed [SQLite-to-PostgreSQL migration procedure](DATABASE_OPERATIONS.md) for the database migration. The existing migration utility copies local files to a local destination directory; it does not upload them to R2. After migrating the database, configure the R2 variables locally and copy the referenced files with a dry run first:
+Set restrictive file permissions: `chmod 600 .env.oracle`. Never commit this file.
+
+The production app refuses to start if PostgreSQL or remote object storage is missing, if the object endpoint is not HTTPS, or if demo seeding is enabled. This prevents an accidental silent fallback to ephemeral local SQLite/uploads.
+
+## 5. Start the application
+
+From the repository root:
 
 ```bash
-python scripts/migrate_uploads_to_object_storage.py \
-  --database ./data/lostlink.db \
-  --source-uploads ./data/uploads
+docker compose --env-file .env.oracle -f compose.oracle.yml config
+docker compose --env-file .env.oracle -f compose.oracle.yml up -d --build
+docker compose --env-file .env.oracle -f compose.oracle.yml ps
+docker compose --env-file .env.oracle -f compose.oracle.yml logs --tail=100 app caddy
 ```
 
-If the inventory is correct, repeat with `--execute`. The script preserves the filenames already stored in the database, so the hosted app can resolve the same keys from R2. Keep the source database and uploads directory until hosted report photos and private claim evidence have been verified. A migration rehearsal and independent count verification are required before using existing records on a hosted service.
+The app container is not published on a host port. Caddy is the only public entry point and proxies to FastAPI over the private Compose network.
+
+Check:
+- `https://<your-domain>/health/live`
+- `https://<your-domain>/health/ready`
+
+Readiness verifies both the PostgreSQL connection and the configured private storage bucket. Do not consider the deployment ready if either check fails.
+
+## 6. First-run acceptance test
+
+1. Create an office account through the controlled bootstrap process; do not enable public office registration.
+2. Create a registration invite and register a student.
+3. Submit lost and found reports with photos.
+4. Verify images survive app container recreation.
+5. Submit a claim with a private evidence image.
+6. Verify a different student cannot retrieve private claim evidence, office-only images, or restricted-category photos.
+7. Complete office intake, claim review and physical handover using test records.
+8. Restart the app container and repeat photo/evidence access checks.
+9. Check Supabase database/storage quotas and Oracle instance utilisation.
+
+## 7. Backups, limits and security
+
+- Supabase Free does not include automatic database backups. Schedule encrypted `pg_dump` exports to storage outside the Supabase project and test restores. Do not store the only backup in the same project/account.
+- Supabase Storage S3 compatibility does not provide S3 object versioning. Keep an independent encrypted copy of uploads if they become important.
+- Free-tier quotas are finite and can change. Monitor database size, storage size, egress, request counts, Oracle resource utilisation and account notices.
+- Oracle may reclaim an idle Always Free VM. Keep source code and deployment configuration in Git; keep backups outside the VM.
+- Keep CLIP and MiniLM disabled on the baseline VM until measured memory/CPU use demonstrates they fit. The deterministic matching path remains available.
+- Configure OS updates, SSH access restrictions, firewall rules, log rotation, disk monitoring and an external uptime check.
+- Do not enter real identity documents, sensitive claim evidence or other production personal data until the college approves the service, access controls, retention policy, backup/restore procedure and incident ownership.
+- The free deployment is a pilot baseline, not an institutional production SLA.
+
+## Existing local data
+
+Do not point the hosted application at the local SQLite file. Use the reviewed SQLite-to-PostgreSQL migration procedure in [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md) against a fresh Supabase database, rehearse with a copy, and independently verify counts and relationships. Then use `scripts/migrate_uploads_to_object_storage.py` with the Supabase S3 settings to dry-run and upload referenced report and claim images. Retain the original SQLite database and uploads until the hosted application has been verified end to end.
