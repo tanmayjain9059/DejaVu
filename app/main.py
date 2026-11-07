@@ -36,6 +36,8 @@ if AUTH_PROVIDER not in {"local", "supabase"}:
 if AUTH_PROVIDER == "supabase":
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY are required for Supabase Auth.")
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL must point to Supabase PostgreSQL when AUTH_PROVIDER=supabase.")
     if DEMO_MODE:
         raise RuntimeError("DEMO_MODE must be false when Supabase Auth is enabled.")
     if UPLOAD_STORAGE_BACKEND != "s3":
