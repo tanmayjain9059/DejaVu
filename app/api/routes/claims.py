@@ -254,6 +254,13 @@ async def list_claims(
     params.append(page_size + 1)
 
     with connect_db() as conn:
+        active_count = 0
+        if not internal:
+            count_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+                (user["id"],),
+            ).fetchone()
+            active_count = int(count_row["n"])
         rows = conn.execute(sql, params).fetchall()
         has_more = len(rows) > page_size
         if has_more:
@@ -311,6 +318,7 @@ async def list_claims(
         "next_cursor": next_cursor,
         "has_more": has_more,
         "queue": queue if internal else "mine",
+        "active_count": active_count if not internal else None,
     }
 
 
