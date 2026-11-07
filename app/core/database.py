@@ -633,6 +633,10 @@ def initialise_db() -> None:
             (1, "legacy_schema_baseline", now_iso()),
         )
         _apply_versioned_schema_migrations(conn)
+        if AUTH_PROVIDER == "supabase":
+            # Reapply the idempotent public-schema lockdown on startup so any
+            # newly introduced application tables also receive RLS protection.
+            _migration_lock_down_supabase_data_api(conn)
         if not DEMO_MODE:
             return
 
