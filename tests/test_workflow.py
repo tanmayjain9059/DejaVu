@@ -1389,5 +1389,57 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(wrong_type.status_code, 422, wrong_type.text)
 
 
+    def test_matching_retrieval_includes_relevant_same_category_candidate_beyond_500(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body(
+                "lost", "Lost blue hiking backpack",
+                "Blue hiking backpack with a torn orange zipper pull and a stitched mountain patch.",
+            ),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        with main.connect_db() as conn:
+            finder_id = conn.execute(
+                "SELECT id FROM users WHERE email=?", ("finder@example.test",)
+            ).fetchone()["id"]
+            target_id = "old-relevant-candidate-501"
+            conn.execute(
+                """INSERT INTO reports
+                   (id, public_ref, report_type, title, description, category, status,
+                    created_by, created_at, updated_at)
+                   VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                (target_id, "LL-OLD-501", "Blue hiking backpack",
+                 "Blue hiking backpack with a torn orange zipper pull and a stitched mountain patch.",
+                 "bags_wallets", finder_id, "2020-01-01T00:00:00+00:00",
+                 "2020-01-01T00:00:00+00:00"),
+            )
+            for index in range(600):
+                stamp = f"2026-10-{(index % 28) + 1:02d}T10:00:00+00:00"
+                conn.execute(
+                    """INSERT INTO reports
+                       (id, public_ref, report_type, title, description, category, status,
+                        created_by, created_at, updated_at)
+                       VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                    (f"recent-filler-{index:03d}", f"LL-FILL-{index:03d}",
+                     f"Unrelated item {index}",
+                     f"Unrelated description with generic detail number {index}.",
+                     "bags_wallets", finder_id, stamp, stamp),
+                )
+
+        self.login("office@example.test", "office-password")
+        response = self.client.get(f"/api/reports/{lost_id}/matches")
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertGreater(payload["candidate_count"], 500)
+        self.assertLessEqual(payload["candidate_count"], payload["candidate_limit"])
+        returned_ids = [item["report"]["id"] for item in payload["matches"]]
+        self.assertIn(target_id, returned_ids)
+
+
 if __name__ == "__main__":
     unittest.main()
