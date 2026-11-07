@@ -534,7 +534,7 @@ Run the automated checks from the repository root:
 
 The automated suite covers workflow behaviour, matching (including semantic embedding-cache hits and misses, and CLIP cache helpers), rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
 
-Run the labelled retrieval evaluation (baseline and optional MiniLM):
+Run the v1 labelled retrieval evaluation (baseline and optional MiniLM):
 
        python scripts/evaluate_matching.py
 
@@ -547,7 +547,7 @@ To require the actual Sentence Transformers model, install the optional model re
        python -m pip install -r requirements-ml.txt
        python scripts/evaluate_matching.py --require-semantic-model
 
-The harness reports macro Precision@K, Recall@K, HitRate@K, MRR, category breakdowns, and candidate-pair false-positive diagnostics at a configurable score threshold. The threshold is diagnostic only, never an ownership or claim-approval rule. The benchmark at <code>tests/data/matching_benchmark.json</code> is synthetic development data and must not be represented as campus or deployment accuracy. You can provide another labelled JSON file with <code>--dataset path/to/data.json</code>; keep it anonymised and consented.
+The default benchmark is <code>tests/data/matching_benchmark_v1.json</code>: 100 deterministic synthetic queries balanced across 10 categories, including multi-positive and no-match cases. The harness reports macro Precision@K, Recall@K (over queries with at least one relevant candidate), HitRate@K, MRR, category breakdowns, no-match rejection, and candidate-pair false-positive diagnostics. The configurable threshold is diagnostic only, never an ownership or claim-approval rule. These synthetic measurements are not campus or deployment accuracy. You can provide another labelled JSON file with <code>--dataset path/to/data.json</code>; keep it anonymised, consented and institutionally approved.
 
 ## Limitations and production considerations
 
