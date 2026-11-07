@@ -1884,17 +1884,22 @@ if (mascotDock) {
     $("#mascotMessage").textContent = mascotLines[mascotTapCount % mascotLines.length];
   });
 }
-async function start() { try { initLiquidNavbar(); } catch(e) { console.error(e); }
-  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
-  try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
-  showPublicHome();
-}
-  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
-  try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
-  if (!usingMockApi && appConfig && appConfig.demo_mode) {
-    try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
+async function start() {
+  try { initLiquidNavbar(); } catch (error) { console.error("Liquid navbar initialisation failed:", error); }
+  try { await loadConfig(); }
+  catch (error) {
+    console.error("LostLink configuration could not be loaded:", error);
+    enableMockMode();
+    await loadConfig();
   }
-  enableMockMode(); enterApp(mockCopy(MOCK_USERS.student));
+  try {
+    const data = await api("/api/me");
+    enterApp(data.user);
+    return;
+  } catch (_) {
+    // Public-first: unauthenticated visitors land on the report-choice homepage.
+  }
+  showPublicHome();
 }
 
 $("#loginForm").addEventListener("submit", async (event) => {
