@@ -204,11 +204,11 @@ async def update_report(
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         row = read_report(conn, report_id)
-        if body.report_type != row["report_type"]:
-            raise HTTPException(status_code=422, detail="A report's lost/found type cannot be changed after submission.")
         is_office = user["role"] == "office"
         if not is_office and int(row["created_by"]) != int(user["id"]):
             raise HTTPException(status_code=404, detail="Report not found.")
+        if body.report_type != row["report_type"]:
+            raise HTTPException(status_code=422, detail="A report's lost/found type cannot be changed after submission.")
         if row["report_type"] == "lost":
             if row["status"] != "open":
                 raise HTTPException(status_code=409, detail="Only an open lost report can be edited.")
