@@ -1,0 +1,62 @@
+name: LostLink AI evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matching-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      USE_SEMANTIC_MODEL: "false"
+      USE_CLIP_MODEL: "false"
+      USE_IMAGE_ENRICHMENT: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install application and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Validate matching, cache, enrichment and classification tests
+        run: |
+          pytest -q \
+            tests/test_matching.py \
+            tests/test_embedding_cache.py \
+            tests/test_matching_evaluation.py \
+            tests/test_image_enrichment.py \
+            tests/test_category_classification.py
+
+      - name: Run deterministic benchmark baseline
+        run: |
+          python scripts/evaluate_matching.py \
+            --dataset tests/data/matching_benchmark_v1.json \
+            --output matching-baseline.json
+
+      - name: Upload benchmark report
+        if: always() && hashFiles('matching-baseline.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: lostlink-matching-baseline
+          path: matching-baseline.json
+          if-no-files-found: warn
+          retention-days: 14
