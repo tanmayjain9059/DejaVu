@@ -8,7 +8,7 @@ WORKDIR /app
 
 RUN groupadd --system lostlink && useradd --system --gid lostlink --home-dir /app lostlink \
     && mkdir -p /data/uploads /models \
-    && chown -R lostlink:lostlink /app /data
+    && chown -R lostlink:lostlink /app /data /models
 
 COPY requirements.txt requirements-ml.txt ./
 ARG INSTALL_ML=false
