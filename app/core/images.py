@@ -76,9 +76,9 @@ def image_fingerprint_matches(conn: sqlite3.Connection, image_sha256: str, image
     return False
 
 
-def watermark_image(path: Path, label: str) -> bytes:
-    """Serve labelled previews to discourage saving/reusing photos as claim evidence."""
-    with Image.open(path) as source:
+def watermark_image_bytes(raw: bytes, label: str) -> bytes:
+    """Serve labelled previews without requiring a local filesystem copy."""
+    with Image.open(BytesIO(raw)) as source:
         image = source.convert("RGB")
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
@@ -91,3 +91,8 @@ def watermark_image(path: Path, label: str) -> bytes:
     output = BytesIO()
     image.save(output, format="JPEG", quality=88, optimize=True)
     return output.getvalue()
+
+
+def watermark_image(path: Path, label: str) -> bytes:
+    """Backward-compatible local-path wrapper."""
+    return watermark_image_bytes(path.read_bytes(), label)
