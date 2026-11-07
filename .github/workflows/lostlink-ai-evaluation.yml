@@ -37,14 +37,8 @@ jobs:
           pip install -r requirements.txt
           pip install pytest httpx
 
-      - name: Validate matching, cache, enrichment and classification tests
-        run: |
-          pytest -q \
-            tests/test_matching.py \
-            tests/test_embedding_cache.py \
-            tests/test_matching_evaluation.py \
-            tests/test_image_enrichment.py \
-            tests/test_category_classification.py
+      - name: Run the complete application test suite
+        run: pytest -q
 
       - name: Run deterministic benchmark baseline
         run: |
