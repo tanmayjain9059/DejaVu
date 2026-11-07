@@ -445,16 +445,21 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
             ).fetchall()
             candidates_by_id.update({row["id"]: row for row in category_rows})
             if fallback_limit:
-                fallback_rows = conn.execute(
-                    """SELECT * FROM reports
-                       WHERE report_type='found' AND status='available'
-                         AND (category<>? OR category IS NULL
-                              OR LOWER(COALESCE(location_block,''))=LOWER(?)
-                              OR LOWER(COALESCE(location_area,''))=LOWER(?))
-                       ORDER BY created_at DESC, id DESC LIMIT ?""",
-                    (lost["category"], lost["location_block"] or "",
-                     lost["location_area"] or "", fallback_limit),
-                ).fetchall()
+                fallback_match = ["category<>?", "category IS NULL"]
+                fallback_params: list[Any] = [lost["category"]]
+                if lost["location_block"]:
+                    fallback_match.append("LOWER(COALESCE(location_block,''))=LOWER(?)")
+                    fallback_params.append(lost["location_block"])
+                if lost["location_area"]:
+                    fallback_match.append("LOWER(COALESCE(location_area,''))=LOWER(?)")
+                    fallback_params.append(lost["location_area"])
+                fallback_sql = (
+                    "SELECT * FROM reports WHERE report_type='found' AND status='available' "
+                    "AND (" + " OR ".join(fallback_match) + ") "
+                    "ORDER BY created_at DESC, id DESC LIMIT ?"
+                )
+                fallback_params.append(fallback_limit)
+                fallback_rows = conn.execute(fallback_sql, fallback_params).fetchall()
                 candidates_by_id.update({row["id"]: row for row in fallback_rows})
         else:
             recent_rows = conn.execute(
