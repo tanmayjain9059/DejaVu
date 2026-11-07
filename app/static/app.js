@@ -679,6 +679,13 @@ async function loadBrowse(append = false) {
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
     date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
   });
+  if (append && state.query !== query) {
+    append = false;
+    state.cursor = null;
+    $("#browseResults").innerHTML = "";
+    lastKnownReports = [];
+  }
+  state.query = query;
   try {
     const path = "/api/reports" + (query ? "?" + query : "");
     const data = await api(pageUrl(path, append ? state.cursor : null));
@@ -894,7 +901,9 @@ async function loadMyClaims(append = false) {
   try {
     const data = await api(pageUrl("/api/claims", append ? state.cursor : null));
     const claims = data.claims || [];
-    const activeCount = claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
+    const activeCount = Number.isFinite(Number(data.active_count))
+      ? Number(data.active_count)
+      : claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
     $("#claimNavCount").textContent = String(activeCount);
     $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
     const html = claims.map((claim) => {
@@ -1022,9 +1031,9 @@ async function loadClaimLostReports(preferredReportId) {
   select.disabled = true;
   select.innerHTML = '<option value="">Loading your open lost reports…</option>';
   try {
-    const data = await api("/api/reports?mine=true&report_type=lost");
+    const allReports = await fetchAllPages("/api/reports?mine=true&report_type=lost");
     if (requestId !== lostReportOptionsRequest) return;
-    const openReports = data.reports.filter((item) => item.report_type === "lost" && item.status === "open");
+    const openReports = allReports.filter((item) => item.report_type === "lost" && item.status === "open");
     select.innerHTML = '<option value="">No linked lost report</option>' + openReports.map((item) =>
       '<option value="' + escapeHTML(item.id) + '">' + escapeHTML(item.title + " · " + item.public_ref + " · " + humanDate(item.occurred_at)) + '</option>'
     ).join("");
@@ -1772,6 +1781,13 @@ document.addEventListener("click", (event) => {
   const certificate = event.target.closest("[data-certificate-download]");
   if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
+$("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
+$("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
+$("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
+$("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
+$("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
+$("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
+$("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
