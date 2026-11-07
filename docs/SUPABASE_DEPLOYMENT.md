@@ -43,7 +43,7 @@ Set these backend variables:
 
 The browser signs in or signs up with Supabase Auth. It sends the access token to FastAPI as a Bearer token. FastAPI validates it against Supabase Auth's `/auth/v1/user` endpoint before resolving the LostLink profile.
 
-A newly verified identity is accepted only when its email domain is in `ALLOWED_EMAIL_DOMAINS`, then provisioned as a **student** by default. The only office-role assignment is an exact email match in the server-side `OFFICE_USER_EMAILS` allowlist. Never accept a role from browser metadata, signup forms, or a user-editable profile field. Remove office addresses from the allowlist to prevent future provisioning as office; existing role downgrades require an explicit administrative process.
+A newly verified identity is accepted only when its email domain is in `ALLOWED_EMAIL_DOMAINS`, then provisioned as a **student** by default. The only office-role assignment is an exact email match in the server-side `OFFICE_USER_EMAILS` allowlist. Never accept a role from browser metadata, signup forms, or a user-editable profile field. Create office identities through the Supabase Dashboard invitation flow, add their exact verified email addresses to `OFFICE_USER_EMAILS`, and redeploy the API. A staff member must confirm the invited email before the API provisions the office profile. Remove an address from the allowlist to downgrade it to student on the next authenticated API request.
 
 For institutional onboarding, configure Supabase email delivery, allowed email domains, abuse protection and rate limits. The current implementation does not perform a college SIS/roll-number verification.
 
