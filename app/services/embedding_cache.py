@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from typing import Any
 
 from app.core.database import connect_db, now_iso
@@ -87,5 +88,5 @@ def store_cached_embeddings(
 
 def cache_model_identifier(model_name: str) -> str:
     """Include an optional explicit revision so deployments can invalidate stale vectors."""
-    revision = __import__("os").getenv("SEMANTIC_MODEL_REVISION", "default").strip() or "default"
+    revision = os.getenv("SEMANTIC_MODEL_REVISION", "default").strip() or "default"
     return f"{model_name}@{revision}"
