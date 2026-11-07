@@ -199,8 +199,8 @@ async def list_claims(
 
     if page_size < 1 or page_size > 100:
         raise HTTPException(status_code=422, detail="page_size must be between 1 and 100.")
-    if queue not in {"all", "disputed", "pending", "other"}:
-        raise HTTPException(status_code=422, detail="queue must be all, disputed, pending, or other.")
+    if queue not in {"all", "disputed", "pending", "active", "handover", "other"}:
+        raise HTTPException(status_code=422, detail="queue must be all, disputed, pending, active, handover, or other.")
     internal = user["role"] == "office"
     if not internal and queue != "all":
         raise HTTPException(status_code=403, detail="Queue filters are available to office staff only.")
@@ -224,8 +224,12 @@ async def list_claims(
             where.append("c.status='disputed'")
         elif queue == "pending":
             where.append("c.status='pending'")
+        elif queue == "active":
+            where.append("c.status IN ('pending','disputed','needs_more_evidence')")
+        elif queue == "handover":
+            where.append("c.status='approved_for_collection'")
         elif queue == "other":
-            where.append("c.status NOT IN ('disputed','pending')")
+            where.append("c.status NOT IN ('disputed','pending','needs_more_evidence','approved_for_collection')")
     else:
         where.append("c.claimant_id=?")
         params.append(user["id"])
