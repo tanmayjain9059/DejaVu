@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#dcebf5">
+  <meta name="theme-color" content="#f2e9dc">
   <meta name="description" content="Report lost and found items on campus, discover possible matches, and complete verified handovers with LostLink.">
   <title>LostLink · Campus Lost &amp; Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,14 +12,14 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <!-- Ambient Liquid Glass Orbs (soft water glow matching 21st.dev navbar palette) -->
+  <!-- Warm ambient lighting for the LostLink campus identity -->
   <div class="ambient-mesh" aria-hidden="true">
     <div class="liquid-orb orb-1"></div>
     <div class="liquid-orb orb-2"></div>
     <div class="liquid-orb orb-3"></div>
   </div>
 
-  <!-- SVG Refraction Filter for 21st.dev Liquid Glass Navbar -->
+  <!-- Subtle refraction used by the floating navigation surface -->
   <svg width="0" height="0" style="position: absolute; pointer-events: none;" aria-hidden="true">
     <filter id="nimbus-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.006 0.02" numOctaves="2" seed="7" result="noise" />
@@ -31,7 +31,7 @@
   <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
   <main id="loginView" class="login-shell">
     <section class="login-story public-landing-shell">
-      <!-- Sleek Liquid Glass Logo & Brand -->
+      <!-- LostLink brand mark -->
       <div class="brand-liquid-pill">
         <span class="nimbus-glass" aria-hidden="true"></span>
         <span class="liquid-logo-bubble">
@@ -72,8 +72,8 @@
                 <defs>
                   <linearGradient id="foxFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6a35e"/><stop offset=".58" stop-color="#d8753f"/><stop offset="1" stop-color="#a94e31"/></linearGradient>
                   <linearGradient id="foxCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ec"/><stop offset="1" stop-color="#e9d6bd"/></linearGradient>
-                  <linearGradient id="foxCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#53677e"/><stop offset="1" stop-color="#263b54"/></linearGradient>
-                  <linearGradient id="foxHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#465b72"/><stop offset="1" stop-color="#1f3045"/></linearGradient>
+                  <linearGradient id="foxCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8b5637"/><stop offset="1" stop-color="#4e3027"/></linearGradient>
+                  <linearGradient id="foxHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6d4732"/><stop offset="1" stop-color="#39271f"/></linearGradient>
                   <filter id="foxShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#24384d" flood-opacity=".2"/></filter>
                 </defs>
                 <g class="finn-tail-group">
@@ -89,14 +89,14 @@
                   <ellipse cx="102" cy="111" rx="3.5" ry="5" fill="#293545"/><ellipse cx="132" cy="111" rx="3.5" ry="5" fill="#293545"/>
                   <path d="M113 120q5-5 10 0-5 7-10 0Z" fill="#55352d"/>
                   <path d="M118 126q-7 8-14 1m14-1q7 8 14 1" fill="none" stroke="#8d4b3a" stroke-width="1.8" stroke-linecap="round"/>
-                  <path d="M74 87Q82 55 116 54 149 53 158 83L150 91Q113 77 80 96Z" fill="url(#foxHat)" stroke="#203247" stroke-width="2.5"/>
-                  <path d="M68 91Q111 75 164 88 173 91 176 99 126 91 73 108Z" fill="#203247" stroke="#17283a" stroke-width="2.5"/>
-                  <path d="M83 91Q116 80 149 88" fill="none" stroke="#8fa4b9" stroke-width="2" opacity=".7"/>
+                  <path d="M74 87Q82 55 116 54 149 53 158 83L150 91Q113 77 80 96Z" fill="url(#foxHat)" stroke="#4b3025" stroke-width="2.5"/>
+                  <path d="M68 91Q111 75 164 88 173 91 176 99 126 91 73 108Z" fill="#4b3025" stroke="#39271f" stroke-width="2.5"/>
+                  <path d="M83 91Q116 80 149 88" fill="none" stroke="#c69a70" stroke-width="2" opacity=".7"/>
                   <path d="M71 148Q89 135 111 140 139 134 157 151L168 184H59Z" fill="url(#foxCoat)" stroke="#24394f" stroke-width="2.5"/>
-                  <path d="m101 143 13 21 14-21-13-5Z" fill="#b56b64"/><path d="M114 163v20" stroke="#d4e0eb" stroke-width="2" opacity=".65"/>
-                  <circle cx="167" cy="126" r="22" fill="rgba(197,226,240,.32)" stroke="#c5a16c" stroke-width="5"/>
-                  <circle cx="167" cy="126" r="15" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
-                  <path d="m183 143 18 21" stroke="#34485c" stroke-width="9" stroke-linecap="round"/><path d="m183 143 18 21" stroke="#c5a16c" stroke-width="3" stroke-linecap="round"/>
+                  <path d="m101 143 13 21 14-21-13-5Z" fill="#b87969"/><path d="M114 163v20" stroke="#e7cdb0" stroke-width="2" opacity=".65"/>
+                  <circle cx="167" cy="126" r="22" fill="rgba(245,225,197,.38)" stroke="#b4813f" stroke-width="5"/>
+                  <circle cx="167" cy="126" r="15" fill="rgba(255,250,241,.28)" stroke="rgba(255,250,241,.8)" stroke-width="1.5"/>
+                  <path d="m183 143 18 21" stroke="#5a3a2b" stroke-width="9" stroke-linecap="round"/><path d="m183 143 18 21" stroke="#b4813f" stroke-width="3" stroke-linecap="round"/>
                 </g>
               </svg>
             </div>
