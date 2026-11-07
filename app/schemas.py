@@ -68,3 +68,11 @@ class HandoverBody(BaseModel):
     claimant_identity_checked: bool
     tag_id: str = Field(min_length=4, max_length=80)
     note: str | None = Field(default=None, max_length=800)
+
+
+class CategorySuggestionBody(BaseModel):
+    title: str = Field(default="", max_length=100)
+    description: str = Field(default="", max_length=1200)
+    brand: str | None = Field(default=None, max_length=80)
+    primary_color: str | None = Field(default=None, max_length=60)
+    visible_features: str | None = Field(default=None, max_length=400)
