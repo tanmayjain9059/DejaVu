@@ -95,7 +95,13 @@ def read_upload(key: str) -> bytes:
         if not path.is_file():
             raise FileNotFoundError(safe_key)
         return path.read_bytes()
-    response = _s3_client().get_object(Bucket=_BUCKET, Key=_object_key(safe_key))
+    try:
+        response = _s3_client().get_object(Bucket=_BUCKET, Key=_object_key(safe_key))
+    except Exception as exc:
+        error_code = str(getattr(exc, "response", {}).get("Error", {}).get("Code", ""))
+        if error_code in {"NoSuchKey", "404", "NotFound"}:
+            raise FileNotFoundError(safe_key) from exc
+        raise
     try:
         return response["Body"].read()
     finally:
