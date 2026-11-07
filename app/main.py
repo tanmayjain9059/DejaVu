@@ -41,6 +41,10 @@ if AUTH_PROVIDER == "supabase":
         raise RuntimeError("Supabase Auth deployments must use private S3-compatible object storage.")
     if not FRONTEND_ORIGINS:
         raise RuntimeError("FRONTEND_ORIGINS must contain the exact deployed Vercel origin.")
+    if not ALLOWED_EMAIL_DOMAINS:
+        raise RuntimeError("ALLOWED_EMAIL_DOMAINS must list the institution-approved email domains.")
+    if any(email.rsplit("@", 1)[-1] not in ALLOWED_EMAIL_DOMAINS for email in OFFICE_USER_EMAILS):
+        raise RuntimeError("Every OFFICE_USER_EMAILS entry must belong to an allowed email domain.")
     if "*" in ALLOWED_HOSTS:
         raise RuntimeError("ALLOWED_HOSTS must explicitly list the backend hostname.")
     required_storage = ("S3_BUCKET", "S3_ENDPOINT_URL", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")
