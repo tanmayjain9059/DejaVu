@@ -15,6 +15,7 @@ def home():
 def public_config():
     return {
         "demo_mode": DEMO_MODE,
+        "image_enrichment_enabled": USE_IMAGE_ENRICHMENT,
         "points": POINT_RULES,
         "certificate_milestones": [{"tier": m["tier"], "threshold": m["threshold"]} for m in CERTIFICATE_MILESTONES],
         "categories": [{"value": key, "label": value} for key, value in CATEGORY_LABELS.items()],
