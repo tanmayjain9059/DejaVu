@@ -369,11 +369,13 @@ async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(aut
             raise HTTPException(status_code=404, detail="Report not found.")
         if not row["image_path"]:
             raise HTTPException(status_code=409, detail="Upload an item photo before requesting image enrichment.")
-        image_path = (UPLOAD_DIR / row["image_path"]).resolve()
-        if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
+        image_key = row["image_path"]
+        try:
+            image_bytes = read_upload(image_key)
+        except FileNotFoundError:
             raise HTTPException(status_code=404, detail="The report photo is unavailable.")
 
-    result = await run_in_threadpool(enrich_image, image_path)
+    result = await run_in_threadpool(enrich_image, image_bytes)
     if result.get("status") != "completed":
         return {"enrichment": result}
     with connect_db() as conn:
@@ -399,8 +401,9 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
             raise HTTPException(status_code=404, detail="Image not available.")
         if row["category"] in SENSITIVE_CATEGORIES:
             raise HTTPException(status_code=404, detail="Images of sensitive items are restricted.")
-    path = (UPLOAD_DIR / row["image_path"]).resolve()
-    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+    try:
+        raw_image = read_upload(row["image_path"])
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image not found.")
     headers = {
         "Cache-Control": "private, no-store",
@@ -408,9 +411,9 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
         "X-Content-Type-Options": "nosniff",
     }
     if user["role"] != "office":
-        return StreamingResponse(BytesIO(watermark_image(path, row["public_ref"])),
+        return StreamingResponse(BytesIO(watermark_image(raw_image, row["public_ref"])),
                                  media_type="image/jpeg", headers=headers)
-    return FileResponse(path, media_type="image/jpeg", headers=headers)
+    return StreamingResponse(BytesIO(raw_image), media_type="image/jpeg", headers=headers)
 
 
 @router.get("/api/reports/{report_id}/matches")
