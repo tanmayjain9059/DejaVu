@@ -13,6 +13,8 @@ DB_PATH = Path(os.getenv("DATABASE_PATH", str(DATA_DIR / "lostlink.db"))).resolv
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
+IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base").strip()
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
 HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
