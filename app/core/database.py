@@ -409,6 +409,37 @@ def _migration_add_supabase_identity(conn) -> None:
     )
 
 
+def _migration_lock_down_supabase_data_api(conn) -> None:
+    """Keep the public Data API closed; application access uses the trusted DB connection."""
+    if not isinstance(conn, PostgresCompatConnection):
+        return
+    conn.execute(
+        """
+        DO $lostlink$
+        DECLARE
+            item record;
+            role_name text;
+        BEGIN
+            FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+                    EXECUTE format('REVOKE ALL ON SCHEMA public FROM %I', role_name);
+                    EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', role_name);
+                    EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', role_name);
+                    EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM %I', role_name);
+                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM %I', role_name);
+                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM %I', role_name);
+                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM %I', role_name);
+                END IF;
+            END LOOP;
+            FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+                EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', item.tablename);
+            END LOOP;
+        END
+        $lostlink$;
+        """
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
@@ -419,6 +450,7 @@ SCHEMA_MIGRATIONS = (
     (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
     (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
     (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
+    (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
 )
 
 
