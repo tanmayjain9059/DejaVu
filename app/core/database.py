@@ -422,17 +422,17 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
         BEGIN
             FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
-                    EXECUTE format('REVOKE ALL ON SCHEMA public FROM %I', role_name);
-                    EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', role_name);
-                    EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', role_name);
-                    EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM %I', role_name);
-                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM %I', role_name);
-                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM %I', role_name);
-                    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM %I', role_name);
+                    EXECUTE 'REVOKE ALL ON SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM ' || quote_ident(role_name);
                 END IF;
             END LOOP;
             FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
-                EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', item.tablename);
+                EXECUTE 'ALTER TABLE public.' || quote_ident(item.tablename) || ' ENABLE ROW LEVEL SECURITY';
             END LOOP;
         END
         $lostlink$;
