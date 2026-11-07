@@ -1511,14 +1511,43 @@ $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#loginError").textContent = "";
   try {
-    const result = await api("/api/login", {
-      method: "POST",
-      body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
-    });
-    enterApp(result.user);
-    showToast("Signed in successfully.", false);
+    if (supabaseClient) {
+      const email = $("#loginEmail").value.trim().toLowerCase();
+      const password = $("#loginPassword").value;
+      if (supabaseSignupMode) {
+        const displayName = $("#signupName").value.trim();
+        if (!displayName) throw new Error("Enter your full name.");
+        const { data, error } = await supabaseClient.auth.signUp({email,password,options:{data:{display_name:displayName}}});
+        if (error) throw error;
+        if (!data.session) {
+          showToast("Account created. Check your email to confirm it, then sign in.", false);
+          setSupabaseSignupMode(false);
+          return;
+        }
+        supabaseAccessToken = data.session.access_token;
+      } else {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
+        if (error) throw error;
+        supabaseAccessToken = data.session.access_token;
+      }
+      const profile = await api("/api/me");
+      enterApp(profile.user);
+      showToast(supabaseSignupMode ? "Account created successfully." : "Signed in successfully.", false);
+      setSupabaseSignupMode(false);
+      return;
+    }
+    const result = await api("/api/login", {method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
+    enterApp(result.user); showToast("Signed in successfully.", false);
   } catch (error) { $("#loginError").textContent = error.message; }
 });
+function setSupabaseSignupMode(enabled) {
+  supabaseSignupMode = Boolean(enabled);
+  $("#signupNameLabel").classList.toggle("hidden", !supabaseSignupMode);
+  $("#loginSubmitButton").innerHTML = supabaseSignupMode ? "Create account" : 'Sign in <span aria-hidden="true">↗</span>';
+  $("#signupToggle").textContent = supabaseSignupMode ? "Back to sign in" : "Create a student account";
+  $("#loginPassword").autocomplete = supabaseSignupMode ? "new-password" : "current-password";
+}
+$("#signupToggle").addEventListener("click", () => setSupabaseSignupMode(!supabaseSignupMode));
 
 async function launchDemoAccount(email,password) {
   $("#loginError").textContent="";
