@@ -11,6 +11,10 @@ import sqlite3
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from app.core.config import DB_PATH, UPLOAD_DIR
 from app.core.object_storage import object_storage_enabled, store_upload
 
