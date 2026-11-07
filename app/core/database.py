@@ -333,12 +333,26 @@ def _migration_move_legacy_additive_columns(conn) -> None:
             continue
 
 
+def _migration_add_report_image_enrichment(conn) -> None:
+    """Store optional model-generated captions and attributes separately from user text."""
+    for column, declaration in (
+        ("ai_caption", "TEXT"),
+        ("ai_keywords", "TEXT"),
+        ("ai_attributes_json", "TEXT"),
+        ("ai_enriched_at", "TEXT"),
+        ("ai_enrichment_model", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
+    (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
 )
 
 
