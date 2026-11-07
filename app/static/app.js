@@ -259,6 +259,48 @@ async function mockApi(url,options){
 }
 
 function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
+function imageSourceAttribute(path) {
+  if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
+  return 'src="' + escapeHTML(apiAssetUrl(path)) + '"';
+}
+const pendingAuthImages = new WeakSet();
+async function hydrateAuthImage(img) {
+  if (!supabaseClient || pendingAuthImages.has(img) || !img.dataset.authImage) return;
+  pendingAuthImages.add(img);
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data && data.session ? data.session.access_token : null;
+    if (!token) throw new Error("Sign-in required");
+    const response = await fetch(API_BASE_URL + img.dataset.authImage, {headers:{Authorization:"Bearer " + token}});
+    if (!response.ok) throw new Error("Image request failed");
+    const objectUrl = URL.createObjectURL(await response.blob());
+    img.dataset.authImageObjectUrl = objectUrl;
+    img.src = objectUrl;
+  } catch (_) {
+    img.alt = "Image unavailable";
+    img.classList.add("image-unavailable");
+  }
+}
+function observeAuthImages() {
+  const scan = (node) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches("img[data-auth-image]")) hydrateAuthImage(node);
+    if (node.querySelectorAll) node.querySelectorAll("img[data-auth-image]").forEach(hydrateAuthImage);
+  };
+  const release = (node) => {
+    if (node.nodeType !== 1) return;
+    const images = [];
+    if (node.matches("img[data-auth-image-object-url]")) images.push(node);
+    if (node.querySelectorAll) images.push(...node.querySelectorAll("img[data-auth-image-object-url]"));
+    images.forEach((img) => { URL.revokeObjectURL(img.dataset.authImageObjectUrl); delete img.dataset.authImageObjectUrl; });
+  };
+  const observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
+    mutation.addedNodes.forEach(scan);
+    mutation.removedNodes.forEach(release);
+  }));
+  observer.observe(document.body, {childList:true,subtree:true});
+  scan(document.body);
+}
 
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
