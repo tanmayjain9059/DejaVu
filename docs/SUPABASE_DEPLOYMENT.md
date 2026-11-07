@@ -17,7 +17,7 @@ Create a Supabase project and configure:
 
 1. PostgreSQL database in a region close to the backend service.
 2. Authentication > Providers > Email enabled.
-3. Email confirmation enabled.
+3. Email confirmation enabled and minimum password length set to at least 8 characters.
 4. Authentication > URL Configuration: set the Site URL to the Vercel production URL and add the production and preview callback URLs you actually use.
 5. Storage bucket named `lostlink-private`; leave **Public bucket** disabled.
 6. Storage > S3 access keys: create a dedicated access key for the backend. Store its access key ID and secret only in Render.
