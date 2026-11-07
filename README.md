@@ -50,6 +50,7 @@ LostLink is a web application for managing campus lost property from initial rep
 - [Local installation](#local-installation)
 - [Configuration](#configuration)
 - [External database (PostgreSQL)](#external-database-postgresql)
+- [Free-tier deployment baseline](docs/FREE_DEPLOYMENT.md)
 - [Testing and matching evaluation](#testing-and-matching-evaluation)
 - [Limitations and production considerations](#limitations-and-production-considerations)
 - [Product-readiness checklist](docs/PRODUCT_READINESS.md)
