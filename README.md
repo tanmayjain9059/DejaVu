@@ -14,27 +14,19 @@ A campus lost-and-found platform with intelligent item matching and verified phy
 # 🔗 LostLink — Lost & Found Platform
 
 <p align="center">
-  <a href="https://lostlink-q8ft.onrender.com/" target="_blank">
-    <img src="https://img.shields.io/badge/🚀_LIVE_DEMO-Click_Here_to_Try-2ea44f?style=for-the-badge" alt="Live Demo"/>
-  </a>
-</p>
-
-<p align="center">
   <b>Find what you've lost. Return what you've found.</b>
 </p>
 
-### 🌐 Live Application
+### Deployment status
 
-**Try LostLink now:** https://lostlink-q8ft.onrender.com/
-
-Explore the platform and experience how LostLink helps connect people with their lost belongings.
+The Render URL was used for the prototype and is not the target hosting environment. The target is a self-managed Oracle Cloud VM with Supabase PostgreSQL and private Supabase Storage, served on the project's own domain. See the [deployment runbook](docs/FREE_DEPLOYMENT.md).
 
 
 LostLink is a web application for managing campus lost property from initial report through verified physical return. Students submit lost or found reports and receive possible-match suggestions. Authorised office staff manage physical intake, item tagging and storage, private ownership-claim review, disputes and recorded handover.
 
 **The central rule is that a match is a lead, not proof of ownership.** A found item becomes visible for student discovery only after authorised staff confirm physical receipt and record custody. Claim approval and physical handover are separate steps; the application requires the exact physical LostLink Tag ID and identity/handover confirmations before recording a return.
 
-> **Project status:** working prototype with SQLite/local-file defaults for development and optional PostgreSQL plus private S3-compatible object storage for hosted deployments. The free-tier deployment path is documented in [Free-tier deployment baseline](docs/FREE_DEPLOYMENT.md). It is intended for a small demo or supervised pilot, not production handling of sensitive campus records; production-scale load and institutional identity integration remain unvalidated.
+> **Project status:** working prototype with SQLite/local-file defaults for development and optional PostgreSQL plus private S3-compatible object storage for hosted deployments. The free-tier deployment path is documented in [Oracle Cloud + Supabase deployment](docs/FREE_DEPLOYMENT.md). It is intended for a small demo or supervised pilot, not production handling of sensitive campus records; production-scale load and institutional identity integration remain unvalidated.
 
 ## Contents
 
