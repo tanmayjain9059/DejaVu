@@ -64,5 +64,34 @@ class EmbeddingCacheTests(unittest.TestCase):
         self.assertEqual(name, "sentence-transformers/test@revision-2")
 
 
+    def test_generic_vector_cache_supports_image_content_hashes(self):
+        image_hash = "a" * 64
+        embedding_cache.store_cached_vectors(
+            "clip@test:image", {image_hash: [0.1, 0.2, 0.3]}
+        )
+        result = embedding_cache.get_cached_vectors("clip@test:image", [image_hash])
+        self.assertEqual(result[image_hash], [0.1, 0.2, 0.3])
+
+    def test_generic_cache_rejects_dimension_mismatch(self):
+        image_hash = "b" * 64
+        embedding_cache.store_cached_vectors(
+            "clip@test:image", {image_hash: [0.1, 0.2]}
+        )
+        self.connection.execute(
+            "UPDATE ai_embedding_cache SET dimension=3 WHERE model_name=? AND content_hash=?",
+            ("clip@test:image", image_hash),
+        )
+        self.connection.commit()
+        self.assertEqual(
+            embedding_cache.get_cached_vectors("clip@test:image", [image_hash]), {}
+        )
+
+    def test_clip_revision_is_separately_configurable(self):
+        with patch.dict("os.environ", {"CLIP_MODEL_REVISION": "clip-r3"}):
+            name = embedding_cache.cache_model_identifier(
+                "openai/clip-vit-base-patch32", "CLIP_MODEL_REVISION"
+            )
+        self.assertEqual(name, "openai/clip-vit-base-patch32@clip-r3")
+
 if __name__ == "__main__":
     unittest.main()
