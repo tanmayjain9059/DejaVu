@@ -5,6 +5,7 @@ A campus lost-and-found platform with intelligent item matching and verified phy
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![MiniLM](https://img.shields.io/badge/MiniLM-L6--v2-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 [![CLIP](https://img.shields.io/badge/CLIP-ViT--B%2F32-412991?logo=openai&logoColor=white)](https://huggingface.co/openai/clip-vit-base-patch32)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
