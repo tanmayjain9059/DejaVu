@@ -122,12 +122,13 @@ function mockReadBody(options){
  return options.body;
 }
 function mockReportView(report,internal){
+ const owner=Boolean(currentUser&&currentUser.role==="student"&&currentUser.id===report.created_by);
  const sensitive=["identity_documents","keys_access"].includes(report.category)&&!internal, image=mockStore.reportImages[report.id]||null;
  const result={id:report.id,public_ref:report.public_ref,report_type:report.report_type,title:report.title,description:report.description,
  brand:report.brand,primary_color:report.primary_color,visible_features:report.visible_features,category:report.category,
  category_label:(MOCK_CATEGORIES.find(x=>x.value===report.category)||{}).label||report.category,occurred_at:report.occurred_at,
- location:[report.location_block,report.location_floor?"Floor "+report.location_floor:null,(internal||!sensitive)?report.location_room:null,report.location_area].filter(Boolean).join(" · ")||"Location not specified",
- location_block:report.location_block,location_floor:report.location_floor,location_room:internal?report.location_room:null,location_area:report.location_area,
+ location:[report.location_block,report.location_floor?"Floor "+report.location_floor:null,(internal||owner||!sensitive)?report.location_room:null,report.location_area].filter(Boolean).join(" · ")||"Location not specified",
+ location_block:report.location_block,location_floor:report.location_floor,location_room:(internal||owner)?report.location_room:null,location_area:report.location_area,
  image_url:sensitive||!image?null:image,status:report.status,created_at:report.created_at,updated_at:report.updated_at};
  if(internal)Object.assign(result,{tag_id:report.tag_id,private_verification_detail:report.private_detail,value_band:report.value_band||"unknown",sensitivity_level:report.sensitivity_level||1,verification_level:report.verification_level,storage_location:report.tag_id?report.storage_location:null,created_by:report.created_by});
  if(report.report_type==="lost"&&currentUser&&currentUser.id===report.created_by)result.has_active_linked_claim=mockStore.claims.some(c=>c.lost_report_id===report.id&&["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
