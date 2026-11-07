@@ -395,7 +395,13 @@ def _migration_reconcile_pr3_schema(conn) -> None:
 
 def _migration_add_supabase_identity(conn) -> None:
     """Associate local LostLink roles with verified Supabase Auth identities."""
-    if "supabase_user_id" not in table_columns(conn, "users"):
+    columns = table_columns(conn, "users")
+    # Some migration-lineage tests and partially bootstrapped databases apply
+    # additive migrations before the core users table has been created.
+    # initialise_db creates users before invoking the migration runner.
+    if not columns:
+        return
+    if "supabase_user_id" not in columns:
         conn.execute("ALTER TABLE users ADD COLUMN supabase_user_id TEXT")
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_user_id "
