@@ -233,5 +233,36 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(ranked[0]["report"]["title"], "Blue backpack")
 
 
+    def test_rank_uses_one_batched_clip_result_for_all_candidates(self):
+        from unittest.mock import patch
+
+        engine = MatchingEngine()
+        engine.clip_enabled = True
+        lost = {"title": "Blue bag", "description": "blue bag", "category": "bags_wallets"}
+        candidates = [
+            {"title": "Blue backpack", "description": "blue bag", "category": "bags_wallets"},
+            {"title": "Red bottle", "description": "red bottle", "category": "other"},
+        ]
+        with patch.object(engine, "_batch_clip_scores", return_value=[0.95, 0.15]) as batch:
+            with patch.object(engine, "image_similarity", side_effect=AssertionError("per-item CLIP must not run")):
+                ranked = engine.rank(lost, candidates)
+
+        batch.assert_called_once_with(lost, candidates)
+        scores = {item["report"]["title"]: item["signals"]["image"] for item in ranked}
+        self.assertEqual(scores["Blue backpack"], 0.95)
+        self.assertEqual(scores["Red bottle"], 0.15)
+
+    def test_rank_does_not_retry_clip_per_candidate_after_batch_failure(self):
+        from unittest.mock import patch
+
+        engine = MatchingEngine()
+        engine.clip_enabled = True
+        lost = {"title": "Blue bag", "description": "blue bag", "category": "bags_wallets"}
+        candidates = [{"title": "Blue backpack", "description": "blue bag", "category": "bags_wallets"}]
+        with patch.object(engine, "_batch_clip_scores", return_value=None):
+            with patch.object(engine, "image_similarity", side_effect=AssertionError("retry storm")):
+                ranked = engine.rank(lost, candidates)
+        self.assertIsNone(ranked[0]["signals"]["image"])
+
 if __name__ == "__main__":
     unittest.main()
