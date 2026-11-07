@@ -13,7 +13,7 @@ from app.core import object_storage
 class ObjectStorageTests(unittest.TestCase):
     def test_local_backend_round_trips_and_deletes_uploads(self):
         with tempfile.TemporaryDirectory() as directory:
-            with patch.object(object_storage, "UPLOAD_DIR", Path(directory)), patch.dict(
+            with patch.object(object_storage.config, "UPLOAD_DIR", Path(directory)), patch.dict(
                 os.environ,
                 {
                     "OBJECT_STORAGE_BUCKET": "",
