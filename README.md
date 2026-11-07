@@ -546,7 +546,9 @@ The benchmark is at <code>tests/data/matching_benchmark.json</code>. Its measure
 
 ## Limitations and production considerations
 
-The report form includes an optional category suggestion action. It analyses the item name, description and visible characteristics, returns up to three category candidates, and requires the student to explicitly apply a suggestion. It never changes a submitted report or makes ownership decisions. MiniLM category inference shares the existing `USE_SEMANTIC_MODEL` setting; without it, a deterministic keyword fallback is used.\n\nThe current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
+The report form includes an optional category suggestion action. It analyses the item name, description and visible characteristics, returns up to three category candidates, and requires the student to explicitly apply a suggestion. It never changes a submitted report or makes ownership decisions. MiniLM category inference shares the existing `USE_SEMANTIC_MODEL` setting; without it, a deterministic keyword fallback is used.
+
+The current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
@@ -557,7 +559,8 @@ The report form includes an optional category suggestion action. It analyses the
 - **Data governance:** private evidence and custody information need an institution-approved retention/access policy. Demonstration data should not be real student data.
 - **Matching validation:** test on a labelled, representative dataset and measure false matches and missed matches before using the system operationally.
 - **Physical custody:** the database does not use sensors to determine where an object is. Staff must physically store the item and update its recorded location.
-- **AI category suggestions:** report text can be classified with MiniLM when enabled, with a deterministic keyword fallback. Suggestions are advisory and students confirm the final category.\n- **Image enrichment:** BLIP image captioning and keyword generation are implemented as an opt-in feature; model quality and resource use still require campus-data evaluation.
+- **AI category suggestions:** report text can be classified with MiniLM when enabled, with a deterministic keyword fallback. Suggestions are advisory and students confirm the final category.
+- **Image enrichment:** BLIP image captioning and keyword generation are implemented as an opt-in feature; model quality and resource use still require campus-data evaluation.
 
 ## Related documentation
 
