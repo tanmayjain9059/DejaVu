@@ -39,6 +39,14 @@ if AUTH_PROVIDER == "supabase":
         raise RuntimeError("DEMO_MODE must be false when Supabase Auth is enabled.")
     if UPLOAD_STORAGE_BACKEND != "s3":
         raise RuntimeError("Supabase Auth deployments must use private S3-compatible object storage.")
+    if not FRONTEND_ORIGINS:
+        raise RuntimeError("FRONTEND_ORIGINS must contain the exact deployed Vercel origin.")
+    if "*" in ALLOWED_HOSTS:
+        raise RuntimeError("ALLOWED_HOSTS must explicitly list the backend hostname.")
+    required_storage = ("S3_BUCKET", "S3_ENDPOINT_URL", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")
+    missing_storage = [name for name in required_storage if not os.getenv(name, "").strip()]
+    if missing_storage:
+        raise RuntimeError("Supabase Storage configuration is incomplete: " + ", ".join(missing_storage))
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -71,7 +79,7 @@ def _apply_security_headers(response, private_api=False):
             "form-action 'self'; img-src 'self' data: blob:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
-            "script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests",
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
         )
     return response
 
