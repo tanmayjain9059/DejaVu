@@ -178,6 +178,14 @@ class MatchingEngine:
                 self._clip_processor = None
             return self._clip_model, self._clip_processor
 
+    @staticmethod
+    def _clip_feature_tensor(output, projection):
+        """Handle Transformers versions returning either projected tensors or model outputs."""
+        pooled_output = getattr(output, "pooler_output", None)
+        if pooled_output is not None:
+            return projection(pooled_output)
+        return output
+
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
         """Use CLIP image-image similarity, or image-text similarity if one photo is absent."""
         model, processor = self._load_clip()
@@ -203,6 +211,7 @@ class MatchingEngine:
                     with Image.open(BytesIO(lost_bytes)) as left_image, Image.open(BytesIO(found_bytes)) as right_image:
                         pixels = processor(images=[left_image.convert("RGB"), right_image.convert("RGB")], return_tensors="pt")
                     embeddings = model.get_image_features(pixel_values=pixels["pixel_values"])
+                    embeddings = self._clip_feature_tensor(embeddings, model.visual_projection)
                     embeddings = torch.nn.functional.normalize(embeddings, dim=-1)
                     cosine = torch.sum(embeddings[0] * embeddings[1]).item()
                 else:
@@ -213,10 +222,12 @@ class MatchingEngine:
                     text_inputs = processor(text=[_text_value(text_report)], return_tensors="pt",
                                             padding=True, truncation=True)
                     image_embedding = model.get_image_features(pixel_values=pixels["pixel_values"])
+                    image_embedding = self._clip_feature_tensor(image_embedding, model.visual_projection)
                     text_embedding = model.get_text_features(
                         input_ids=text_inputs["input_ids"],
                         attention_mask=text_inputs.get("attention_mask"),
                     )
+                    text_embedding = self._clip_feature_tensor(text_embedding, model.text_projection)
                     image_embedding = torch.nn.functional.normalize(image_embedding, dim=-1)
                     text_embedding = torch.nn.functional.normalize(text_embedding, dim=-1)
                     cosine = torch.sum(image_embedding[0] * text_embedding[0]).item()
