@@ -8,7 +8,8 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 
 - app/main.py — FastAPI composition root, session middleware, baseline Origin/Referer checks, browser security headers, health endpoints, static files, router registration and DB initialisation.
 - app/schemas.py — Pydantic request-body validation.
-- app/matching.py — explainable lost/found matching, text similarity and optional CLIP similarity.
+- app/matching.py — explainable lost/found matching, category-aware signal weighting, text similarity and optional CLIP similarity.
+- app/services/image_enrichment.py — opt-in BLIP photo captioning and deterministic keyword/attribute extraction; generated fields remain separate from student-authored text.
 - app/core/config.py — environment settings, directories and shared category/privacy policy.
 - app/core/database.py — SQLite lifecycle plus optional PostgreSQL connection pooling/compatibility adapter, schema migrations, audit events and demo seed data.
 - app/core/images.py — image validation, canonical JPEG conversion, SHA-256/perceptual fingerprints and watermarking.
@@ -77,7 +78,7 @@ app/core/runtime.py currently re-exports existing imports so the frontend/API be
 
 ## Not implemented
 
-Automatic image captioning and keyword generation are not implemented. They should be added as a separate image-enrichment service integrated with report photo uploads and search indexing, while keeping AI-generated text distinct from user-written descriptions and private claim evidence.
+Image enrichment is implemented as an opt-in service. The report-photo workflow can request a BLIP caption, derive keywords and visible colour/material/shape terms, and persist them in dedicated AI fields. The fields contribute to matching and keyword search but never overwrite student-authored text. Model output is a suggestion, not verified evidence; model weights are large, so enable it only after deployment memory/latency testing.
 
 
 ## Matching evaluation
