@@ -1846,7 +1846,49 @@ async function submitDecision(event) {
   }
 }
 
+function showPublicHome() {
+  currentUser = null;
+  $("#loginView").classList.remove("hidden");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.remove("hidden");
+  $("#publicLostPage").classList.add("hidden");
+  $("#publicFoundPage").classList.add("hidden");
+}
+function showPublicDestination(type) {
+  $("#publicHomeContent").classList.add("hidden");
+  $("#publicLostPage").classList.toggle("hidden", type !== "lost");
+  $("#publicFoundPage").classList.toggle("hidden", type !== "found");
+  const message = type === "lost" ? "Lost something? Let's retrace those steps." : "A found item? You're already someone's hero.";
+  $("#mascotMessage").textContent = message;
+}
+$("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
+$("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
+$("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
+$("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
+$("[data-public-next]").forEach(button => button.addEventListener("click", () => {
+  const type = button.dataset.publicNext;
+  showToast(type === "lost" ? "The Lost Report form will be designed in the next step." : "The Found Report form will be designed in the next step.", false);
+}));
+const mascotLines = ["Psst… got a mystery for me?","I've got a good feeling about this case.","Magnifying glass? Check. Detective instincts? Double check.","No mystery is too small. Probably.","Let's put the clues together."];
+let mascotLineIndex = 0;
+const mascotDock = document.querySelector(".mascot-dock");
+if (mascotDock) {
+  mascotDock.addEventListener("pointerenter", () => {
+    mascotLineIndex = (mascotLineIndex + 1) % mascotLines.length;
+    $("#mascotMessage").textContent = mascotLines[mascotLineIndex];
+  });
+  let mascotTapCount = 0;
+  mascotDock.addEventListener("click", () => {
+    mascotTapCount += 1;
+    $("#mascotMessage").textContent = mascotLines[mascotTapCount % mascotLines.length];
+  });
+}
 async function start() { try { initLiquidNavbar(); } catch(e) { console.error(e); }
+  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
+  try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
+  showPublicHome();
+}
   try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
   try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
   if (!usingMockApi && appConfig && appConfig.demo_mode) {
