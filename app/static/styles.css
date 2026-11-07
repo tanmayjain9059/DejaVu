@@ -1721,13 +1721,13 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   opacity:1 !important; visibility:visible !important; pointer-events:none !important;
 }
 .finn-anchor { position:relative !important; min-width:0 !important; }
-.finn-anchor[data-finn-layout="wide"] { padding-right:164px !important; min-height:132px !important; }
-.finn-anchor[data-finn-layout="compact"] { padding-right:126px !important; min-height:112px !important; }
+.finn-anchor[data-finn-layout="wide"] { padding-right:286px !important; min-height:132px !important; }
+.finn-anchor[data-finn-layout="compact"] { padding-right:220px !important; min-height:96px !important; }
 .finn-anchor[data-finn-layout="stacked"] { padding-top:92px !important; min-height:0 !important; }
 .finn-anchor #finnDock { top:0 !important; right:0 !important; }
 #publicActionPanel { padding:22px !important; }
 #publicActionPanel .public-action-heading.finn-anchor { margin-bottom:14px !important; }
-.public-destination.finn-anchor[data-finn-layout="wide"] { padding-right:164px !important; }
+.public-destination.finn-anchor[data-finn-layout="wide"] { padding-right:286px !important; }
 .public-destination.finn-anchor[data-finn-layout="stacked"] { padding-top:96px !important; }
 .finn-anchor .public-action-heading { align-items:center !important; }
 @media (max-width:760px) {
