@@ -534,16 +534,20 @@ Run the automated checks from the repository root:
 
 The automated suite covers workflow behaviour, matching (including semantic embedding-cache hits and misses, and CLIP cache helpers), rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
 
-To run the deterministic baseline retrieval evaluation:
+Run the labelled retrieval evaluation (baseline and optional MiniLM):
 
        python scripts/evaluate_matching.py
 
-To request an evaluation using the actual Sentence Transformers model, install the optional model requirements and require the model to load:
+Choose metrics and save a JSON report:
+
+       python scripts/evaluate_matching.py --ks 1,3,5 --score-threshold 0.72 --output reports/matching-evaluation.json
+
+To require the actual Sentence Transformers model, install the optional model requirements:
 
        python -m pip install -r requirements-ml.txt
        python scripts/evaluate_matching.py --require-semantic-model
 
-The benchmark is at <code>tests/data/matching_benchmark.json</code>. Its measurements are development data only and should not be represented as deployment accuracy.
+The harness reports macro Precision@K, Recall@K, HitRate@K, MRR, category breakdowns, and candidate-pair false-positive diagnostics at a configurable score threshold. The threshold is diagnostic only, never an ownership or claim-approval rule. The benchmark at <code>tests/data/matching_benchmark.json</code> is synthetic development data and must not be represented as campus or deployment accuracy. You can provide another labelled JSON file with <code>--dataset path/to/data.json</code>; keep it anonymised and consented.
 
 ## Limitations and production considerations
 
