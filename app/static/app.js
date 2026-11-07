@@ -782,6 +782,7 @@ function navigate(view) {
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
   refreshNotificationBadge();
+  if (typeof wakeFinn === "function") wakeFinn(finnMode());
 }
 
 
@@ -1879,27 +1880,69 @@ const finnCharacter = $("#finnCharacter");
 const finnMessage = $("#mascotMessage");
 const finnLines = {
   home: [
-    "Psst… got a mystery for me?",
-    "A missing notebook? A runaway water bottle? I’m on the case.",
-    "Tell me what went missing. I’m excellent with clues.",
-    "I’ve polished my magnifying glass. What are we looking for?"
+    "Psst… welcome to the campus side quest. What went missing?",
+    "Main character energy. Let's reunite some belongings.",
+    "Lost something? Drop the lore, I'll help with the clues.",
+    "Detective Finn reporting for duty. Magnifying glass: ready."
   ],
   lost: [
-    "Retrace your steps, detective. Where did you last see it?",
-    "The more details you share, the better our clues become.",
-    "I’ll help look for similar reports. A match is only a lead, though!"
+    "Okay detective, where did you last spot it? 👀",
+    "Give me the details. We’re not letting that item ghost you.",
+    "Tiny clue, big lead. Tell us what went missing.",
+    "Let's retrace those steps. Campus mysteries don't solve themselves."
   ],
   found: [
-    "Well spotted! Let’s help this little treasure find its person.",
-    "Where did you find it? That’s an important clue.",
-    "You’re the good kind of detective. Let’s log what you found."
+    "W find. Let's get this item back to its person.",
+    "You're the plot twist in someone's lost-item story. ✨",
+    "Where did you find it? Location is the real MVP.",
+    "Found something? Be the reason someone's day gets better."
+  ],
+  start: [
+    "Your campus, your quests. What are we solving today?",
+    "Low-key, returning a lost item is a legendary move.",
+    "Need a hand? I'm basically the sidekick with the search skills."
+  ],
+  browse: [
+    "Let's scan the clues. One of these could be your missing item.",
+    "Scroll smart, detective. Similar doesn't always mean same.",
+    "Found a possible match? Check the details before making a claim."
+  ],
+  report: [
+    "Drop the details, not your whole life story. Keep it clear.",
+    "A good description is basically a cheat code for matching.",
+    "Photos and location clues can make your report more useful."
+  ],
+  "my-reports": [
+    "Your reports, your paper trail. Let's see what's happening.",
+    "Status check time. Fingers crossed for a solid lead.",
+    "Your item isn't forgotten. Let's check the latest update."
+  ],
+  "my-claims": [
+    "Claim submitted? Keep your proof details ready for the office.",
+    "Ownership clues matter. The office team will verify before handover.",
+    "We're close. Just remember: a match is a lead, not proof."
+  ],
+  notifications: [
+    "Fresh updates just dropped. Let's see what changed.",
+    "Notification check. Hopefully it's the good kind of ping.",
+    "Don't leave a useful update on read, detective."
+  ],
+  activity: [
+    "Good deeds look good on your campus record. Keep going.",
+    "Community points? That's a side quest worth doing.",
+    "Helping reunite stuff is the real campus flex."
+  ],
+  office: [
+    "Office mode activated. Accuracy over speed, always.",
+    "Verify the details before a claim moves forward. You got this.",
+    "Every handover needs a proper check. No guesswork, boss."
   ],
   help: [
-    "Tap Lost Report if something of yours is missing.",
-    "Found an item? Choose Found Report and tell us where it was.",
-    "Need a hand? The campus office verifies claims and handovers."
+    "I'm Finn. Tap around and I'll give you the campus lowdown.",
+    "Lost it? Report it. Found it? Log it. Then let the office verify.",
+    "Need a clue? I'm small, but my detective energy is huge."
   ]
-};
+};;
 let finnIndex = 0;
 let finnTapIndex = 0;
 let finnIdleTimer = null;
@@ -1907,6 +1950,11 @@ let finnHideTimer = null;
 function finnMode() {
   if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "lost";
   if ($("#publicFoundPage") && !$("#publicFoundPage").classList.contains("hidden")) return "found";
+  if (currentUser) {
+    const active = document.querySelector("#studentNav [data-view].active");
+    const view = active?.dataset.view || (currentUser.role === "office" ? "office" : "start");
+    return finnLines[view] ? view : (currentUser.role === "office" ? "office" : "start");
+  }
   return "home";
 }
 function wakeFinn(mode = finnMode(), tapped = false) {
