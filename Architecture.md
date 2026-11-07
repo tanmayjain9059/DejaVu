@@ -87,6 +87,9 @@ Image enrichment is implemented as an opt-in service. The report-photo workflow 
 
 ## Matching evaluation
 
+See [Matching evaluation dataset guide](docs/MATCHING_EVALUATION_DATASET.md) for the benchmark schema, metric interpretation and safeguards for creating a real labelled evaluation set.
+
+
 `tests/data/matching_benchmark_v1.json` contains 100 deterministic synthetic queries balanced across 10 categories. Scenarios include multi-positive queries and no-match queries. `scripts/evaluate_matching.py` reports macro Precision@K, Recall@K (only for queries with relevant candidates), HitRate@K, MRR, category breakdowns, no-match rejection and candidate-pair false-positive diagnostics for the lexical baseline and, when available, Sentence Transformers. The threshold is diagnostic only and never authorises ownership or claim approval. Synthetic results do not estimate performance on real campus reports. Real evaluation data must be anonymised, consented, institutionally approved and governed by the retention policy.
 
 
