@@ -109,6 +109,33 @@ def _time_score(lost: dict[str, Any], found: dict[str, Any]) -> float | None:
     return 0.0
 
 
+# Category-aware weights are ranking policy, not separately trained models.
+# Values are normalized over the signals available for each report pair.
+CATEGORY_SIGNAL_WEIGHTS = {
+    "electronics": {"text": 0.34, "image": 0.30, "category": 0.14, "location": 0.12, "time": 0.10},
+    "identity_documents": {"text": 0.45, "image": 0.10, "category": 0.15, "location": 0.15, "time": 0.15},
+    "bags_wallets": {"text": 0.40, "image": 0.25, "category": 0.15, "location": 0.10, "time": 0.10},
+    "clothing": {"text": 0.40, "image": 0.25, "category": 0.15, "location": 0.10, "time": 0.10},
+    "accessories": {"text": 0.40, "image": 0.25, "category": 0.15, "location": 0.10, "time": 0.10},
+    "keys_access": {"text": 0.35, "image": 0.25, "category": 0.15, "location": 0.15, "time": 0.10},
+    "cash_jewellery": {"text": 0.35, "image": 0.30, "category": 0.15, "location": 0.10, "time": 0.10},
+    "stationery": {"text": 0.45, "image": 0.15, "category": 0.15, "location": 0.125, "time": 0.125},
+    "sports_instruments": {"text": 0.40, "image": 0.25, "category": 0.15, "location": 0.10, "time": 0.10},
+    "other": {"text": 0.50, "image": 0.15, "category": 0.15, "location": 0.10, "time": 0.10},
+}
+DEFAULT_SIGNAL_WEIGHTS = CATEGORY_SIGNAL_WEIGHTS["other"]
+
+
+def category_signal_weights(category: str | None, available: set[str]) -> dict[str, float]:
+    """Return normalized, category-aware weights for only the signals we have."""
+    configured = CATEGORY_SIGNAL_WEIGHTS.get(str(category or "").strip().lower(), DEFAULT_SIGNAL_WEIGHTS)
+    selected = {name: weight for name, weight in configured.items() if name in available}
+    total = sum(selected.values())
+    if total <= 0:
+        return {}
+    return {name: weight / total for name, weight in selected.items()}
+
+
 class MatchingEngine:
     def __init__(self) -> None:
         self._text_model = None
@@ -242,16 +269,19 @@ class MatchingEngine:
         location_score = _location_score(lost, found)
         time_score = _time_score(lost, found)
 
-        weighted = [("text", text_score, 0.42 if image_score is not None else 0.50),
-                    ("category", category_score, 0.18 if image_score is not None else 0.20)]
+        available_signals = {"text", "category"}
         if image_score is not None:
-            weighted.append(("image", image_score, 0.20))
+            available_signals.add("image")
         if location_score is not None:
-            weighted.append(("location", location_score, 0.10 if image_score is not None else 0.15))
+            available_signals.add("location")
         if time_score is not None:
-            weighted.append(("time", time_score, 0.10 if image_score is not None else 0.15))
-        total_weight = sum(weight for _, _, weight in weighted)
-        score = sum(value * weight for _, value, weight in weighted) / max(total_weight, 0.001)
+            available_signals.add("time")
+        signal_values = {
+            "text": text_score, "image": image_score, "category": category_score,
+            "location": location_score, "time": time_score,
+        }
+        weights = category_signal_weights(lost_cat, available_signals)
+        score = sum(signal_values[name] * weight for name, weight in weights.items())
 
         reasons: list[str] = []
 
