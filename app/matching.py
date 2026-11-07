@@ -270,9 +270,14 @@ class MatchingEngine:
         self, lost: dict[str, Any], found_reports: list[dict[str, Any]]
     ) -> list[float | None] | None:
         """Encode unique uncached candidate photos in batches, then score each pair."""
+        if not found_reports or not any(
+            report.get("image_path") and Path(str(report["image_path"])).is_file()
+            for report in [lost, *found_reports]
+        ):
+            return [None] * len(found_reports)
         model, processor = self._load_clip()
-        if model is None or processor is None or not found_reports:
-            return None
+        if model is None or processor is None:
+            return [None] * len(found_reports)
         try:
             import hashlib
             from io import BytesIO
