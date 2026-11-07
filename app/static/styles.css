@@ -1882,3 +1882,39 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   .public-action-panel { padding-bottom: 98px !important; }
   #finnDock { right: 0 !important; bottom: 70px !important; transform: scale(.64) !important; }
 }
+
+
+/* Finn is attached to the active page's own heading/perch, never viewport-fixed. */
+#finnDock {
+  position: relative !important; inset: auto !important; flex: 0 0 154px !important;
+  display: block !important; width: 154px !important; height: 126px !important;
+  margin: -18px 0 -18px auto !important; z-index: 4 !important;
+  pointer-events: none !important; transform: none !important;
+}
+#finnDock .finn-character { position:absolute !important; right:0 !important; bottom:0 !important; width:132px !important; height:118px !important; pointer-events:auto !important; }
+#finnDock .finn-mascot { width:100% !important; height:100% !important; display:block !important; opacity:1 !important; visibility:visible !important; }
+#finnDock .mascot-note { position:absolute !important; right:96px !important; bottom:76px !important; top:auto !important; width:176px !important; min-height:38px !important; font-size:.72rem !important; opacity:1 !important; visibility:visible !important; pointer-events:none !important; }
+.finn-host { position:relative !important; display:flex !important; align-items:center !important; gap:12px !important; }
+.finn-host > :first-child { min-width:0; }
+.public-action-heading.finn-host { min-height:102px !important; padding-right:0 !important; }
+.public-destination.finn-host { display:block !important; padding-right:142px !important; }
+.public-destination.finn-host #finnDock { position:absolute !important; top:24px !important; right:0 !important; margin:0 !important; }
+#startView .start-hero.finn-host, #browseView > .section-heading.finn-host,
+#reportView > .section-heading.finn-host, #myReportsView > .section-heading.finn-host,
+#myClaimsView > .section-heading.finn-host, #notificationsView > .section-heading.finn-host,
+#activityView > .section-heading.finn-host, #officeView > .section-heading.finn-host { padding-right:0 !important; }
+@media (max-width:760px) {
+  #finnDock { flex-basis:104px !important; width:104px !important; height:96px !important; margin:-8px 0 -8px auto !important; }
+  #finnDock .finn-character { width:102px !important; height:92px !important; }
+  #finnDock .mascot-note { right:72px !important; bottom:60px !important; width:142px !important; font-size:.65rem !important; }
+  .finn-host { gap:4px !important; }
+  .public-action-heading.finn-host { min-height:82px !important; }
+  .public-destination.finn-host { padding-right:0 !important; padding-top:82px !important; }
+  .public-destination.finn-host #finnDock { top:0 !important; right:0 !important; }
+}
+@media (max-width:420px) {
+  #finnDock { flex-basis:82px !important; width:82px !important; height:78px !important; }
+  #finnDock .finn-character { width:84px !important; height:76px !important; }
+  #finnDock .mascot-note { right:58px !important; bottom:48px !important; width:126px !important; }
+  .public-action-heading.finn-host { align-items:flex-start !important; }
+}
