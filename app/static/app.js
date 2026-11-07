@@ -1879,8 +1879,25 @@ function showPublicDestination(type) {
   placeFinnForView(type);
   if (typeof wakeFinn === "function") wakeFinn(type);
 }
-$("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
-$("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
+function openPublicSignIn(mode = "student") {
+  const office = mode === "office";
+  $("#loginPanelKicker").textContent = office ? "OFFICE STAFF ACCESS" : "STUDENT ACCESS";
+  $("#loginPanelTitle").textContent = office ? "Office sign in" : "Student sign in";
+  $("#loginPanelCopy").textContent = office
+    ? "Authorised campus staff can access intake, claims and verified handover tools."
+    : "Sign in to manage your reports, follow possible matches and track your claims.";
+  $("#loginSubmitButton").dataset.expectedRole = office ? "office" : "student";
+  $("#loginError").textContent = "";
+  $("#loginForm").reset();
+  $("#officeLoginPanel").classList.remove("hidden");
+  $("#loginEmail").focus();
+}
+$("#publicSignInButton").addEventListener("click", () => openPublicSignIn("student"));
+$("#officeAccessButton").addEventListener("click", () => openPublicSignIn("office"));
+$("#closeOfficeAccess").addEventListener("click", () => {
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#loginError").textContent = "";
+});
 document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
 const finnDock = $("#finnDock");
@@ -2044,6 +2061,13 @@ $("#loginForm").addEventListener("submit", async (event) => {
       method: "POST",
       body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
     });
+    const expectedRole = $("#loginSubmitButton").dataset.expectedRole || "student";
+    if (result.user.role !== expectedRole) {
+      await api("/api/logout", { method: "POST" }).catch(() => {});
+      throw new Error(expectedRole === "office"
+        ? "This account is not authorised for office access. Use an approved campus staff account."
+        : "This is an office account. Choose Office staff sign in to continue.");
+    }
     enterApp(result.user);
     showToast("Signed in successfully.", false);
   } catch (error) { $("#loginError").textContent = error.message; }
