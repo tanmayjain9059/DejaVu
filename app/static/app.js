@@ -569,6 +569,12 @@ function itemCard(report, options) {
   const strength = opts.strength
     ? '<span class="strength-pill strength-' + escapeHTML(opts.strength) + '">' + escapeHTML(opts.strength) + " match</span>"
     : "";
+  const methodLabel = opts.method
+    ? (opts.method.includes("sentence_embeddings")
+      ? (opts.method.includes("CLIP") ? "Semantic + visual AI" : "Semantic AI")
+      : (opts.method.includes("CLIP") ? "Visual AI + baseline" : "Structured baseline"))
+    : "";
+  const method = methodLabel ? '<span class="ai-method-pill">' + escapeHTML(methodLabel) + "</span>" : "";
   return '<article class="item-card">' + visual +
     '<div class="item-card-body"><div class="item-topline"><span class="item-ref">' + escapeHTML(report.public_ref) + "</span>" +
     '<span class="category-pill">' + escapeHTML(report.category_label || categoryLabel(report.category)) + "</span></div>" +
@@ -577,7 +583,7 @@ function itemCard(report, options) {
     characteristicBlock + reasons +
     '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
     '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
-    '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
+    '<div class="item-actions">' + method + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
 function currentBrowseFilters() {
@@ -842,11 +848,12 @@ async function loadMatches(reportId) {
   try {
     const result = await api("/api/reports/" + encodeURIComponent(reportId) + "/matches");
     const detailedMatches = result.matches.map((match) => ({
-      ...match.report, match_strength: match.strength, match_reasons: match.reasons || []
+      ...match.report, match_strength: match.strength, match_reasons: match.reasons || [],
+      matching_method: match.matching_engine || "lexical_baseline"
     }));
     lastKnownReports = lastKnownReports.filter((report) => !detailedMatches.some((match) => match.id === report.id)).concat(detailedMatches);
     $("#matchResults").innerHTML = detailedMatches.map((report) => itemCard(report, {
-      claim: true, strength: report.match_strength, reasons: report.match_reasons
+      claim: true, strength: report.match_strength, reasons: report.match_reasons, method: report.matching_method
     })).join("");
     if (!result.matches.length) {
       $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">⌕</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
