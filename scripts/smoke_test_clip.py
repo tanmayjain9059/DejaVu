@@ -7,6 +7,8 @@ It uses in-memory synthetic images and never writes test files to user storage.
 from __future__ import annotations
 
 import math
+import sys
+from pathlib import Path
 from io import BytesIO
 from unittest.mock import patch
 
@@ -22,6 +24,11 @@ def sample_image(background: tuple[int, int, int], accent: tuple[int, int, int])
     stream = BytesIO()
     image.save(stream, format="JPEG", quality=90)
     return stream.getvalue()
+
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def main() -> None:
