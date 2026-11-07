@@ -568,7 +568,7 @@ function itemCard(report, options) {
   const opts = options || {};
   const icon = CATEGORY_ICONS[report.category] || "◌";
   const visual = report.image_url
-    ? '<div class="item-visual"><img src="' + escapeHTML(apiAssetUrl(report.image_url)) + '" alt="Item photograph" loading="lazy"></div>'
+    ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
   const claimButton = opts.claim
     ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
@@ -839,7 +839,7 @@ async function loadMyClaims() {
           evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
         : "";
       const evidencePhoto = claim.evidence_image_available
-        ? '<figure class="evidence-image-preview"><img src="/api/claims/' + escapeHTML(claim.id) + '/evidence-image" alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
+        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
         : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
@@ -871,7 +871,7 @@ async function openItemDetails(reportId) {
     ["Record updated", humanDateTime(report.updated_at)]
   ].filter((fact) => fact[1]);
   const photo = report.image_url
-    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(apiAssetUrl(report.image_url)) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
+    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" ' + imageSourceAttribute(report.image_url) + ' alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
     : "";
   const matchDetails = report.match_reasons && report.match_reasons.length
     ? '<section class="match-detail-block"><h3>Why it was suggested</h3><p class="muted">These are comparison signals, not proof of ownership.</p><ul class="reason-list">' +
@@ -1156,9 +1156,9 @@ function officeClaimCard(claim) {
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : apiAssetUrl("/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image");
+  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
   const evidencePhoto = claim.evidence_image_available
-    ? '<figure class="evidence-image-preview"><img src="' + evidenceImageSource + '" alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
+    ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
   return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
