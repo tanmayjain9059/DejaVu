@@ -412,6 +412,7 @@ SCHEMA_MIGRATIONS = (
     (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
     (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
     (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
+    (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
 )
 
 
