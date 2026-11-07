@@ -204,20 +204,17 @@ async def list_claims(
     if internal:
         if cursor:
             try:
-                priority_text, cursor_created_at, cursor_id = cursor.split("|", 2)
-                priority = int(priority_text)
-                if priority not in {0, 1, 2} or not cursor_created_at or not cursor_id:
-                    raise ValueError("invalid cursor values")
+                cursor_created_at, cursor_id = cursor.split("|", 1)
+                if not cursor_created_at or not cursor_id:
+                    raise ValueError("empty cursor")
             except ValueError:
                 raise HTTPException(status_code=422, detail="Invalid claim pagination cursor.")
-            priority_sql = "CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END"
-            conditions.append(
-                f"({priority_sql} > ? OR ({priority_sql} = ? AND "
-                "(c.created_at > ? OR (c.created_at = ? AND c.id > ?))))"
-            )
-            params.extend([priority, priority, cursor_created_at, cursor_created_at, cursor_id])
-        order_by = "CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, c.created_at ASC, c.id ASC"
-        priority_sql = "CASE c.status WHEN 'disputed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END"
+            conditions.append("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))")
+            params.extend([cursor_created_at, cursor_created_at, cursor_id])
+        # Status is mutable (pending -> disputed/approved). Never include it
+        # in the ordering key or a status transition can move a row behind an
+        # already-issued cursor and make the office queue skip that claim.
+        order_by = "c.created_at ASC, c.id ASC"
     else:
         conditions.append("c.claimant_id=?")
         params.append(user["id"])
@@ -288,11 +285,7 @@ async def list_claims(
     next_cursor = None
     if has_more and rows:
         last = rows[-1]
-        if internal:
-            priority = 0 if last["status"] == "disputed" else (1 if last["status"] == "pending" else 2)
-            next_cursor = f"{priority}|{last['created_at']}|{last['id']}"
-        else:
-            next_cursor = f"{last['created_at']}|{last['id']}"
+        next_cursor = f"{last['created_at']}|{last['id']}"
     return {"claims": output, "has_more": has_more, "next_cursor": next_cursor}
 
 
