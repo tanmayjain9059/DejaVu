@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from starlette.concurrency import run_in_threadpool
 from app.core.runtime import *
 from app.schemas import *
-from app.services.object_storage import delete_upload, materialize_upload, read_upload, save_upload
+from app.services.object_storage import delete_upload, read_upload, save_upload
 
 router = APIRouter()
 
@@ -468,27 +468,22 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
             row for row in candidates_by_id.values()
             if user["role"] == "office" or report_visible_to_student(row, user)
         ]
-    from contextlib import ExitStack
-
-    # CLIP consumes filesystem paths. Local storage yields its persistent path;
-    # S3 storage materializes short-lived private temp files for this inference.
-    with ExitStack() as stack:
-        lost_for_matching = dict(lost)
-        if lost_for_matching.get("image_path"):
-            lost_for_matching["image_path"] = str(
-                stack.enter_context(materialize_upload(lost_for_matching["image_path"]))
-            )
-        candidate_data = []
-        for candidate in candidates:
-            candidate_item = dict(candidate)
-            if candidate_item.get("image_path"):
-                candidate_item["image_path"] = str(
-                    stack.enter_context(materialize_upload(candidate_item["image_path"]))
-                )
-            candidate_data.append(candidate_item)
-        ranked = await run_in_threadpool(
-            matching_engine.rank, lost_for_matching, candidate_data, limit=5
-        )
+    lost_for_matching = dict(lost)
+    if lost_for_matching.get("image_path"):
+        lost_for_matching["image_key"] = lost_for_matching["image_path"]
+        lost_for_matching["image_loader"] = read_upload
+        lost_for_matching["image_path"] = str(UPLOAD_DIR / lost_for_matching["image_path"])
+    candidate_data = []
+    for candidate in candidates:
+        candidate_item = dict(candidate)
+        if candidate_item.get("image_path"):
+            candidate_item["image_key"] = candidate_item["image_path"]
+            candidate_item["image_loader"] = read_upload
+            candidate_item["image_path"] = str(UPLOAD_DIR / candidate_item["image_path"])
+        candidate_data.append(candidate_item)
+    ranked = await run_in_threadpool(
+        matching_engine.rank, lost_for_matching, candidate_data, limit=5
+    )
     internal = user["role"] == "office"
     results = []
     # Re-read the top results after model inference: an item may have been
