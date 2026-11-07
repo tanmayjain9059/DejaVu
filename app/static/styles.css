@@ -737,3 +737,15 @@ input:focus,select:focus,textarea:focus { border-color:#8aa5ff; box-shadow:inset
   .button, .tab-button, .report-type-card { -webkit-tap-highlight-color: transparent; }
   .button { min-height: 44px; }
 }
+
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 46px;
+  padding: 12px 0 4px;
+}
+.pagination-controls .button {
+  min-width: 150px;
+}
