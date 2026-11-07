@@ -9,7 +9,7 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 - app/main.py — FastAPI composition root, session middleware, baseline Origin/Referer checks, browser security headers, health endpoints, static files, router registration and DB initialisation.
 - app/schemas.py — Pydantic request-body validation.
 - app/matching.py — explainable lost/found matching, category-aware signal weighting, text similarity and optional CLIP similarity.
-- app/services/image_enrichment.py — opt-in BLIP photo captioning and deterministic keyword/attribute extraction; generated fields remain separate from student-authored text.
+- app/services/image_enrichment.py — opt-in BLIP photo captioning and deterministic keyword/attribute extraction; generated fields remain separate from student-authored text.\n- app/services/category_classification.py — advisory MiniLM/keyword category suggestions; the report owner confirms the final category.
 - app/core/config.py — environment settings, directories and shared category/privacy policy.
 - app/core/database.py — SQLite lifecycle plus optional PostgreSQL connection pooling/compatibility adapter, schema migrations, audit events and demo seed data.
 - app/core/images.py — image validation, canonical JPEG conversion, SHA-256/perceptual fingerprints and watermarking.
@@ -84,3 +84,8 @@ Image enrichment is implemented as an opt-in service. The report-photo workflow 
 ## Matching evaluation
 
 `tests/data/matching_benchmark.json` contains 15 manually labelled synthetic retrieval scenarios with one relevant candidate and five distractors per query. `scripts/evaluate_matching.py` reports top-1/top-3 hit rates and mean reciprocal rank for the lexical baseline, then for Sentence Transformers if its model loads. These figures are a development sanity check only; they do not estimate performance on real campus reports.
+
+
+## AI category suggestion
+
+The authenticated `POST /api/reports/category-suggestion` endpoint accepts only public item descriptors (title, description, brand, colour and visible characteristics). When `USE_SEMANTIC_MODEL=true`, the existing MiniLM model compares the report text with fixed category descriptions. If model loading or inference is unavailable, a deterministic keyword classifier is used. The response contains ranked suggestions and the inference engine; it is not persisted. The report form displays the result and requires an explicit student action to apply it. Low-information descriptions return an uncertain result instead of forcing a category. No private claim evidence is read by this service.
