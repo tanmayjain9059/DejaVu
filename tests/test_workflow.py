@@ -936,12 +936,22 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 "SELECT name FROM schema_migrations WHERE version=7"
             ).fetchone()
             report_columns = app_database.table_columns(conn, "reports")
-            cache_table = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
-            ).fetchone()
-            candidate_index = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
-            ).fetchone()
+            if TEST_WITH_POSTGRES:
+                cache_table = conn.execute(
+                    "SELECT table_name AS name FROM information_schema.tables "
+                    "WHERE table_schema=current_schema() AND table_name='ai_embedding_cache'"
+                ).fetchone()
+                candidate_index = conn.execute(
+                    "SELECT indexname AS name FROM pg_indexes "
+                    "WHERE schemaname=current_schema() AND indexname='idx_reports_match_candidates'"
+                ).fetchone()
+            else:
+                cache_table = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_embedding_cache'"
+                ).fetchone()
+                candidate_index = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reports_match_candidates'"
+                ).fetchone()
         self.assertIsNotNone(migration)
         self.assertEqual(migration["name"], "legacy_schema_baseline")
         self.assertIsNotNone(active_index_migration)
