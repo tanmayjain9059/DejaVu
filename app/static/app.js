@@ -1589,6 +1589,8 @@ $("#loginForm").addEventListener("submit", async (event) => {
       const email = $("#loginEmail").value.trim().toLowerCase();
       const password = $("#loginPassword").value;
       if (supabaseSignupMode) {
+        const allowedDomains = appConfig.allowed_email_domains || [];
+        if (allowedDomains.length && !allowedDomains.includes(email.split("@").pop())) throw new Error("Use an approved college email address to create an account.");
         const displayName = $("#signupName").value.trim();
         if (!displayName) throw new Error("Enter your full name.");
         const { data, error } = await supabaseClient.auth.signUp({email,password,options:{data:{display_name:displayName}}});
