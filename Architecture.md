@@ -37,7 +37,7 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 4. app/core/config.py provides environment-backed settings and privacy/category constants; app/core/database.py handles transactions, migrations and audit writes.
 5. app/core/images.py and app/core/security.py handle image/password primitives. app/api/dependencies.py enforces sessions and office-only actions.
 6. app/services owns report visibility/serialization, notification side effects and reward/certificate side effects.
-7. app/matching.py ranks candidates from available text/category/location/time signals and optional learned-model signals. MiniLM and CLIP vectors are read from and written to the persistent cache using SHA-256 content keys and model/revision/modality namespaces; cache failures degrade to live inference rather than failing matching. Category-specific ranking profiles change the relative contribution of text, image, category, location and time; missing signals are removed and the remaining weights are renormalised.
+7. app/matching.py ranks candidates from available text/category/location/time signals and optional learned-model signals. MiniLM and CLIP vectors are read from and written to the persistent cache using SHA-256 content keys and model/revision/modality namespaces. Candidate ranking batches uncached CLIP photos in groups of 16, then reuses the vectors across candidate comparisons; cache failures degrade to live inference rather than failing matching. Category-specific ranking profiles change the relative contribution of text, image, category, location and time; missing signals are removed and the remaining weights are renormalised.
 
 ## Main boundaries
 
