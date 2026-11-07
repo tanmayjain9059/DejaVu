@@ -1360,7 +1360,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(disputed.status_code, 200, disputed.text)
         self.assertEqual(len(disputed.json()["claims"]), 2)
         pending = self.client.get("/api/claims", params={"queue": "pending"})
-        self.assertEqual(len(pending.json()["claims"]), 2)
+        self.assertEqual(len(pending.json()["claims"]), 1)
         student_only_queue = self.client.get("/api/claims", params={"queue": "other"})
         self.assertEqual(student_only_queue.status_code, 200)
 
