@@ -1968,7 +1968,7 @@ function placeFinnForView(view) {
   if (finnDock.parentElement !== host) host.appendChild(finnDock);
   const updateLayout = () => {
     const width = host.getBoundingClientRect().width;
-    host.dataset.finnLayout = width < 390 ? "stacked" : width < 560 ? "compact" : "wide";
+    host.dataset.finnLayout = width < 560 ? "stacked" : width < 760 ? "compact" : "wide";
   };
   updateLayout();
   if (typeof ResizeObserver !== "undefined") {
