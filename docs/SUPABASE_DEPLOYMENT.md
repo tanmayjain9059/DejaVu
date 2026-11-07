@@ -28,7 +28,7 @@ Use the project URL and publishable/anon key in the backend configuration. Do no
 
 Use the Supabase **Session pooler** connection string for the persistent Render API. Use the host, username, port and database exactly as displayed in Supabase Connect. URL-encode special characters in the password. Set `sslmode=require`.
 
-The application has an ordered schema migration that adds `users.supabase_user_id`. On first boot it creates the schema and applies migrations. Back up the database before first production boot and verify the migration output in service logs.
+The application has ordered schema migrations that add `users.supabase_user_id` and harden the public Data API with RLS plus privilege revocation. The FastAPI service must connect using the trusted `postgres` database role through the Supabase session pooler; the browser never queries the application tables directly. On first boot it creates the schema and applies migrations. Back up the database before first production boot and verify the migration output in service logs.
 
 ## 2. Supabase Auth and roles
 
