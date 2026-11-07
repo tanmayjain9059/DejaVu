@@ -16,6 +16,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
 SUPABASE_REQUIRE_CONFIRMED_EMAIL = os.getenv("SUPABASE_REQUIRE_CONFIRMED_EMAIL", "true").lower() == "true"
 OFFICE_USER_EMAILS = {email.strip().lower() for email in os.getenv("OFFICE_USER_EMAILS", "").split(",") if email.strip()}
+ALLOWED_EMAIL_DOMAINS = {domain.strip().lower().lstrip("@") for domain in os.getenv("ALLOWED_EMAIL_DOMAINS", "").split(",") if domain.strip()}
 FRONTEND_ORIGINS = [origin.strip().rstrip("/") for origin in os.getenv("FRONTEND_ORIGINS", "").split(",") if origin.strip()]
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 UPLOAD_STORAGE_BACKEND = os.getenv("UPLOAD_STORAGE_BACKEND", "local").strip().lower()
