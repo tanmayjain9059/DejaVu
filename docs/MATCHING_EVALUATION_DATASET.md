@@ -35,7 +35,7 @@ python scripts/evaluate_matching.py
 python scripts/evaluate_matching.py --ks 1,3,5 --score-threshold 0.72 --output reports/matching-evaluation.json
 ```
 
-Use `--dataset path/to/labelled.json` to evaluate another dataset. Recall@K is macro-averaged over queries with at least one relevant candidate. Precision@K and HitRate@K include no-match queries, which count as zero retrieval hits. The no-match rejection rate measures the share of no-match queries for which every candidate score is below the diagnostic threshold. Pair-level false-positive rate is reported separately.
+Use `--dataset path/to/labelled.json` to evaluate another dataset. Recall@K is macro-averaged over queries with at least one relevant candidate. Precision@K and HitRate@K include no-match queries, which count as zero retrieval hits. The no-match rejection rate measures the share of no-match queries for which every candidate score is below the diagnostic threshold. Pair-level false-positive rate is reported separately. The report also includes total evaluation time and per-query mean, p50, p95 and maximum ranking latency. Per-query timing wraps `engine.rank`; the first query includes lazy model-loading time when the model is loaded on demand, so treat it as a cold-start measurement rather than steady-state latency.
 
 The score threshold is an evaluation diagnostic only. It must never approve a claim, establish ownership, or replace staff review.
 
