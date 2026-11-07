@@ -424,65 +424,131 @@ This is a route overview, not a replacement for endpoint schema validation. The 
 
 ## Local installation
 
-The documented launcher is for Windows PowerShell. Python 3.11 is used in CI.
+These instructions run LostLink locally in demo mode using SQLite and local uploads. You do not need Supabase or a cloud database.
 
-### Windows PowerShell
+### If you already downloaded or cloned the repository
 
-Run these commands from the repository root.
+**If you downloaded a ZIP:** extract it, then open PowerShell in the extracted `DejaVu` folder. ZIP downloads are not connected to Git, so they cannot pull branches. You can either download the feature branch ZIP from [GitHub](https://github.com/tanmayjain9059/DejaVu/tree/feat/lostlink-fox-mascot) or clone the repository using the commands below.
 
-1. Create a virtual environment and install runtime dependencies.
+**If you cloned with Git:** open a terminal in your existing project folder and run:
 
-       py -3.11 -m venv .venv
-       .\.venv\Scripts\Activate.ps1
-       python -m pip install --upgrade pip
-       python -m pip install -r requirements.txt
+```bash
+git fetch origin
+git switch feat/lostlink-fox-mascot
+git pull origin feat/lostlink-fox-mascot
+```
 
-2. Create the local environment file if it does not already exist.
+If the branch is not yet local, use:
 
-       if (-not (Test-Path .env)) {
-           Copy-Item .env.example .env
-       }
+```bash
+git switch --track origin/feat/lostlink-fox-mascot
+```
 
-   If you already have a local <code>.env</code>, keep it rather than overwriting it.
+To get the project for the first time:
 
-3. Generate a unique session secret.
+```bash
+git clone https://github.com/tanmayjain9059/DejaVu.git
+cd DejaVu
+git switch --track origin/feat/lostlink-fox-mascot
+```
 
-       python -c "import secrets; print(secrets.token_urlsafe(48))"
+### Windows 10/11 — PowerShell
 
-   Open <code>.env</code> with Notepad, replace the placeholder on the <code>SESSION_SECRET=</code> line with the generated value, save the file and close the editor. Do not commit the local <code>.env</code> file.
+Run all commands from the repository root (the folder containing `requirements.txt`). Install Python 3.11 first.
 
-4. Start the single-server local demo.
+1. Create a virtual environment and install dependencies:
 
-       .\scripts\run-demo.ps1
+```powershell
+py -3.11 -m venv .venv
+.\\.venv\\Scripts\\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-The launcher checks the virtual-environment Python, verifies the secret, performs an import preflight, creates the local data directories and starts one Uvicorn process at <code>http://127.0.0.1:8000</code>. Keep the terminal open while using the application and press Ctrl+C to stop it. Stop any older local server that is occupying port 8000 before starting.
+If PowerShell blocks activation, run this in the same terminal and activate again:
 
-### Linux or macOS (manual run)
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\\.venv\\Scripts\\Activate.ps1
+```
 
-Create and activate a virtual environment, install dependencies, create the environment file and set a secret as described above. Then start the server manually:
+2. Create a local environment file (this does not overwrite an existing one):
 
-       python3 -m venv .venv
-       source .venv/bin/activate
-       python -m pip install --upgrade pip
-       python -m pip install -r requirements.txt
-       [ -f .env ] || cp .env.example .env
-       python -c "import secrets; print(secrets.token_urlsafe(48))"
-       python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
 
-Before launching, edit <code>.env</code> and replace the placeholder session secret. If the file already exists, do not overwrite it. The PowerShell launcher is Windows-specific; on other platforms set the environment options in <code>.env</code> and run Uvicorn directly.
+3. Generate a unique session secret:
 
-### Local-only demo accounts
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
-When <code>DEMO_MODE=true</code>, startup creates demonstration users and sample records. The built-in demo accounts are intended for local development only:
+Copy the generated value into the `SESSION_SECRET=` line in `.env`, replacing the placeholder. Keep `.env` private; do not commit or share it.
+
+4. Start the local demo:
+
+```powershell
+.\\scripts\\run-demo.ps1
+```
+
+5. Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Keep PowerShell open while using LostLink. Press **Ctrl+C** to stop the server.
+
+### macOS / Linux
+
+Install Python 3.11, then run from the repository root:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+[ -f .env ] || cp .env.example .env
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Put the generated secret into `SESSION_SECRET=` in `.env`, then start the app:
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Press **Ctrl+C** to stop it.
+
+### Local demo accounts
+
+When `DEMO_MODE=true`, use these local-only accounts:
 
 | Role | Email | Password |
 |---|---|---|
-| Student | <code>student@lostlink.local</code> | <code>student123</code> |
-| Office staff | <code>office@lostlink.local</code> | <code>office123</code> |
+| Student | `student@lostlink.local` | `student123` |
+| Office staff | `office@lostlink.local` | `office123` |
 
-Use the in-app role-switching control to change between student and office views in the same browser session. Both roles operate against the same database. Reopen or revisit a view after switching to refresh its data. Do not use these credentials for a public deployment and do not expose the local development server to the public internet.
+Local database and uploaded files are stored in `data/`. This folder and `.env` are excluded from Git. Never use demo credentials in a public deployment.
 
-The prototype database defaults to <code>data/lostlink.db</code> and local images to <code>data/uploads/</code>. Those runtime files are excluded from Git.
+### Run tests
+
+With the virtual environment activated:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m compileall -q app tests
+python -m unittest discover -s tests -v
+node --check app/static/app.js
+```
+
+The Node.js syntax check is optional if Node.js is not installed.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `py` not found on Windows | Install Python 3.11 and enable the Python Launcher. |
+| `python3.11` not found | Install Python 3.11 and reopen the terminal. |
+| `No module named ...` | Activate `.venv` and rerun `python -m pip install -r requirements.txt`. |
+| Session secret error | Replace the placeholder in `.env` with a newly generated secret. |
+| Port 8000 is busy | Stop the other server with **Ctrl+C**, then rerun the launcher. |
+| Browser cannot connect | Check that the server is still running, then visit `http://127.0.0.1:8000`. |
 
 ## Configuration
 
