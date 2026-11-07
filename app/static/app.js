@@ -601,19 +601,19 @@ async function submitReport(event) {
       fileBody.append("file", image);
       try {
         await api("/api/reports/" + encodeURIComponent(result.report.id) + "/image", { method: "POST", body: fileBody });
-        try {
-          const ai = await api("/api/reports/" + encodeURIComponent(result.report.id) + "/enrichment", { method: "POST" });
-          const enrichment = ai.enrichment || {};
-          if (enrichment.status === "completed" && enrichment.caption) {
-            successMessage += " AI photo suggestion: " + enrichment.caption +
-              (enrichment.keywords && enrichment.keywords.length ? " Suggested keywords: " + enrichment.keywords.join(", ") + "." : "");
-          } else if (enrichment.status === "disabled") {
-            successMessage += " AI photo suggestions are currently disabled on this deployment.";
-          } else if (enrichment.status === "unavailable") {
-            successMessage += " AI photo suggestions could not be generated; your report and photo were saved.";
+        if (appConfig && appConfig.image_enrichment_enabled) {
+          try {
+            const ai = await api("/api/reports/" + encodeURIComponent(result.report.id) + "/enrichment", { method: "POST" });
+            const enrichment = ai.enrichment || {};
+            if (enrichment.status === "completed" && enrichment.caption) {
+              successMessage += " AI photo suggestion: " + enrichment.caption +
+                (enrichment.keywords && enrichment.keywords.length ? " Suggested keywords: " + enrichment.keywords.join(", ") + "." : "");
+            } else if (enrichment.status === "unavailable") {
+              successMessage += " AI photo suggestions could not be generated; your report and photo were saved.";
+            }
+          } catch (_) {
+            successMessage += " AI photo suggestions were unavailable; your report and photo were saved.";
           }
-        } catch (_) {
-          successMessage += " AI photo suggestions were unavailable; your report and photo were saved.";
         }
       } catch (uploadError) {
         photoFailed = true;
