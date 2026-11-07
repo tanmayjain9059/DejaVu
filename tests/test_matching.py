@@ -108,6 +108,84 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(len(fake_model.inputs), 3)
         self.assertTrue(all(item["engine"] == "sentence_embeddings" for item in ranked))
 
+    def test_rank_uses_cached_embeddings_without_calling_model(self):
+        from unittest.mock import patch
+        from app.services.embedding_cache import embedding_cache_key
+
+        lost = {"title": "Blue bag", "description": "blue bag with pockets", "category": "bags_wallets"}
+        found = {"title": "Blue backpack", "description": "blue bag with pockets", "category": "bags_wallets"}
+        texts = [
+            " ".join(str(lost.get(k) or "") for k in (
+                "title", "description", "brand", "primary_color", "visible_features",
+                "category", "ai_caption", "ai_keywords"
+            )),
+            " ".join(str(found.get(k) or "") for k in (
+                "title", "description", "brand", "primary_color", "visible_features",
+                "category", "ai_caption", "ai_keywords"
+            )),
+        ]
+        cached = {
+            embedding_cache_key(texts[0]): [1.0, 0.0],
+            embedding_cache_key(texts[1]): [1.0, 0.0],
+        }
+
+        class FakeModel:
+            def encode(self, *_args, **_kwargs):
+                self.fail("model should not run when all vectors are cached")
+
+            def fail(self, message):
+                raise AssertionError(message)
+
+        engine = MatchingEngine()
+        engine.semantic_enabled = True
+        engine._text_attempted = True
+        engine._text_model = FakeModel()
+        with patch("app.services.embedding_cache.get_cached_embeddings", return_value=cached):
+            with patch("app.services.embedding_cache.store_cached_embeddings") as store:
+                ranked = engine.rank(lost, [found])
+        self.assertEqual(ranked[0]["engine"], "sentence_embeddings")
+        self.assertEqual(ranked[0]["signals"]["text"], 1.0)
+        store.assert_not_called()
+
+    def test_rank_encodes_only_missing_embeddings_and_stores_them(self):
+        from unittest.mock import patch
+        from app.services.embedding_cache import embedding_cache_key
+
+        lost = {"title": "Blue bag", "description": "blue bag with pockets", "category": "bags_wallets"}
+        found = {"title": "Blue backpack", "description": "blue bag with pockets", "category": "bags_wallets"}
+        texts = [
+            " ".join(str(lost.get(k) or "") for k in (
+                "title", "description", "brand", "primary_color", "visible_features",
+                "category", "ai_caption", "ai_keywords"
+            )),
+            " ".join(str(found.get(k) or "") for k in (
+                "title", "description", "brand", "primary_color", "visible_features",
+                "category", "ai_caption", "ai_keywords"
+            )),
+        ]
+
+        class FakeModel:
+            def __init__(self):
+                self.inputs = []
+
+            def encode(self, values, **_kwargs):
+                self.inputs = list(values)
+                return [[1.0, 0.0] for _ in values]
+
+        model = FakeModel()
+        engine = MatchingEngine()
+        engine.semantic_enabled = True
+        engine._text_attempted = True
+        engine._text_model = model
+        cached = {embedding_cache_key(texts[0]): [1.0, 0.0]}
+        with patch("app.services.embedding_cache.get_cached_embeddings", return_value=cached):
+            with patch("app.services.embedding_cache.store_cached_embeddings") as store:
+                engine.rank(lost, [found])
+        self.assertEqual(model.inputs, [texts[1]])
+        store.assert_called_once()
+        stored = store.call_args.args[1]
+        self.assertEqual(list(stored), [embedding_cache_key(texts[1])])
+
     def test_lightweight_comparison_does_not_load_optional_models(self):
         engine = MatchingEngine()
         engine._load_text_model = lambda: self.fail("semantic model should not load")
