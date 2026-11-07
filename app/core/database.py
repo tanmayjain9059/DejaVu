@@ -431,7 +431,7 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
                     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM %I', role_name);
                 END IF;
             END LOOP;
-            FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+            FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
                 EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', item.tablename);
             END LOOP;
         END
