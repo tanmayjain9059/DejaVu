@@ -119,6 +119,29 @@ class MatchingTests(unittest.TestCase):
         self.assertEqual(result["engine"], "lexical_baseline")
         self.assertIsNone(result["signals"]["image"])
 
+    def test_category_signal_weights_are_normalized_and_category_specific(self):
+        from app.matching import category_signal_weights
+
+        electronics = category_signal_weights(
+            "electronics", {"text", "image", "category", "location", "time"}
+        )
+        documents = category_signal_weights(
+            "identity_documents", {"text", "image", "category", "location", "time"}
+        )
+        self.assertAlmostEqual(sum(electronics.values()), 1.0)
+        self.assertAlmostEqual(sum(documents.values()), 1.0)
+        self.assertGreater(electronics["image"], documents["image"])
+        self.assertGreater(documents["text"], electronics["text"])
+
+    def test_category_weights_renormalize_when_image_or_metadata_is_missing(self):
+        from app.matching import category_signal_weights
+
+        weights = category_signal_weights("electronics", {"text", "category"})
+        self.assertAlmostEqual(sum(weights.values()), 1.0)
+        self.assertNotIn("image", weights)
+        self.assertNotIn("location", weights)
+        self.assertNotIn("time", weights)
+
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}
         candidates = [
