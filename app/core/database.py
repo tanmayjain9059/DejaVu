@@ -393,6 +393,16 @@ def _migration_reconcile_pr3_schema(conn) -> None:
     )
 
 
+def _migration_add_supabase_identity(conn) -> None:
+    """Associate local LostLink roles with verified Supabase Auth identities."""
+    if "supabase_user_id" not in table_columns(conn, "users"):
+        conn.execute("ALTER TABLE users ADD COLUMN supabase_user_id TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_user_id "
+        "ON users(supabase_user_id) WHERE supabase_user_id IS NOT NULL"
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
