@@ -65,8 +65,8 @@ def _attributes(caption: str) -> dict[str, list[str]]:
     return {"colours": colours, "materials": materials, "shapes": shapes}
 
 
-def enrich_image(image_path: str | Path) -> dict[str, Any]:
-    """Caption an image when explicitly enabled; fail closed without inventing output."""
+def enrich_image(image_path: str | Path | bytes) -> dict[str, Any]:
+    """Caption an image when explicitly enabled; accept bytes from private object storage."""
     if os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() != "true":
         return {"status": "disabled", "message": "Image enrichment is disabled."}
     model = _load_pipeline()
@@ -74,8 +74,10 @@ def enrich_image(image_path: str | Path) -> dict[str, Any]:
         return {"status": "unavailable", "message": "The image caption model could not be loaded."}
     model_name = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base")
     try:
+        from io import BytesIO
         from PIL import Image
-        with Image.open(image_path) as image:
+        source = BytesIO(image_path) if isinstance(image_path, bytes) else image_path
+        with Image.open(source) as image:
             output = model(image.convert("RGB"), max_new_tokens=40)
         caption = str(output[0].get("generated_text", "")).strip()
         if not caption:
