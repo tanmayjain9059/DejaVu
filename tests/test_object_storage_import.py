@@ -35,9 +35,14 @@ class ObjectStorageImportTests(unittest.TestCase):
                 import_directory(source)
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
-            (source / "../unsafe").write_text("bad")
-            with self.assertRaises(ValueError):
-                import_directory(source)
+            outside = source.parent / (source.name + "-outside")
+            outside.write_text("bad")
+            try:
+                (source / "unsafe-link").symlink_to(outside)
+                with self.assertRaisesRegex(RuntimeError, "Unexpected non-file"):
+                    import_directory(source)
+            finally:
+                outside.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
