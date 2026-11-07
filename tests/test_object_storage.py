@@ -28,6 +28,42 @@ class ObjectStorageTests(unittest.TestCase):
                 with self.assertRaises(FileNotFoundError):
                     object_storage.read_upload("report-test.jpg")
 
+    def test_s3_backend_round_trips_through_private_bucket(self):
+        class FakeBody:
+            def read(self):
+                return b"remote-image"
+
+        class FakeS3:
+            def __init__(self):
+                self.objects = {}
+                self.put_args = None
+
+            def put_object(self, **kwargs):
+                self.put_args = kwargs
+                self.objects[(kwargs["Bucket"], kwargs["Key"])] = kwargs["Body"]
+
+            def get_object(self, **kwargs):
+                return {"Body": FakeBody()}
+
+            def delete_object(self, **kwargs):
+                self.objects.pop((kwargs["Bucket"], kwargs["Key"]), None)
+
+        client = FakeS3()
+        remote_env = {
+            "OBJECT_STORAGE_BUCKET": "private-lostlink",
+            "OBJECT_STORAGE_ENDPOINT_URL": "https://account.r2.cloudflarestorage.com",
+            "OBJECT_STORAGE_ACCESS_KEY_ID": "test-access",
+            "OBJECT_STORAGE_SECRET_ACCESS_KEY": "test-secret",
+            "OBJECT_STORAGE_REGION": "auto",
+        }
+        with patch.dict(os.environ, remote_env), patch.object(object_storage, "_s3_client", return_value=client):
+            object_storage.store_upload("report-test.jpg", b"remote-image")
+            self.assertEqual(client.put_args["ContentType"], "image/jpeg")
+            self.assertEqual(client.put_args["CacheControl"], "private, no-store")
+            self.assertEqual(object_storage.read_upload("report-test.jpg"), b"remote-image")
+            object_storage.delete_upload("report-test.jpg")
+            self.assertNotIn(("private-lostlink", "report-test.jpg"), client.objects)
+
     def test_upload_keys_reject_paths(self):
         for key in ("../outside.jpg", "/tmp/image.jpg", "folder/image.jpg", ".."):
             with self.subTest(key=key), self.assertRaises(ValueError):
