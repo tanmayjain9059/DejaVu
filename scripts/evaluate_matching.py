@@ -187,7 +187,7 @@ def main():
     print(rendered)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered + "\\n", encoding="utf-8")
+        args.output.write_text(rendered + "\n", encoding="utf-8")
     if args.require_semantic_model and not loaded:
         raise SystemExit("Sentence Transformers did not load; refusing to report semantic metrics.")
 
