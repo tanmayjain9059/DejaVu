@@ -532,7 +532,7 @@ Run the automated checks from the repository root:
        node --check app/static/app.js
        python -m unittest discover -s tests -v
 
-The automated suite covers workflow behaviour, matching (including semantic embedding-cache hits and misses), rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
+The automated suite covers workflow behaviour, matching (including semantic embedding-cache hits and misses, and CLIP cache helpers), rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
 
 To run the deterministic baseline retrieval evaluation:
 
@@ -553,7 +553,7 @@ The current application is not a production deployment and has not been assigned
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
-- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). Larger collections may still require better candidate pre-filtering, a search index and a separate inference worker. Image embeddings are not yet cached.
+- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). Larger collections may still require better candidate pre-filtering, a search index and a separate inference worker. CLIP image and text vectors are cached separately by content hash and `CLIP_MODEL_REVISION` (20,000 vectors per model/modality namespace).
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
 - **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.
