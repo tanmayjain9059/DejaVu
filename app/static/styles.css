@@ -1870,3 +1870,8 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   .evidence-type-fieldset,.verification-check-grid { grid-template-columns:minmax(0,1fr); }
   .checkbox-line,.verify-check { padding:12px; }
 }
+
+/* The public landing uses the full grid until an access panel is deliberately opened. */
+#loginView:has(#officeLoginPanel.hidden) { grid-template-columns:minmax(0,1fr); }
+#loginView:not(:has(#officeLoginPanel.hidden)) { grid-template-columns:minmax(0,1.3fr) minmax(320px,.7fr); }
+#officeLoginPanel.hidden { display:none !important; }
