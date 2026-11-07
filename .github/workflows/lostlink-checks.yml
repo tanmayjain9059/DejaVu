@@ -233,3 +233,11 @@ jobs:
           USE_SEMANTIC_MODEL: "true"
           SEMANTIC_MODEL: sentence-transformers/all-MiniLM-L6-v2
         run: python scripts/evaluate_matching.py --require-semantic-model
+
+      - name: Verify pretrained CLIP image inference
+        env:
+          USE_CLIP_MODEL: "true"
+          CLIP_MODEL: openai/clip-vit-base-patch32
+          OMP_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        run: python scripts/smoke_test_clip.py
