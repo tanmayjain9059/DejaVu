@@ -22,6 +22,7 @@ import app.main as main
 from app.core import runtime as app_runtime
 from app.services import notifications as app_notifications
 from app.services import reports as app_reports_service
+from app.services import object_storage as app_object_storage
 from app.api.routes import auth as auth_routes
 from app.api.routes import reports as reports_routes
 from app.api.routes import claims as claims_routes
@@ -33,7 +34,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.modules = [main, app_config, app_database, app_runtime, app_notifications,
-                        app_reports_service, auth_routes, reports_routes, claims_routes, engagement_routes]
+                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
                         "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
