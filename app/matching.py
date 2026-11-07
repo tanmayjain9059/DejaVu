@@ -266,6 +266,109 @@ class MatchingEngine:
         store_cached_vectors(namespace, {content_hash: values})
         return torch.tensor(values, dtype=torch.float32)
 
+    def _batch_clip_scores(
+        self, lost: dict[str, Any], found_reports: list[dict[str, Any]]
+    ) -> list[float | None] | None:
+        """Encode unique uncached candidate photos in batches, then score each pair."""
+        model, processor = self._load_clip()
+        if model is None or processor is None or not found_reports:
+            return None
+        try:
+            import hashlib
+            from io import BytesIO
+            import torch
+            from app.services.embedding_cache import (
+                embedding_cache_key, get_cached_vectors, store_cached_vectors,
+            )
+
+            reports = [lost, *found_reports]
+            image_records: dict[str, tuple[Path, bytes]] = {}
+            report_image_keys: list[str | None] = []
+            for report in reports:
+                path_value = report.get("image_path")
+                path = Path(str(path_value or ""))
+                if not path_value or not path.is_file():
+                    report_image_keys.append(None)
+                    continue
+                raw = path.read_bytes()
+                digest = hashlib.sha256(raw).hexdigest()
+                image_records.setdefault(digest, (path, raw))
+                report_image_keys.append(digest)
+
+            image_namespace = self._clip_cache_namespace() + ":image"
+            image_vectors = get_cached_vectors(image_namespace, list(image_records))
+            missing_images = [key for key in image_records if key not in image_vectors]
+            if missing_images:
+                images = []
+                for key in missing_images:
+                    raw = image_records[key][1]
+                    with Image.open(BytesIO(raw)) as source:
+                        images.append(source.convert("RGB").copy())
+                pixel_inputs = processor(images=images, return_tensors="pt")
+                with torch.no_grad():
+                    encoded = model.get_image_features(pixel_values=pixel_inputs["pixel_values"])
+                    encoded = torch.nn.functional.normalize(encoded, dim=-1)
+                fresh = {
+                    key: [float(value) for value in vector.detach().cpu().tolist()]
+                    for key, vector in zip(missing_images, encoded)
+                }
+                image_vectors.update(fresh)
+                store_cached_vectors(image_namespace, fresh)
+
+            # Only reports needing image-to-text comparison require CLIP text vectors.
+            needed_texts: dict[str, str] = {}
+            for index, report in enumerate(found_reports, start=1):
+                lost_has_image = report_image_keys[0] is not None
+                found_has_image = report_image_keys[index] is not None
+                if lost_has_image != found_has_image:
+                    text_report = report if lost_has_image else lost
+                    text = _text_value(text_report)
+                    needed_texts.setdefault(embedding_cache_key(text), text)
+
+            text_namespace = self._clip_cache_namespace() + ":text"
+            text_vectors = get_cached_vectors(text_namespace, list(needed_texts))
+            missing_text_keys = [key for key in needed_texts if key not in text_vectors]
+            if missing_text_keys:
+                text_inputs = processor(
+                    text=[needed_texts[key] for key in missing_text_keys],
+                    return_tensors="pt", padding=True, truncation=True,
+                )
+                with torch.no_grad():
+                    encoded = model.get_text_features(
+                        input_ids=text_inputs["input_ids"],
+                        attention_mask=text_inputs.get("attention_mask"),
+                    )
+                    encoded = torch.nn.functional.normalize(encoded, dim=-1)
+                fresh = {
+                    key: [float(value) for value in vector.detach().cpu().tolist()]
+                    for key, vector in zip(missing_text_keys, encoded)
+                }
+                text_vectors.update(fresh)
+                store_cached_vectors(text_namespace, fresh)
+
+            def dot(left: list[float], right: list[float]) -> float:
+                return sum(a * b for a, b in zip(left, right))
+
+            query_key = report_image_keys[0]
+            scores: list[float | None] = []
+            for index, report in enumerate(found_reports, start=1):
+                candidate_key = report_image_keys[index]
+                if query_key and candidate_key:
+                    cosine = dot(image_vectors[query_key], image_vectors[candidate_key])
+                elif query_key or candidate_key:
+                    text_report = report if query_key else lost
+                    text_key = embedding_cache_key(_text_value(text_report))
+                    image_key = candidate_key or query_key
+                    cosine = dot(image_vectors[image_key], text_vectors[text_key])
+                else:
+                    scores.append(None)
+                    continue
+                scores.append(max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0)))
+            return scores
+        except Exception:
+            # Ranking can continue with text/category/location/time if CLIP fails.
+            return None
+
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
         """Use cached CLIP image-image similarity, or image-text similarity if one photo is absent."""
         model, processor = self._load_clip()
@@ -322,6 +425,7 @@ class MatchingEngine:
         *,
         use_models: bool = True,
         text_result: tuple[float, str] | None = None,
+        image_result: tuple[bool, float | None] | None = None,
     ) -> dict[str, Any]:
         if text_result is not None:
             text_score, text_engine = text_result
@@ -329,7 +433,12 @@ class MatchingEngine:
             text_score, text_engine = self.text_similarity(_text_value(lost), _text_value(found))
         else:
             text_score, text_engine = lexical_similarity(_text_value(lost), _text_value(found)), "lexical_baseline"
-        image_score = self.image_similarity(lost, found) if use_models else None
+        if not use_models:
+            image_score = None
+        elif image_result is not None:
+            image_score = image_result[1] if image_result[0] else self.image_similarity(lost, found)
+        else:
+            image_score = self.image_similarity(lost, found)
         lost_cat, found_cat = lost.get("category"), found.get("category")
         category_score = 1.0 if lost_cat and lost_cat == found_cat else (0.15 if not lost_cat or not found_cat else 0.0)
         location_score = _location_score(lost, found)
@@ -458,10 +567,14 @@ class MatchingEngine:
 
     def rank(self, lost: dict[str, Any], found_reports: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
         semantic_scores = self._batch_semantic_scores(lost, found_reports)
+        clip_scores = self._batch_clip_scores(lost, found_reports) if self.clip_enabled else None
         ranked = []
         for index, report in enumerate(found_reports):
             text_result = semantic_scores[index] if semantic_scores is not None else None
-            result = self.compare(lost, report, text_result=text_result)
+            image_result = (True, clip_scores[index]) if clip_scores is not None else None
+            result = self.compare(
+                lost, report, text_result=text_result, image_result=image_result
+            )
             ranked.append({"report": report, **result})
         ranked.sort(key=lambda item: item["score"], reverse=True)
         return ranked[:limit]
