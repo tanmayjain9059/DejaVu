@@ -48,7 +48,7 @@ Supabase S3 access keys bypass Storage RLS. The LostLink server therefore owns t
 1. Create an Oracle Cloud account and use the Always Free resources in your tenancy's **home region**.
 2. Attempt an Ampere A1 VM with 2 OCPUs and 12 GB RAM if available. Host capacity is not guaranteed; if the shape is unavailable, retry later or choose another supported Always Free shape/size.
 3. Use Ubuntu 22.04/24.04 ARM64 (aarch64). The repository's Python Docker base image supports ARM64.
-4. Assign a public IPv4 address. Configure an ingress rule/security-list rule for TCP 80 and 443 only. Do not expose port 8000 or the Docker daemon.
+4. Assign a public IPv4 address. Configure ingress rules for TCP 80 and 443, plus TCP 22 restricted to your own administrator IP address for SSH. Do not expose port 8000 or the Docker daemon.
 5. Use SSH keys; disable password SSH login after verifying key access. Apply OS security updates.
 6. Install Docker Engine and the Docker Compose plugin using the official Ubuntu instructions.
 7. Reserve/retain a stable public IP if your tenancy/network configuration supports it; otherwise update DNS if the VM's public IP changes.
