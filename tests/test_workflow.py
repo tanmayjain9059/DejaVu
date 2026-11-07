@@ -1534,6 +1534,85 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 conn.close()
 
 
+
+    def test_office_report_multi_status_filter_is_paginated(self):
+        self.login("finder@example.test", "finder-password")
+        ids = []
+        for index in range(3):
+            response = self.client.post(
+                "/api/reports",
+                json=self.report_body("found", f"Status filter item {index}",
+                                      f"Found status filter item {index} with unique details."),
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            ids.append(response.json()["report"]["id"])
+        with main.connect_db() as conn:
+            conn.execute("UPDATE reports SET status='available' WHERE id=?", (ids[0],))
+            conn.execute("UPDATE reports SET status='claim_approved' WHERE id=?", (ids[1],))
+        self.logout()
+        self.login("office@example.test", "office-password")
+        response = self.client.get("/api/reports", params={
+            "report_type": "found", "status": "available,claim_approved", "page_size": 1
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        first = response.json()
+        self.assertTrue(first["has_more"])
+        self.assertIn(first["reports"][0]["status"], {"available", "claim_approved"})
+        second = self.client.get("/api/reports", params={
+            "report_type": "found", "status": "available,claim_approved",
+            "page_size": 1, "cursor": first["next_cursor"]
+        })
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(len(second.json()["reports"]), 1)
+        self.assertNotEqual(first["reports"][0]["id"], second.json()["reports"][0]["id"])
+        invalid = self.client.get("/api/reports", params={"status": "available,public"})
+        self.assertEqual(invalid.status_code, 422)
+
+    def test_office_claim_active_and_handover_queues(self):
+        self.login("finder@example.test", "finder-password")
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Queue test backpack",
+                                  "Queue test backpack with a distinctive blue strap."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        report_id = found.json()["report"]["id"]
+        self.logout()
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(f"/api/reports/{report_id}/intake", json={
+            "confirmed_physical_receipt": True,
+            "storage_location": "Office shelf Q-01",
+            "private_detail": "A small mark under the handle.",
+            "value_band": "low",
+            "sensitivity_level": 1,
+        })
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+        self.login("claimant@example.test", "claimant-password")
+        claim = self.client.post("/api/claims", json={
+            "report_id": report_id,
+            "evidence": "I can identify the small mark under the handle.",
+            "evidence_types": ["distinctive_features"],
+        })
+        self.assertEqual(claim.status_code, 200, claim.text)
+        claim_id = claim.json()["claim"]["id"]
+        self.logout()
+        self.login("office@example.test", "office-password")
+        active = self.client.get("/api/claims", params={"queue": "active", "page_size": 1})
+        self.assertEqual(active.status_code, 200, active.text)
+        self.assertEqual([item["id"] for item in active.json()["claims"]], [claim_id])
+        self.assertFalse(active.json()["has_more"])
+        with main.connect_db() as conn:
+            conn.execute("UPDATE claims SET status='approved_for_collection' WHERE id=?", (claim_id,))
+            conn.execute("UPDATE reports SET status='claim_approved' WHERE id=?", (report_id,))
+        handover = self.client.get("/api/claims", params={"queue": "handover"})
+        self.assertEqual(handover.status_code, 200, handover.text)
+        self.assertEqual([item["id"] for item in handover.json()["claims"]], [claim_id])
+        empty_active = self.client.get("/api/claims", params={"queue": "active"})
+        self.assertEqual(empty_active.json()["claims"], [])
+        invalid = self.client.get("/api/claims", params={"queue": "unknown"})
+        self.assertEqual(invalid.status_code, 422)
+
     def test_office_intake_inventory_uses_report_cursor_pagination(self):
         self.login("finder@example.test", "finder-password")
         expected_ids = []
