@@ -4,7 +4,7 @@ import sqlite3
 from typing import Any
 from fastapi import Header, HTTPException, Request
 from app.core.database import connect_db, now_iso
-from app.core.config import AUTH_PROVIDER, OFFICE_USER_EMAILS
+from app.core.config import AUTH_PROVIDER, OFFICE_USER_EMAILS, ALLOWED_EMAIL_DOMAINS
 from app.services.supabase_auth import verify_supabase_access_token
 
 def user_payload(row: sqlite3.Row) -> dict[str, Any]:
@@ -22,6 +22,8 @@ async def authenticated_user(
         identity = verify_supabase_access_token(token)
         auth_id = str(identity["id"])
         email = str(identity["email"]).strip().lower()
+        if ALLOWED_EMAIL_DOMAINS and email.rsplit("@", 1)[-1] not in ALLOWED_EMAIL_DOMAINS:
+            raise HTTPException(status_code=403, detail="Use an approved college email address to access LostLink.")
         metadata = identity.get("user_metadata") or {}
         display_name = str(metadata.get("display_name") or metadata.get("full_name") or email.split("@")[0]).strip()[:120]
         with connect_db() as conn:
