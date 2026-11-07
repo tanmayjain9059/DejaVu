@@ -65,7 +65,7 @@ def _text_value(report: dict[str, Any]) -> str:
     # Explicit public characteristics contribute to matching without reusing private claim evidence.
     return " ".join(
         str(report.get(k) or "")
-        for k in ("title", "description", "brand", "primary_color", "visible_features", "category")
+        for k in ("title", "description", "brand", "primary_color", "visible_features", "category", "ai_caption", "ai_keywords")
     )
 
 
