@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -29,6 +30,15 @@ if HTTPS_ONLY and "*" in ALLOWED_HOSTS:
     raise RuntimeError("ALLOWED_HOSTS must explicitly list canonical hostnames when HTTPS_ONLY is enabled.")
 if HTTPS_ONLY and not REQUIRE_REQUEST_ORIGIN:
     raise RuntimeError("REQUIRE_REQUEST_ORIGIN=true is required when HTTPS_ONLY is enabled.")
+if AUTH_PROVIDER not in {"local", "supabase"}:
+    raise RuntimeError("AUTH_PROVIDER must be either 'local' or 'supabase'.")
+if AUTH_PROVIDER == "supabase":
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY are required for Supabase Auth.")
+    if DEMO_MODE:
+        raise RuntimeError("DEMO_MODE must be false when Supabase Auth is enabled.")
+    if UPLOAD_STORAGE_BACKEND != "s3":
+        raise RuntimeError("Supabase Auth deployments must use private S3-compatible object storage.")
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -70,7 +80,7 @@ def _apply_security_headers(response, private_api=False):
 async def protect_unsafe_api_requests_and_add_headers(request: Request, call_next):
     """Reject cross-origin API mutations and add baseline browser security headers."""
     is_api = request.url.path.startswith("/api/")
-    if is_api and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+    if is_api and request.method in {"POST", "PUT", "PATCH", "DELETE"} and not request.headers.get("authorization", "").lower().startswith("bearer "):
         source = request.headers.get("origin") or request.headers.get("referer")
         if source:
             try:
@@ -100,6 +110,15 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
 
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="strict", https_only=HTTPS_ONLY, max_age=60 * 60 * 8)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+if FRONTEND_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=FRONTEND_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
 @app.get("/health/live", include_in_schema=False)
 def health_live():
     """Process liveness endpoint; does not depend on external services."""
