@@ -1701,3 +1701,52 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   .finn-tail-group,.finn-ear-right,.finn-eyes { animation:none!important; }
   .finn-character:hover .finn-mascot,.mascot-dock.is-awake .finn-mascot { transform:none; animation:none; }
 }
+
+/* Finn visibility fix: keep the character inside the clipped landing panel.
+   The landing shell intentionally clips decorative overflow, so Finn must not
+   be positioned above the case desk. Reserve a real perch area in the panel. */
+.public-action-panel {
+  padding-top: 146px !important;
+}
+.public-action-panel > .mascot-dock {
+  top: 0 !important;
+  right: 18px !important;
+  width: 230px !important;
+  height: 146px !important;
+  z-index: 12 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+.public-action-panel > .mascot-dock .finn-character {
+  right: 0 !important;
+  bottom: -4px !important;
+  width: 178px !important;
+  height: 150px !important;
+}
+.public-action-panel > .mascot-dock .mascot-note {
+  top: 14px !important;
+  right: 126px !important;
+  width: 184px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+@media (max-width: 900px) {
+  .public-action-panel { padding-top: 138px !important; }
+  .public-action-panel > .mascot-dock {
+    top: 0 !important; right: 10px !important;
+    transform: scale(.88) !important;
+    transform-origin: top right !important;
+  }
+}
+@media (max-width: 560px) {
+  .public-action-panel { padding-top: 126px !important; }
+  .public-action-panel > .mascot-dock {
+    top: 0 !important; right: 2px !important;
+    transform: scale(.76) !important;
+    transform-origin: top right !important;
+  }
+  .public-action-panel > .mascot-dock .mascot-note {
+    right: 112px !important; top: 10px !important;
+    width: 158px !important;
+  }
+}
