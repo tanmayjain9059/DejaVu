@@ -237,7 +237,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
             )
             for index in range(53):
                 status = "disputed" if index < 3 else "pending"
-                timestamp = f"2026-10-{(index % 28) + 1:02d}T10:00:00"
+                timestamp = f"2026-10-01T10:{index:02d}:00"
                 conn.execute(
                     """INSERT INTO claims(id, report_id, claimant_id, evidence, status, created_at, updated_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -256,6 +256,14 @@ class LostLinkWorkflowTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
             payload = response.json()
             collected.extend((item["id"], item["status"]) for item in payload["claims"])
+            if cursor is None:
+                # A competing claim can change a row's status after page one.
+                # The immutable created_at/id cursor must still return it later.
+                with main.connect_db() as conn:
+                    conn.execute(
+                        "UPDATE claims SET status='disputed' WHERE id=?",
+                        ("claim-page-025",),
+                    )
             if not payload["has_more"]:
                 self.assertIsNone(payload["next_cursor"])
                 break
@@ -264,7 +272,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
 
         self.assertEqual(len(collected), 53)
         self.assertEqual(len({claim_id for claim_id, _ in collected}), 53)
-        self.assertEqual([status for _, status in collected[:3]], ["disputed"] * 3)
+        self.assertIn(("claim-page-025", "disputed"), collected)
         self.assertEqual(
             self.client.get("/api/claims", params={"page_size": 101}).status_code,
             422,
