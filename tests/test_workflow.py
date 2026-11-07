@@ -1385,6 +1385,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
         updated = self.client.put(f"/api/reports/{lost_id}", json=updated_body)
         self.assertEqual(updated.status_code, 200, updated.text)
         self.assertEqual(updated.json()["report"]["title"], "Updated lost backpack")
+        wrong_type = self.client.put(
+            f"/api/reports/{lost_id}",
+            json=self.report_body("found", "Type changed", "Attempt to change a lost report into a found report."),
+        )
+        self.assertEqual(wrong_type.status_code, 422, wrong_type.text)
         with main.connect_db() as conn:
             audit_row = conn.execute(
                 """SELECT action FROM audit_events
