@@ -9,7 +9,7 @@ from app.core.config import SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_REQUIRE_CO
 def verify_supabase_access_token(access_token: str) -> dict:
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         raise HTTPException(status_code=503, detail="Supabase authentication is not configured.")
-    if not access_token or len(access_token) > 16384:
+    if not access_token or len(access_token) > 16384 or any(ord(char) < 33 or char.isspace() for char in access_token):
         raise HTTPException(status_code=401, detail="Please sign in.")
     request = Request(
         SUPABASE_URL + "/auth/v1/user",
@@ -25,6 +25,8 @@ def verify_supabase_access_token(access_token: str) -> dict:
         raise HTTPException(status_code=503, detail="Identity provider is temporarily unavailable.") from exc
     except (URLError, TimeoutError, OSError, ValueError) as exc:
         raise HTTPException(status_code=503, detail="Unable to verify your sign-in session right now.") from exc
+    if not isinstance(user, dict):
+        raise HTTPException(status_code=401, detail="The identity provider returned an invalid account.")
     user_id = str(user.get("id") or "").strip()
     email = str(user.get("email") or "").strip().lower()
     if not user_id or not email:
