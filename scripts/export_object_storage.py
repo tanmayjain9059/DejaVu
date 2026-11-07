@@ -11,6 +11,10 @@ import os
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from app.core.object_storage import _object_settings, _safe_key, _s3_client, object_storage_enabled
 
 
