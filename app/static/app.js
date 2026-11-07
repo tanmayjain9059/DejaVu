@@ -1114,7 +1114,7 @@ function officeClaimCard(claim) {
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + escapeHTML(claim.id) + "/evidence-image";
+  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : apiAssetUrl("/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image");
   const evidencePhoto = claim.evidence_image_available
     ? '<figure class="evidence-image-preview"><img src="' + evidenceImageSource + '" alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
