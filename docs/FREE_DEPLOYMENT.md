@@ -76,4 +76,12 @@ The \`DATABASE_URL\` must be a PostgreSQL URL. Keep the Neon pooled connection s
 
 ## Existing data
 
-This guide does not automatically migrate a local SQLite database or its upload directory. Use the reviewed [SQLite-to-PostgreSQL migration procedure](DATABASE_OPERATIONS.md) for database and local-file migration. A migration rehearsal and independent count verification are required before using existing records on a hosted service.
+This guide does not automatically migrate a local SQLite database or its upload directory. Use the reviewed [SQLite-to-PostgreSQL migration procedure](DATABASE_OPERATIONS.md) for the database migration. The existing migration utility copies local files to a local destination directory; it does not upload them to R2. After migrating the database, configure the R2 variables locally and copy the referenced files with a dry run first:
+
+```bash
+python scripts/migrate_uploads_to_object_storage.py \
+  --database ./data/lostlink.db \
+  --source-uploads ./data/uploads
+```
+
+If the inventory is correct, repeat with `--execute`. The script preserves the filenames already stored in the database, so the hosted app can resolve the same keys from R2. Keep the source database and uploads directory until hosted report photos and private claim evidence have been verified. A migration rehearsal and independent count verification are required before using existing records on a hosted service.
