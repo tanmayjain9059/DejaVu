@@ -52,13 +52,13 @@ Configure:
 
 - `UPLOAD_STORAGE_BACKEND=s3`
 - `S3_BUCKET=lostlink-private`
-- `S3_ENDPOINT_URL=https://<project-ref>.supabase.co/storage/v1/s3`
+- `S3_ENDPOINT_URL=https://<project-ref>.storage.supabase.co/storage/v1/s3`
 - `S3_REGION=<region shown by Supabase Storage S3 settings>`
 - `S3_ACCESS_KEY_ID=<dedicated backend key>`
 - `S3_SECRET_ACCESS_KEY=<dedicated backend secret>`
 - `S3_PREFIX=lostlink`
 
-The storage adapter uses SigV4 and path-style addressing. Objects are stored under opaque keys; the database stores keys, not public URLs. Reads remain behind the authenticated FastAPI routes. Never make this bucket public.
+The storage adapter uses SigV4 and path-style addressing. Use the dedicated `.storage.supabase.co` hostname and copy the exact region from Supabase's S3 settings. Supabase S3 access keys bypass Storage RLS and have broad bucket access, so they are server-only secrets. Objects are stored under opaque keys; the database stores keys, not public URLs. Reads remain behind the authenticated FastAPI routes. Never make this bucket public.
 
 ## 4. Deploy the API on Render
 
