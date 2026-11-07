@@ -11,7 +11,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from app.core.config import UPLOAD_DIR
+from app.core import config
 
 _KEY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
@@ -70,9 +70,9 @@ def store_upload(key: str, content: bytes) -> None:
             CacheControl="private, no-store",
         )
         return
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    target = (UPLOAD_DIR / key).resolve()
-    if target.parent != UPLOAD_DIR.resolve():
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    target = (config.UPLOAD_DIR / key).resolve()
+    if target.parent != config.UPLOAD_DIR.resolve():
         raise ValueError("Upload path is outside the configured directory.")
     target.write_bytes(content)
 
@@ -90,8 +90,8 @@ def read_upload(key: str) -> bytes:
             if code in {"NoSuchKey", "NoSuchBucket", "404", "NotFound"}:
                 raise FileNotFoundError(key) from exc
             raise
-    target = (UPLOAD_DIR / key).resolve()
-    if target.parent != UPLOAD_DIR.resolve() or not target.is_file():
+    target = (config.UPLOAD_DIR / key).resolve()
+    if target.parent != config.UPLOAD_DIR.resolve() or not target.is_file():
         raise FileNotFoundError(key)
     return target.read_bytes()
 
@@ -102,7 +102,7 @@ def delete_upload(key: str) -> None:
         bucket = _object_settings()[0]
         _s3_client().delete_object(Bucket=bucket, Key=key)
         return
-    target = (UPLOAD_DIR / key).resolve()
-    if target.parent != UPLOAD_DIR.resolve():
+    target = (config.UPLOAD_DIR / key).resolve()
+    if target.parent != config.UPLOAD_DIR.resolve():
         raise ValueError("Upload path is outside the configured directory.")
     target.unlink(missing_ok=True)
