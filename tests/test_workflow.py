@@ -1329,8 +1329,8 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 # chronological cursor boundary in the unfiltered student list.
                 with main.connect_db() as conn:
                     conn.execute(
-                        "UPDATE claims SET status='disputed' WHERE id=?",
-                        ("pagination-claim-3",),
+                        "UPDATE claims SET status='returned' WHERE id=?",
+                        ("pagination-claim-6",),
                     )
                 changed_status = True
             if not payload["has_more"]:
@@ -1533,6 +1533,40 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 )
             finally:
                 conn.close()
+
+
+    def test_office_intake_inventory_uses_report_cursor_pagination(self):
+        self.login("finder@example.test", "finder-password")
+        expected_ids = []
+        for index in range(5):
+            response = self.client.post(
+                "/api/reports",
+                json=self.report_body(
+                    "found",
+                    f"Inventory item {index}",
+                    f"Found inventory item {index} with a distinct physical description.",
+                ),
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            expected_ids.append(response.json()["report"]["id"])
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        collected = []
+        cursor = None
+        while True:
+            params = {"status": "awaiting_intake", "page_size": 2}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/reports", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            cursor = payload["next_cursor"]
+            if not payload["has_more"]:
+                break
+        self.assertEqual(set(collected), set(expected_ids))
+        self.assertEqual(len(collected), len(set(collected)))
 
 
 if __name__ == "__main__":
