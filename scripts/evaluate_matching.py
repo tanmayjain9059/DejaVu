@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluate LostLink retrieval against labelled JSON data; metrics are not ownership decisions."""
 from __future__ import annotations
-import argparse, json, os, sys, time
+import argparse, json, os, sys, time, time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -57,9 +57,13 @@ def evaluate(engine, cases: list[dict[str, Any]], ks=(1, 3, 5), threshold=0.72):
     tp = fp = tn = fn = pairs = 0
     no_match_count = no_match_rejected = 0
     relevant_query_count = 0
+    query_latencies_ms = []
+    evaluation_started = time.perf_counter()
 
     for case in cases:
+        query_started = time.perf_counter()
         ranked = engine.rank(case["lost"], case["candidates"], limit=len(case["candidates"]))
+        query_latencies_ms.append((time.perf_counter() - query_started) * 1000)
         relevant = set(case["relevant_ids"])
         ranked_ids = [item["report"]["id"] for item in ranked]
         expected_ids = {item["id"] for item in case["candidates"]}
@@ -108,6 +112,15 @@ def evaluate(engine, cases: list[dict[str, Any]], ks=(1, 3, 5), threshold=0.72):
                 values[f"recall@{k}"].append(recall)
                 categories[category][f"recall@{k}"].append(recall)
 
+    elapsed_seconds = time.perf_counter() - evaluation_started
+    ordered_latencies = sorted(query_latencies_ms)
+
+    def percentile(values, fraction):
+        if not values:
+            return None
+        index = max(0, min(len(values) - 1, int((len(values) * fraction + 0.999999)) - 1))
+        return round(values[index], 3)
+
     category_output = {}
     for cat, metrics in sorted(categories.items()):
         cat_cases = [c for c in cases if str(c["lost"].get("category") or "unspecified") == cat]
@@ -123,6 +136,14 @@ def evaluate(engine, cases: list[dict[str, Any]], ks=(1, 3, 5), threshold=0.72):
         "queries_with_relevant_candidates": relevant_query_count,
         "no_match_queries": no_match_count,
         "candidate_pairs_scored": pairs,
+        "latency": {
+            "measurement": "wall-clock time around engine.rank per query; includes cold model load on first query when lazy-loaded",
+            "total_evaluation_seconds": round(elapsed_seconds, 3),
+            "mean_query_ms": round(sum(query_latencies_ms) / len(query_latencies_ms), 3) if query_latencies_ms else None,
+            "p50_query_ms": percentile(ordered_latencies, 0.50),
+            "p95_query_ms": percentile(ordered_latencies, 0.95),
+            "max_query_ms": round(max(query_latencies_ms), 3) if query_latencies_ms else None,
+        },
         "metrics": _averages(values),
         "no_match_rejection": {
             "threshold": threshold,
