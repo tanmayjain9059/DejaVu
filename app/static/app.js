@@ -1553,7 +1553,8 @@ document.addEventListener("click", (event) => {
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
-$("#reportForm").addEventListener("submit", submitReport);\n$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
+$("#reportForm").addEventListener("submit", submitReport);
+$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
 $("#backToReportTypes").addEventListener("click", resetReportMode);
 $("#reportImage").addEventListener("change", () => {
   const file = $("#reportImage").files[0];
