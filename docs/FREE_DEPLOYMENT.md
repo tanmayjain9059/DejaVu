@@ -2,7 +2,7 @@
 
 This is LostLink's target self-managed hosting path. Render was used for the prototype; it is not the production deployment target.
 
-The baseline aims for **$0/month within provider free-tier quotas** for a small demo or supervised pilot. Free-tier capacity, regional availability, account eligibility and terms can change. It is not an uptime or backup guarantee and is not approved for sensitive institutional data.
+The baseline aims for **$0/month within provider free-tier quotas** for a small demo or supervised pilot. The Oracle deployment builds the optional ML dependencies and enables MiniLM semantic text ranking by default; CLIP is implemented and test-covered but remains opt-in because its per-candidate CPU inference can add noticeable latency on a small VM. Free-tier capacity, regional availability, account eligibility and terms can change. It is not an uptime or backup guarantee and is not approved for sensitive institutional data.
 
 ## Target architecture
 
@@ -43,7 +43,15 @@ Provider documentation:
 
 Supabase S3 access keys bypass Storage RLS. The LostLink server therefore owns the bucket credentials and enforces the existing report/claim privacy checks before returning any image.
 
-## 2. Create the Oracle VM
+## Matching AI runtime
+
+The Oracle Compose build sets `INSTALL_ML=true`, installing Sentence Transformers and Transformers dependencies. It enables `USE_SEMANTIC_MODEL=true` with `sentence-transformers/all-MiniLM-L6-v2`, running on CPU. The Hugging Face cache is persisted in the `huggingface-cache` Docker volume so model weights are not downloaded on every restart. First model use downloads the weights; allow outbound HTTPS to the Hugging Face Hub. Confirm the office match response reports `sentence_embeddings` as its matching engine. If the model cannot load, LostLink deliberately falls back to `lexical_baseline`; that is a degraded mode, not semantic AI.
+
+CLIP (`openai/clip-vit-base-patch32`) is supported by the installed Transformers/PyTorch dependencies. It is disabled by default on the free-tier VM because it performs image inference candidate-by-candidate for up to 25 shortlisted records. Enable `USE_CLIP_MODEL=true` only after measuring request latency and RAM. The image matching path passes storage object keys—not local filesystem paths—to the private storage adapter. Automated tests exercise both two-photo and one-photo-versus-text CLIP branches.
+
+The CI matching-evaluation job must load MiniLM successfully; it is a required check rather than an allowed-to-fail optional job.
+
+## 3. Create the Oracle VM
 
 1. Create an Oracle Cloud account and use the Always Free resources in your tenancy's **home region**.
 2. Attempt an Ampere A1 VM with 2 OCPUs and 12 GB RAM if available. Host capacity is not guaranteed; if the shape is unavailable, retry later or choose another supported Always Free shape/size.
@@ -53,7 +61,7 @@ Supabase S3 access keys bypass Storage RLS. The LostLink server therefore owns t
 6. Install Docker Engine and the Docker Compose plugin using the official Ubuntu instructions.
 7. Reserve/retain a stable public IP if your tenancy/network configuration supports it; otherwise update DNS if the VM's public IP changes.
 
-## 3. Point your domain to the VM
+## 4. Point your domain to the VM
 
 At your DNS provider, create:
 - An `A` record for the chosen hostname (for example `lostlink.example.in`) pointing to the VM public IPv4 address.
@@ -61,7 +69,7 @@ At your DNS provider, create:
 
 Wait for DNS to resolve before starting Caddy. The hostname must be the exact value used in the `DOMAIN` environment variable. Caddy obtains and renews the HTTPS certificate automatically when ports 80 and 443 are reachable.
 
-## 4. Configure the deployment
+## 5. Configure the deployment
 
 On the VM, clone the repository and check out the integration branch only after you have reviewed and merged PR #3 yourself. Do not deploy from an unmerged branch for a public pilot.
 
@@ -78,7 +86,7 @@ Set restrictive file permissions: `chmod 600 .env.oracle`. Never commit this fil
 
 The production app refuses to start if PostgreSQL or remote object storage is missing, if the object endpoint is not HTTPS, or if demo seeding is enabled. This prevents an accidental silent fallback to ephemeral local SQLite/uploads.
 
-## 5. Start the application
+## 6. Start the application
 
 From the repository root:
 
@@ -97,7 +105,7 @@ Check:
 
 Readiness verifies both the PostgreSQL connection and the configured private storage bucket. Do not consider the deployment ready if either check fails.
 
-## 6. First-run acceptance test
+## 7. First-run acceptance test
 
 1. Create an office account through the controlled bootstrap process; do not enable public office registration.
 2. Create a registration invite and register a student.
@@ -109,7 +117,7 @@ Readiness verifies both the PostgreSQL connection and the configured private sto
 8. Restart the app container and repeat photo/evidence access checks.
 9. Check Supabase database/storage quotas and Oracle instance utilisation.
 
-## 7. Backups, limits and security
+## 8. Backups, limits and security
 
 - Supabase Free does not include automatic database backups. Schedule encrypted `pg_dump` exports and `scripts/backup_supabase_storage.sh` exports to storage outside the Supabase project and test restores. Do not store the only backup in the same project/account.
 - Supabase Storage S3 compatibility does not provide S3 object versioning. Use `scripts/backup_supabase_storage.sh` to export the private bucket and create an encrypted archive; see [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md). Keep an independent encrypted copy of uploads if they become important.
