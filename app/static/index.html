@@ -68,22 +68,36 @@
             </div>
             <div class="mascot-dock" aria-label="Finn, the LostLink campus detective">
               <div class="mascot-note"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
-              <svg class="finn-mascot" viewBox="0 0 190 170" role="img" aria-label="Finn the fox detective with a magnifying glass">
-                <path class="finn-tail" d="M30 135C3 115 9 76 39 69c18-4 28 9 22 23-5 10-17 12-25 6 2 17 14 26 29 30Z" />
-                <path class="finn-tail-tip" d="M18 91c8-17 28-20 39-9-4 14-17 21-31 17Z"/>
-                <path class="finn-ear" d="M53 67 47 20Q73 31 78 60Z"/><path class="finn-ear-inner" d="m57 51-2-19q12 8 15 20Z"/>
-                <path class="finn-ear" d="m111 60 17-43q17 22 3 51Z"/><path class="finn-ear-inner" d="m120 51 8-22q8 15 1 25Z"/>
-                <path class="finn-head" d="M42 76q-2-42 40-47 45-5 54 36 6 35-23 53-36 21-65-7-10-15-6-35Z"/>
-                <path class="finn-muzzle" d="M50 86q22-19 48-4 20-9 34 8-5 28-37 31-30-1-45-20Z"/>
-                <path class="finn-eye" d="M70 76q10-12 20 0-8 13-20 0Z"/><circle cx="81" cy="76" r="3.5" fill="#2c1b1a"/>
-                <path class="finn-eye" d="M105 74q10-12 20 0-8 13-20 0Z"/><circle cx="116" cy="74" r="3.5" fill="#2c1b1a"/>
-                <path d="M91 91q5-5 10 0-4 7-10 0Z" fill="#38211d"/><path d="M96 98q-7 7-14 1" fill="none" stroke="#7d3e2b" stroke-width="2" stroke-linecap="round"/>
-                <path class="finn-hat" d="M43 53q4-23 34-30 31-8 49 13l-4 12q-38-12-77 13Z"/><path class="finn-hat-brim" d="M37 57q38-22 91-8 10 3 13 10-49-8-98 13Z"/>
-                <path class="finn-coat" d="M40 122q20-17 48-12 33-6 53 17l9 35H29Z"/><path d="m76 116 17 22 17-22" fill="#713a3a"/>
-                <path class="finn-arm" d="M43 137q-18 0-22 15 12 11 29 1Z"/>
-                <circle class="finn-lens" cx="151" cy="91" r="22"/><circle cx="151" cy="91" r="15" fill="#b8d8e5" opacity=".45"/><path d="m166 107 15 17" stroke="#75462c" stroke-width="8" stroke-linecap="round"/>
-                <path d="m166 107 15 17" stroke="#d9a45c" stroke-width="3" stroke-linecap="round"/>
-                <path class="finn-pen" d="m28 117 25 26" stroke="#d9a45c" stroke-width="4" stroke-linecap="round"/>
+              <svg class="finn-mascot" viewBox="0 0 220 190" role="img" aria-label="Finn, a friendly fox detective">
+                <defs>
+                  <linearGradient id="foxFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6a35e"/><stop offset=".58" stop-color="#d8753f"/><stop offset="1" stop-color="#a94e31"/></linearGradient>
+                  <linearGradient id="foxCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ec"/><stop offset="1" stop-color="#e9d6bd"/></linearGradient>
+                  <linearGradient id="foxCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#53677e"/><stop offset="1" stop-color="#263b54"/></linearGradient>
+                  <linearGradient id="foxHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#465b72"/><stop offset="1" stop-color="#1f3045"/></linearGradient>
+                  <filter id="foxShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#24384d" flood-opacity=".2"/></filter>
+                </defs>
+                <g class="finn-tail-group">
+                  <path d="M54 148C20 151 8 128 17 102c8-24 32-31 52-17 13 9 15 23 7 33-8 10-20 8-27 1 1 13 12 22 28 24Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
+                  <path d="M18 111c9-17 28-21 43-12-2 15-15 25-32 23Z" fill="url(#foxCream)"/>
+                </g>
+                <g filter="url(#foxShadow)">
+                  <path d="M69 122 57 42Q81 49 94 75L126 73Q139 44 163 37L153 125Q146 153 111 157 76 154 69 122Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
+                  <path d="M70 69 64 51Q78 58 84 76Z M145 73 158 48Q165 64 151 83Z" fill="#f4b18a"/>
+                  <path d="M69 111Q69 78 109 75 151 72 157 111 160 143 126 153 89 158 72 132Z" fill="url(#foxFur)" stroke="#9c4c31" stroke-width="2.5"/>
+                  <path d="M80 116Q95 102 111 115 128 102 145 116 143 140 113 143 86 142 80 116Z" fill="url(#foxCream)"/>
+                  <path d="M91 106q8-9 17 0M122 106q8-9 17 0" fill="none" stroke="#59372e" stroke-width="3" stroke-linecap="round"/>
+                  <ellipse cx="102" cy="111" rx="3.5" ry="5" fill="#293545"/><ellipse cx="132" cy="111" rx="3.5" ry="5" fill="#293545"/>
+                  <path d="M113 120q5-5 10 0-5 7-10 0Z" fill="#55352d"/>
+                  <path d="M118 126q-7 8-14 1m14-1q7 8 14 1" fill="none" stroke="#8d4b3a" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M74 87Q82 55 116 54 149 53 158 83L150 91Q113 77 80 96Z" fill="url(#foxHat)" stroke="#203247" stroke-width="2.5"/>
+                  <path d="M68 91Q111 75 164 88 173 91 176 99 126 91 73 108Z" fill="#203247" stroke="#17283a" stroke-width="2.5"/>
+                  <path d="M83 91Q116 80 149 88" fill="none" stroke="#8fa4b9" stroke-width="2" opacity=".7"/>
+                  <path d="M71 148Q89 135 111 140 139 134 157 151L168 184H59Z" fill="url(#foxCoat)" stroke="#24394f" stroke-width="2.5"/>
+                  <path d="m101 143 13 21 14-21-13-5Z" fill="#b56b64"/><path d="M114 163v20" stroke="#d4e0eb" stroke-width="2" opacity=".65"/>
+                  <circle cx="167" cy="126" r="22" fill="rgba(197,226,240,.32)" stroke="#c5a16c" stroke-width="5"/>
+                  <circle cx="167" cy="126" r="15" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+                  <path d="m183 143 18 21" stroke="#34485c" stroke-width="9" stroke-linecap="round"/><path d="m183 143 18 21" stroke="#c5a16c" stroke-width="3" stroke-linecap="round"/>
+                </g>
               </svg>
             </div>
           </div>
