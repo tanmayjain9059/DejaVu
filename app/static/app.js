@@ -713,7 +713,13 @@ function showLogin() {
   stopNotificationPolling();
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.remove("hidden");
+  $("#publicLostPage").classList.add("hidden");
+  $("#publicFoundPage").classList.add("hidden");
   currentUser = null;
+  placeFinnForView("home");
+  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 
 function enterApp(user) {
@@ -789,6 +795,9 @@ function navigate(view) {
 
 function setReportMode(type) {
   if (!["lost", "found"].includes(type)) return;
+  // Selecting either start card must enter the report workflow, not leave the
+  // user on the start screen with a hidden form revealed elsewhere.
+  navigate("report");
   const previousType = $("#reportType").value;
   $("#reportType").value = type;
   $("#reportForm").classList.remove("hidden");
