@@ -95,6 +95,11 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("const title=String(body.title||\"\").trim(),description=String(body.description||\"\").trim();", self.js)
         self.assertIn("return {report:mockReportView(report,false),message:\"Report details updated.\"};", self.js)
 
+    def test_offline_preview_preserves_private_room_for_own_report_edits(self):
+        self.assertIn('const owner=Boolean(currentUser&&currentUser.role==="student"&&currentUser.id===report.created_by);', self.js)
+        self.assertIn('(internal||owner)?report.location_room:null', self.js)
+        self.assertIn('(internal||owner||!sensitive)?report.location_room:null', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
