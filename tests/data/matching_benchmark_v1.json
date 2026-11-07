@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "description": "100 deterministic synthetic scenarios across 10 item categories. Each query has five candidate distractors, 20 no-match queries, and 20 multi-positive queries. Labels are generated from explicit synthetic scenario construction and are not campus ground truth.",
+  "description": "100 deterministic synthetic scenarios balanced across 10 item categories. Each query has 4 or 5 hard distractors; 20 queries have no relevant candidate and 20 have multiple relevant candidates. Labels are generated from explicit synthetic scenario construction and are not campus ground truth.",
   "data_governance": "Synthetic only. Do not add real student identifiers, contact details, private claim evidence or photos. Real evaluation data requires institutional approval, minimisation, anonymisation and a retention policy.",
   "cases": [
     {
