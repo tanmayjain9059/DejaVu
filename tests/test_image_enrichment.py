@@ -1,6 +1,8 @@
+import os
 import unittest
+from unittest.mock import patch
 
-from app.services.image_enrichment import _attributes, _keywords
+from app.services.image_enrichment import _attributes, _keywords, enrich_image
 
 
 class ImageEnrichmentTests(unittest.TestCase):
@@ -15,6 +17,11 @@ class ImageEnrichmentTests(unittest.TestCase):
             _attributes("A rectangular black leather wallet"),
             {"colours": ["black"], "materials": ["leather"], "shapes": ["rectangular"]},
         )
+
+    def test_enrichment_is_opt_in_and_disabled_by_default(self):
+        with patch.dict(os.environ, {"USE_IMAGE_ENRICHMENT": "false"}):
+            result = enrich_image("unused-image.jpg")
+        self.assertEqual(result["status"], "disabled")
 
     def test_unknown_attributes_remain_empty(self):
         self.assertEqual(
