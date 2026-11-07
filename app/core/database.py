@@ -420,6 +420,13 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
             item record;
             role_name text;
         BEGIN
+            REVOKE ALL ON SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM PUBLIC;
             FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
                     EXECUTE 'REVOKE ALL ON SCHEMA public FROM ' || quote_ident(role_name);
