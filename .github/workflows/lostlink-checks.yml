@@ -25,6 +25,12 @@ jobs:
         run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh scripts/backup_uploads.sh scripts/restore_uploads.sh scripts/backup_supabase_storage.sh
       - name: Check JavaScript syntax
         run: node --check app/static/app.js
+      - name: Check operational Python CLIs
+        run: |
+          python scripts/export_object_storage.py --help
+          python scripts/import_object_storage.py --help
+          python scripts/migrate_uploads_to_object_storage.py --help
+          python scripts/migrate_sqlite_to_postgres.py --help
       - name: Run unit, workflow and frontend contract tests
         run: python -m unittest discover -s tests -v
       - name: Import application
