@@ -1,6 +1,7 @@
 """FastAPI application composition root for LostLink."""
 from __future__ import annotations
 from contextlib import asynccontextmanager
+import os
 from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +44,8 @@ if AUTH_PROVIDER == "supabase":
         raise RuntimeError("FRONTEND_ORIGINS must contain the exact deployed Vercel origin.")
     if not ALLOWED_EMAIL_DOMAINS:
         raise RuntimeError("ALLOWED_EMAIL_DOMAINS must list the institution-approved email domains.")
+    if not OFFICE_USER_EMAILS:
+        raise RuntimeError("OFFICE_USER_EMAILS must list at least one explicitly authorised office account.")
     if any(email.rsplit("@", 1)[-1] not in ALLOWED_EMAIL_DOMAINS for email in OFFICE_USER_EMAILS):
         raise RuntimeError("Every OFFICE_USER_EMAILS entry must belong to an allowed email domain.")
     if "*" in ALLOWED_HOSTS:
