@@ -40,7 +40,7 @@ jobs:
           pip install pytest httpx
 
       - name: Run the complete application test suite
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Run deterministic benchmark baseline
         run: |
