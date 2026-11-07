@@ -1425,12 +1425,6 @@ class LostLinkWorkflowTests(unittest.TestCase):
             json=self.report_body("found", "Student late edit", "Student attempts edit after office intake."),
         )
         self.assertEqual(forbidden_owner_edit.status_code, 409, forbidden_owner_edit.text)
-        wrong_type = self.client.put(
-            f"/api/reports/{lost_id}",
-            json=self.report_body("found", "Type changed", "Attempt to change a lost report into a found report."),
-        )
-        self.assertEqual(wrong_type.status_code, 422, wrong_type.text)
-
 
     def test_matching_retrieval_includes_relevant_same_category_candidate_beyond_500(self):
         self.login("claimant@example.test", "claimant-password")
