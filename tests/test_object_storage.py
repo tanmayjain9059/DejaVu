@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -63,6 +64,45 @@ class ObjectStorageTests(unittest.TestCase):
             self.assertEqual(object_storage.read_upload("report-test.jpg"), b"remote-image")
             object_storage.delete_upload("report-test.jpg")
             self.assertNotIn(("private-lostlink", "report-test.jpg"), client.objects)
+
+    def test_s3_client_uses_supabase_compatible_path_style_and_checksum_settings(self):
+        import boto3
+        remote_env = {
+            "OBJECT_STORAGE_BUCKET": "lostlink-private",
+            "OBJECT_STORAGE_ENDPOINT_URL": "https://project-ref.storage.supabase.co/storage/v1/s3",
+            "OBJECT_STORAGE_ACCESS_KEY_ID": "test-access",
+            "OBJECT_STORAGE_SECRET_ACCESS_KEY": "test-secret",
+            "OBJECT_STORAGE_REGION": "ap-south-1",
+        }
+        object_storage._s3_client.cache_clear()
+        try:
+            with patch.dict(os.environ, remote_env), patch("boto3.client") as client_factory:
+                object_storage._s3_client()
+                kwargs = client_factory.call_args.kwargs
+                self.assertEqual(kwargs["endpoint_url"], remote_env["OBJECT_STORAGE_ENDPOINT_URL"])
+                self.assertEqual(kwargs["region_name"], "ap-south-1")
+                self.assertEqual(kwargs["config"].s3["addressing_style"], "path")
+                self.assertEqual(kwargs["config"].request_checksum_calculation, "when_required")
+                self.assertEqual(kwargs["config"].response_checksum_validation, "when_required")
+        finally:
+            object_storage._s3_client.cache_clear()
+
+    def test_storage_readiness_checks_private_bucket(self):
+        class FakeS3:
+            def __init__(self):
+                self.bucket = None
+            def head_bucket(self, **kwargs):
+                self.bucket = kwargs["Bucket"]
+        client = FakeS3()
+        remote_env = {
+            "OBJECT_STORAGE_BUCKET": "lostlink-private",
+            "OBJECT_STORAGE_ENDPOINT_URL": "https://project-ref.storage.supabase.co/storage/v1/s3",
+            "OBJECT_STORAGE_ACCESS_KEY_ID": "test-access",
+            "OBJECT_STORAGE_SECRET_ACCESS_KEY": "test-secret",
+        }
+        with patch.dict(os.environ, remote_env), patch.object(object_storage, "_s3_client", return_value=client):
+            self.assertTrue(object_storage.check_object_storage_connection())
+            self.assertEqual(client.bucket, "lostlink-private")
 
     def test_upload_keys_reject_paths(self):
         for key in ("../outside.jpg", "/tmp/image.jpg", "folder/image.jpg", ".."):
