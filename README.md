@@ -497,6 +497,9 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
+| <code>UPLOAD_STORAGE_BACKEND</code> | Private upload backend: <code>local</code> or <code>s3</code>. | Defaults to <code>local</code>; S3 requires a private bucket and credentials. |
+| <code>S3_BUCKET</code>, <code>S3_PREFIX</code>, <code>S3_REGION</code>, <code>S3_ENDPOINT_URL</code> | S3-compatible private bucket and endpoint configuration. | Required bucket when S3 backend is selected; endpoint is optional for AWS. Store access credentials as deployment secrets. |
+| <code>MATCHING_CANDIDATE_LIMIT</code> | Maximum bounded candidate shortlist for matching. | Defaults to <code>2000</code>; accepted range <code>100-10000</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings and MiniLM category suggestions. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
 | <code>SEMANTIC_MODEL_REVISION</code> | Explicit cache namespace revision; increment after changing model weights/tokenisation. | <code>default</code>. |
