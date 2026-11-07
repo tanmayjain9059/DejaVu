@@ -593,6 +593,7 @@ function currentBrowseFilters() {
 
 async function loadBrowse(append = false) {
   if (!currentUser) return;
+  // A fresh search supersedes an in-flight request; only pagination waits for it.
   if (append && browseLoading) return;
   const filters = currentBrowseFilters();
   if (append && JSON.stringify(filters) !== JSON.stringify(browseFilters)) {
