@@ -371,6 +371,8 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 | POST | <code>/api/reports/{report_id}/intake</code> | Office-only: confirm physical receipt, record storage/verification data and assign the Tag ID. |
 | POST | <code>/api/reports/{report_id}/storage</code> | Office-only: update the item's recorded storage location. |
 
+Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter can isolate `disputed`, `pending`, or `other` claims, so staff can work the highest-priority queue first without putting mutable status into the cursor sort key. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision.
+
 ### Claims, evidence and handover
 
 | Method | Path | Purpose |
