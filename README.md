@@ -497,7 +497,7 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings and MiniLM category suggestions. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
-| <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
+| <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |\n| <code>SEMANTIC_MODEL_REVISION</code> | Explicit cache namespace revision; increment after changing model weights/tokenisation. | <code>default</code>. |
 | <code>USE_CLIP_MODEL</code> | Enable CLIP-based image/image-text similarity. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>USE_IMAGE_ENRICHMENT</code> | Enable BLIP image captioning and report-photo keyword/attribute suggestions. | <code>false</code>; opt in after installing ML dependencies and assessing memory/latency. |
 | <code>IMAGE_CAPTION_MODEL</code> | Hugging Face image-to-text model identifier. | <code>Salesforce/blip-image-captioning-base</code>. |
@@ -531,7 +531,7 @@ Run the automated checks from the repository root:
        node --check app/static/app.js
        python -m unittest discover -s tests -v
 
-The automated suite covers workflow behaviour, matching, rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
+The automated suite covers workflow behaviour, matching (including semantic embedding-cache hits and misses), rewards and frontend selector/navigation contracts. GitHub Actions runs Python compilation, JavaScript syntax validation, the unit/workflow tests and application import. A separate optional job attempts semantic-model evaluation; it is non-blocking because model downloads can fail in automated environments.
 
 To run the deterministic baseline retrieval evaluation:
 
@@ -552,7 +552,7 @@ The current application is not a production deployment and has not been assigned
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
-- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. Larger collections may require better candidate pre-filtering, a search index, cached embeddings and a separate inference worker.
+- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). Larger collections may still require better candidate pre-filtering, a search index and a separate inference worker. Image embeddings are not yet cached.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
 - **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.
