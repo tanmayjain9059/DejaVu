@@ -685,6 +685,7 @@ The current application is not a production deployment and has not been assigned
 ## Related documentation
 
 - [Architecture.md](Architecture.md) — module boundaries, request flow and implementation invariants.
+- [No-login student workflow](docs/NO_LOGIN_STUDENT_WORKFLOW.md) — pilot decision, roll-number tracking, privacy boundaries and implementation acceptance criteria.
 - [Matching evaluation dataset guide](docs/MATCHING_EVALUATION_DATASET.md) — benchmark schema, metric definitions and governance for future real-data evaluation.
 
 ### Run PostgreSQL locally with Docker Compose
