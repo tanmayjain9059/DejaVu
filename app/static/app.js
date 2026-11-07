@@ -782,7 +782,8 @@ function navigate(view) {
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
   refreshNotificationBadge();
-  placeFinnForView(view);\n  if (typeof wakeFinn === "function") wakeFinn(finnMode());
+  placeFinnForView(view);
+  if (typeof wakeFinn === "function") wakeFinn(finnMode());
 }
 
 
@@ -1859,13 +1860,15 @@ function showPublicHome() {
   $("#publicHomeContent").classList.remove("hidden");
   $("#publicLostPage").classList.add("hidden");
   $("#publicFoundPage").classList.add("hidden");
-  placeFinnForView("home");\n  if (typeof wakeFinn === "function") wakeFinn("home");
+  placeFinnForView("home");
+  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 function showPublicDestination(type) {
   $("#publicHomeContent").classList.add("hidden");
   $("#publicLostPage").classList.toggle("hidden", type !== "lost");
   $("#publicFoundPage").classList.toggle("hidden", type !== "found");
-  placeFinnForView(type);\n  if (typeof wakeFinn === "function") wakeFinn(type);
+  placeFinnForView(type);
+  if (typeof wakeFinn === "function") wakeFinn(type);
 }
 $("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
 $("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
