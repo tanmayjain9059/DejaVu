@@ -1,3 +1,5 @@
+from fastapi.responses import Response
+from app.core.object_storage import store_upload, read_upload, delete_upload
 """HTTP route group."""
 from fastapi import APIRouter
 from app.core.runtime import *
@@ -116,7 +118,7 @@ async def upload_claim_evidence_image(
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
-    image_path = None
+    image_key = None
     try:
         with connect_db() as conn:
             # Serialize duplicate checks across simultaneous student and office processes.
@@ -134,10 +136,8 @@ async def upload_claim_evidence_image(
                     detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
                 )
             filename = "claim-" + uuid.uuid4().hex + ".jpg"
-            image_path = (UPLOAD_DIR / filename).resolve()
-            if image_path.parent != UPLOAD_DIR.resolve():
-                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-            image_path.write_bytes(normalized)
+            image_key = filename
+            store_upload(image_key, normalized)
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
@@ -151,10 +151,10 @@ async def upload_claim_evidence_image(
                         "claim", claim_id)
     except Exception:
         # Also catches commit failures from the connection context manager.
-        if image_path is not None:
+        if image_key is not None:
             try:
-                image_path.unlink(missing_ok=True)
-            except OSError:
+                delete_upload(image_key)
+            except Exception:
                 pass
         raise
     return {"ok": True, "message": "Private evidence image attached."}
@@ -175,8 +175,9 @@ async def get_claim_evidence_image(
         ).fetchone()
     if not image_row:
         raise HTTPException(status_code=404, detail="No evidence image is attached.")
-    path = (UPLOAD_DIR / image_row["image_path"]).resolve()
-    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+    try:
+        image_bytes = read_upload(image_row["image_path"])
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Evidence image not found.")
     headers = {
         "Cache-Control": "private, no-store",
@@ -184,8 +185,8 @@ async def get_claim_evidence_image(
         "X-Content-Type-Options": "nosniff",
     }
     label = "PRIVATE CLAIM " + claim_id[:8].upper()
-    return StreamingResponse(BytesIO(watermark_image(path, label)),
-                             media_type="image/jpeg", headers=headers)
+    return Response(content=watermark_image_bytes(image_bytes, label),
+                    media_type="image/jpeg", headers=headers)
 
 
 @router.get("/api/claims")
