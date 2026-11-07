@@ -85,6 +85,20 @@ async def list_reports(
     return {"reports": reports}
 
 
+
+@router.post("/api/reports/category-suggestion")
+async def suggest_report_category(
+    body: CategorySuggestionBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    """Suggest a category from public item details; the student must confirm it."""
+    from app.services.category_classification import suggest_category
+
+    payload = body.model_dump() if hasattr(body, "model_dump") else body.dict()
+    result = await run_in_threadpool(suggest_category, payload)
+    return {"suggestion": result}
+
+
 @router.post("/api/reports")
 async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authenticated_user)):
     if len(body.title.strip()) < 4:
