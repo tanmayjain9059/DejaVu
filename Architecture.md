@@ -34,7 +34,7 @@ This describes the actual modular layout of the LostLink prototype. The refactor
 4. app/core/config.py provides environment-backed settings and privacy/category constants; app/core/database.py handles transactions, migrations and audit writes.
 5. app/core/images.py and app/core/security.py handle image/password primitives. app/api/dependencies.py enforces sessions and office-only actions.
 6. app/services owns report visibility/serialization, notification side effects and reward/certificate side effects.
-7. app/matching.py ranks candidates from available text/category/location/time signals and optional learned-model signals.
+7. app/matching.py ranks candidates from available text/category/location/time signals and optional learned-model signals. Category-specific ranking profiles change the relative contribution of text, image, category, location and time; missing signals are removed and the remaining weights are renormalised.
 
 ## Main boundaries
 
@@ -53,7 +53,7 @@ Password helpers use PBKDF2-HMAC-SHA256 with a random salt and 180,000 iteration
 - reports.py keeps public/student serialisation separate from internal/office serialisation. Tag IDs, storage locations, private owner clues and risk details are only returned internally.
 - notifications.py uses unique event keys to de-duplicate notifications, and ranks candidates to notify students of possible matches. A match is a lead, not ownership proof.
 - rewards.py awards points only for configured verified events, writes idempotent ledger entries, audits awards and generates threshold certificates.
-- matching.py uses a deterministic lexical baseline by default. Sentence Transformers and CLIP are optional and controlled by environment flags.
+- matching.py uses a deterministic lexical baseline by default, optional Sentence Transformers/CLIP inference, and category-aware signal weights. Electronics place more weight on visual similarity; identity documents place more weight on text and contextual signals. Weights are renormalised over signals actually available for each pair.
 
 ### API route ownership
 
