@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from botocore.config import Config
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -63,7 +64,7 @@ def _s3_client():
     if _ACCESS_KEY and _SECRET_KEY:
         options["aws_access_key_id"] = _ACCESS_KEY
         options["aws_secret_access_key"] = _SECRET_KEY
-    return boto3.client("s3", **options)
+    return boto3.client("s3", config=Config(signature_version="s3v4", s3={"addressing_style": "path"}), **options)
 
 
 def _object_key(key: str) -> str:
