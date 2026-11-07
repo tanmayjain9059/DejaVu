@@ -17,8 +17,28 @@ async def list_reports(
     date_to: str | None = None,
     status: str | None = None,
     mine: bool = False,
+    page_size: int = 50,
+    cursor: str | None = None,
     user: dict[str, Any] = Depends(authenticated_user),
 ):
+    import base64
+    import json as json_module
+
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=422, detail="page_size must be between 1 and 100.")
+
+    cursor_values = None
+    if cursor:
+        try:
+            padded = cursor + ("=" * (-len(cursor) % 4))
+            decoded = json_module.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+            if (not isinstance(decoded, list) or len(decoded) != 2
+                    or not all(isinstance(value, str) for value in decoded)):
+                raise ValueError("invalid cursor")
+            cursor_values = decoded
+        except (ValueError, TypeError, UnicodeDecodeError, json_module.JSONDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid report pagination cursor.")
+
     conditions: list[str] = []
     params: list[Any] = []
     internal = user["role"] == "office"
@@ -65,12 +85,25 @@ async def list_reports(
         conditions.append("r.status=?")
         params.append(status)
 
+    if cursor_values is not None:
+        conditions.append("(r.created_at < ? OR (r.created_at = ? AND r.id < ?))")
+        params.extend([cursor_values[0], cursor_values[0], cursor_values[1]])
+
     sql = "SELECT r.* FROM reports r"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY r.created_at DESC LIMIT 250"
+    sql += " ORDER BY r.created_at DESC, r.id DESC LIMIT ?"
+    params.append(page_size + 1)
     with connect_db() as conn:
         rows = conn.execute(sql, params).fetchall()
+        has_more = len(rows) > page_size
+        if has_more:
+            rows = rows[:page_size]
+        next_cursor = None
+        if has_more and rows:
+            last = rows[-1]
+            raw_cursor = json_module.dumps([str(last["created_at"]), str(last["id"])], separators=(",", ":")).encode()
+            next_cursor = base64.urlsafe_b64encode(raw_cursor).decode().rstrip("=")
         reports = []
         for row in rows:
             report_data = serialise_report(row, internal=internal)
@@ -82,7 +115,7 @@ async def list_reports(
                 ).fetchone()
                 report_data["has_active_linked_claim"] = active_claim is not None
             reports.append(report_data)
-    return {"reports": reports}
+    return {"reports": reports, "next_cursor": next_cursor, "has_more": has_more}
 
 
 
