@@ -9,11 +9,13 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime
+from io import BytesIO
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
+from app.core.object_storage import read_upload
 
 SYNONYMS = {
     "backpack": "bag", "rucksack": "bag", "purse": "wallet",
@@ -167,25 +169,32 @@ class MatchingEngine:
         model, processor = self._load_clip()
         if model is None or processor is None:
             return None
-        lost_path = Path(str(lost.get("image_path") or ""))
-        found_path = Path(str(found.get("image_path") or ""))
-        lost_has_image = bool(lost.get("image_path")) and lost_path.is_file()
-        found_has_image = bool(found.get("image_path")) and found_path.is_file()
+        lost_key = str(lost.get("image_path") or "")
+        found_key = str(found.get("image_path") or "")
+        try:
+            lost_bytes = read_upload(lost_key) if lost_key else None
+        except FileNotFoundError:
+            lost_bytes = None
+        try:
+            found_bytes = read_upload(found_key) if found_key else None
+        except FileNotFoundError:
+            found_bytes = None
+        lost_has_image, found_has_image = lost_bytes is not None, found_bytes is not None
         if not lost_has_image and not found_has_image:
             return None
         try:
             import torch
             with torch.no_grad():
                 if lost_has_image and found_has_image:
-                    with Image.open(lost_path) as left_image, Image.open(found_path) as right_image:
+                    with Image.open(BytesIO(lost_bytes)) as left_image, Image.open(BytesIO(found_bytes)) as right_image:
                         pixels = processor(images=[left_image.convert("RGB"), right_image.convert("RGB")], return_tensors="pt")
                     embeddings = model.get_image_features(pixel_values=pixels["pixel_values"])
                     embeddings = torch.nn.functional.normalize(embeddings, dim=-1)
                     cosine = torch.sum(embeddings[0] * embeddings[1]).item()
                 else:
-                    image_path = lost_path if lost_has_image else found_path
+                    image_bytes = lost_bytes if lost_has_image else found_bytes
                     text_report = found if lost_has_image else lost
-                    with Image.open(image_path) as source:
+                    with Image.open(BytesIO(image_bytes)) as source:
                         pixels = processor(images=source.convert("RGB"), return_tensors="pt")
                     text_inputs = processor(text=[_text_value(text_report)], return_tensors="pt",
                                             padding=True, truncation=True)
