@@ -191,8 +191,9 @@ async function mockApi(url,options){
   if(report.report_type==="found")mockNotify(MOCK_USERS.office.id,"Found-item report awaiting intake","A new found-item report is waiting for physical office intake.","report",report.id,"found-report:"+report.id);
   return {report:mockReportView(report,currentUser.role==="office"),message:report.report_type==="lost"?"Lost report submitted.":"Found-item report submitted for office intake."};
  }
- if((m=path.match(/^\/api\/reports\/([^/]+)$/))&&method==="PUT"){
-  const id=decodeURIComponent(m[1]),report=mockStore.reports.find(r=>r.id===id);
+ const editMatch=path.match(/^\/api\/reports\/([^/]+)$/);
+ if(editMatch&&method==="PUT"){
+  const id=decodeURIComponent(editMatch[1]),report=mockStore.reports.find(r=>r.id===id);
   if(!currentUser||currentUser.role!=="student"||!report||report.created_by!==currentUser.id)throw new Error("Report not found.");
   if((report.report_type==="lost"&&report.status!=="open")||(report.report_type==="found"&&report.status!=="awaiting_intake"))throw new Error("This report can no longer be edited.");
   if(report.report_type==="lost"&&mockStore.claims.some(c=>c.lost_report_id===id&&["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status)))throw new Error("This report cannot be edited while a linked claim is active.");
