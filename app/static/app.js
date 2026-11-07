@@ -1887,6 +1887,10 @@ function openPublicSignIn(mode = "student") {
     ? "Authorised campus staff can access intake, claims and verified handover tools."
     : "Sign in to manage your reports, follow possible matches and track your claims.";
   $("#loginSubmitButton").dataset.expectedRole = office ? "office" : "student";
+  $("#demoAccess").dataset.loginMode = office ? "office" : "student";
+  $("[data-demo-role]").forEach((button) => {
+    button.classList.toggle("hidden", button.dataset.demoRole !== (office ? "office" : "student"));
+  });
   $("#loginError").textContent = "";
   $("#loginForm").reset();
   $("#officeLoginPanel").classList.remove("hidden");
@@ -2075,8 +2079,18 @@ $("#loginForm").addEventListener("submit", async (event) => {
 
 async function launchDemoAccount(email,password) {
   $("#loginError").textContent="";
-  try { const result=await api("/api/login",{method:"POST",body:{email,password}}); inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); enterApp(result.user); showToast("Opened "+(result.user.role==="office"?"office":"student")+" demo view.",false); }
-  catch(error){$("#loginError").textContent=error.message;}
+  try {
+    const result=await api("/api/login",{method:"POST",body:{email,password}});
+    const expectedRole=$("#loginSubmitButton").dataset.expectedRole || "student";
+    if(result.user.role!==expectedRole){
+      await api("/api/logout",{method:"POST"}).catch(()=>{});
+      throw new Error("Choose the matching sign-in option for this demo account.");
+    }
+    inspectedUser=null;
+    $("#returnToDashboardButton").classList.add("hidden");
+    enterApp(result.user);
+    showToast("Opened "+(result.user.role==="office"?"office":"student")+" demo view.",false);
+  } catch(error){$("#loginError").textContent=error.message;}
 }
 $("#fillStudent").addEventListener("click",()=>launchDemoAccount("student@lostlink.local","student123"));
 $("#fillOffice").addEventListener("click",()=>launchDemoAccount("office@lostlink.local","office123"));
