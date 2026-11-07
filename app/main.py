@@ -11,7 +11,12 @@ from app.core.config import *
 from app.core.database import *
 from app.core.images import *
 from app.core.security import *
-from app.core.object_storage import object_storage_enabled
+from app.core.object_storage import (
+    check_object_storage_connection,
+    object_storage_enabled,
+    object_storage_endpoint_url,
+)
+from app.core.deployment import validate_hosted_configuration
 from app.core.runtime import *
 from app.schemas import *
 from app.api.routes.auth import router as auth_router
@@ -20,7 +25,14 @@ from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
 
 # Fail at startup on a partially configured remote upload backend.
-object_storage_enabled()
+remote_storage_enabled = object_storage_enabled()
+validate_hosted_configuration(
+    app_env=APP_ENV,
+    database_url=DATABASE_URL,
+    remote_storage_enabled=remote_storage_enabled,
+    object_storage_endpoint=object_storage_endpoint_url(),
+    demo_mode=DEMO_MODE,
+)
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
@@ -114,6 +126,7 @@ def health_ready():
     try:
         with connect_db() as conn:
             conn.execute("SELECT 1 AS ready").fetchone()
+        check_object_storage_connection()
     except Exception:
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return {"status": "ready"}
