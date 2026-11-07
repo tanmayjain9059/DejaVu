@@ -365,6 +365,88 @@ def _migration_add_ai_embedding_cache(conn) -> None:
     )
 
 
+def _migration_reconcile_pr3_schema(conn) -> None:
+    """Reconcile schema objects from either historical migration lineage.
+
+    PR #3 used versions 5 and 6 for different objects. This forward migration
+    re-ensures the current AI schema and candidate indexes without rewriting
+    or renumbering any applied migration records.
+    """
+    for column, declaration in (
+        ("ai_caption", "TEXT"),
+        ("ai_keywords", "TEXT"),
+        ("ai_attributes_json", "TEXT"),
+        ("ai_enriched_at", "TEXT"),
+        ("ai_enrichment_model", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+    _migration_add_ai_embedding_cache(conn)
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_reports_match_candidates
+           ON reports(report_type, status, category, created_at, id)"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_reports_match_recent
+           ON reports(report_type, status, created_at, id)"""
+    )
+
+
+def _migration_add_supabase_identity(conn) -> None:
+    """Associate local LostLink roles with verified Supabase Auth identities."""
+    columns = table_columns(conn, "users")
+    # Some migration-lineage tests and partially bootstrapped databases apply
+    # additive migrations before the core users table has been created.
+    # initialise_db creates users before invoking the migration runner.
+    if not columns:
+        return
+    if "supabase_user_id" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN supabase_user_id TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_user_id "
+        "ON users(supabase_user_id) WHERE supabase_user_id IS NOT NULL"
+    )
+
+
+def _migration_lock_down_supabase_data_api(conn) -> None:
+    """Keep the public Data API closed; application access uses the trusted DB connection."""
+    if not isinstance(conn, PostgresCompatConnection):
+        return
+    conn.execute(
+        """
+        DO $lostlink$
+        DECLARE
+            item record;
+            role_name text;
+        BEGIN
+            REVOKE ALL ON SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+            REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM PUBLIC;
+            FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+                    EXECUTE 'REVOKE ALL ON SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM ' || quote_ident(role_name);
+                    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM ' || quote_ident(role_name);
+                END IF;
+            END LOOP;
+            FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
+                EXECUTE 'ALTER TABLE public.' || quote_ident(item.tablename) || ' ENABLE ROW LEVEL SECURITY';
+            END LOOP;
+        END
+        $lostlink$;
+        """
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
@@ -373,6 +455,9 @@ SCHEMA_MIGRATIONS = (
     (4, "legacy_additive_columns_and_image_fingerprints", _migration_move_legacy_additive_columns),
     (5, "report_image_enrichment_fields", _migration_add_report_image_enrichment),
     (6, "persistent_ai_embedding_cache", _migration_add_ai_embedding_cache),
+    (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
+    (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
+    (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
 )
 
 
@@ -555,6 +640,10 @@ def initialise_db() -> None:
             (1, "legacy_schema_baseline", now_iso()),
         )
         _apply_versioned_schema_migrations(conn)
+        if AUTH_PROVIDER == "supabase":
+            # Reapply the idempotent public-schema lockdown on startup so any
+            # newly introduced application tables also receive RLS protection.
+            _migration_lock_down_supabase_data_api(conn)
         if not DEMO_MODE:
             return
 
