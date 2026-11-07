@@ -121,6 +121,8 @@ class MatchingEngine:
         self._clip_attempted = False
         self._text_model_lock = threading.Lock()
         self._clip_model_lock = threading.Lock()
+        self.last_text_error: str | None = None
+        self.last_clip_error: str | None = None
         self.semantic_enabled = os.getenv("USE_SEMANTIC_MODEL", "false").lower() == "true"
         self.clip_enabled = os.getenv("USE_CLIP_MODEL", "false").lower() == "true"
 
@@ -170,7 +172,8 @@ class MatchingEngine:
                 self._clip_processor = CLIPProcessor.from_pretrained(model_name)
                 self._clip_model = CLIPModel.from_pretrained(model_name)
                 self._clip_model.eval()
-            except Exception:
+            except Exception as exc:
+                self.last_clip_error = f"{type(exc).__name__}: {exc}"
                 self._clip_model = None
                 self._clip_processor = None
             return self._clip_model, self._clip_processor
@@ -218,7 +221,8 @@ class MatchingEngine:
                     text_embedding = torch.nn.functional.normalize(text_embedding, dim=-1)
                     cosine = torch.sum(image_embedding[0] * text_embedding[0]).item()
             return max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0))
-        except Exception:
+        except Exception as exc:
+            self.last_clip_error = f"{type(exc).__name__}: {exc}"
             return None
 
     def _batch_semantic_scores(
