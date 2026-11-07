@@ -288,23 +288,8 @@ function initLiquidNavbar() {
   }
 
   function playPlip() {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      audioCtx = audioCtx || new AC();
-      const t = audioCtx.currentTime;
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(420 + Math.random() * 80, t);
-      o.frequency.exponentialRampToValueAtTime(1500, t + 0.07);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.12, t + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-      o.connect(g).connect(audioCtx.destination);
-      o.start(t);
-      o.stop(t + 0.18);
-    } catch (_) {}
+    // Sound disabled per user request
+    return;
   }
 
   nav.addEventListener("pointermove", (e) => {
@@ -740,6 +725,12 @@ function enterApp(user) {
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
   $("#userName").textContent = user.display_name;
+  if ($("#dropdownUserName")) $("#dropdownUserName").textContent = user.display_name || "User";
+  if ($("#dropdownUserEmail")) $("#dropdownUserEmail").textContent = user.email || "";
+  if ($("#dropdownAvatar")) {
+    $("#dropdownAvatar").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
+    $("#dropdownAvatar").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student") + " avatar-large";
+  }
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
@@ -2045,3 +2036,22 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
 }
 
 start();
+
+
+// Profile Tab Dropdown Toggle
+const profileBtn = $("#profileTabBtn");
+const profileDropdown = $("#profileDropdown");
+if (profileBtn && profileDropdown) {
+  profileBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = profileDropdown.classList.contains("hidden");
+    profileDropdown.classList.toggle("hidden", !isHidden);
+    profileBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+  });
+  document.addEventListener("click", (e) => {
+    if (!profileDropdown.classList.contains("hidden") && !e.target.closest(".profile-tab-wrapper")) {
+      profileDropdown.classList.add("hidden");
+      profileBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+}

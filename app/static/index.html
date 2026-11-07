@@ -8,11 +8,11 @@
   <title>LostLink · Campus Lost &amp; Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=SF+Pro+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <!-- Ambient Liquid Glass Orbs -->
+  <!-- Ambient Liquid Glass Orbs (soft water glow matching 21st.dev navbar palette) -->
   <div class="ambient-mesh" aria-hidden="true">
     <div class="liquid-orb orb-1"></div>
     <div class="liquid-orb orb-2"></div>
@@ -31,28 +31,27 @@
   <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
   <main id="loginView" class="login-shell">
     <section class="login-story">
-      <div class="brand-lockup">
-        <div class="brand-liquid-mark">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Sleek Liquid Glass Logo & Brand -->
+      <div class="brand-liquid-pill">
+        <span class="nimbus-glass" aria-hidden="true"></span>
+        <span class="liquid-logo-bubble">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
           </svg>
-          <span class="water-shimmer"></span>
-        </div>
-        <div>
-          <strong class="brand-title">LostLink</strong>
-          <small class="brand-sub">Campus lost &amp; found</small>
-        </div>
+        </span>
+        <span class="brand-text">LostLink</span>
+        <span class="brand-live-dot" title="Active Campus System"></span>
       </div>
 
       <div class="story-copy">
-        <p class="eyebrow"><span class="pulse-dot"></span> Campus Property Assistance</p>
+        <p class="eyebrow"><span class="pulse-dot"></span> Verified Campus Custody</p>
         <h1>Lost something?<br><span>Start here.</span></h1>
         <p class="lede">A calm, verified campus lost and found workflow. Report an item, search registered custody, and track claims privately.</p>
         
         <div class="story-points">
           <div class="glass-point">
             <span class="point-icon">01</span>
-            <div><strong>Report clearly</strong><small>Add useful visible details, without exposing private proof.</small></div>
+            <div><strong>Report clearly</strong><small>Add useful visible details without exposing private proof.</small></div>
           </div>
           <div class="glass-point">
             <span class="point-icon">02</span>
@@ -163,21 +162,21 @@
   <main id="appView" class="app-shell hidden">
     <!-- Uncluttered Top Navigation Bar -->
     <header class="app-header">
+      <!-- Redesigned Top-Left Liquid Glass Logo (NO ugly subtitle) -->
       <div class="header-left">
-        <a class="brand-lockup compact" href="#" id="homeBrandLink" aria-label="LostLink home">
-          <div class="brand-liquid-mark">
+        <a class="brand-liquid-pill" href="#" id="homeBrandLink" aria-label="LostLink Home">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <span class="liquid-logo-bubble">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
             </svg>
-          </div>
-          <div>
-            <strong>LostLink</strong>
-            <small>Campus lost &amp; found</small>
-          </div>
+          </span>
+          <span class="brand-text">LostLink</span>
+          <span class="brand-live-dot" title="Active Campus Desk"></span>
         </a>
       </div>
 
-      <!-- 21st.dev Liquid Glass Navbar Floating Center Component -->
+      <!-- 21st.dev Liquid Glass Navbar Floating Center Component (UNMODIFIED) -->
       <div class="header-center">
         <nav id="studentNav" class="nimbus-nav" data-tone="light" data-gl="on" data-refract="on" aria-label="Campus Navigation">
           <span class="nimbus-glass" aria-hidden="true"></span>
@@ -268,18 +267,46 @@
         </nav>
       </div>
 
-      <!-- User Profile & Action Controls -->
+      <!-- Redesigned Single Liquid Glass Profile Tab (matching navbar size & glassmorphism) -->
       <div class="header-right">
-        <div class="user-pill glass-card">
-          <span id="userInitial" class="avatar avatar-student">A</span>
-          <span id="userName" class="user-name">Alex Chen</span>
-          <span id="roleChip" class="role-chip">Student</span>
+        <div class="profile-tab-wrapper">
+          <button id="profileTabBtn" class="profile-liquid-pill" type="button" aria-expanded="false" aria-haspopup="true" aria-label="Profile and account actions">
+            <span class="nimbus-glass" aria-hidden="true"></span>
+            <span id="userInitial" class="avatar avatar-student">A</span>
+            <span id="userName" class="profile-pill-name">Alex Chen</span>
+            <span id="roleChip" class="profile-role-chip">Student</span>
+            <svg class="profile-pill-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+
+          <!-- Liquid Glass Dropdown Menu -->
+          <div id="profileDropdown" class="profile-dropdown-menu liquid-glass-panel hidden" role="menu">
+            <div class="profile-dropdown-header">
+              <span id="dropdownAvatar" class="avatar avatar-student avatar-large">A</span>
+              <div class="profile-dropdown-userinfo">
+                <strong id="dropdownUserName">Alex Chen</strong>
+                <small id="dropdownUserEmail" class="muted">student@lostlink.local</small>
+              </div>
+            </div>
+            <div class="profile-dropdown-divider"></div>
+            <div class="profile-dropdown-actions">
+              <button id="viewSwitchBtn" class="profile-dropdown-item button-quiet" type="button">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+                <span id="switchViewLabel">Switch view</span>
+              </button>
+              <button id="showLoginButton" class="profile-dropdown-item button-quiet hidden" type="button">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>Login screen</span>
+              </button>
+            </div>
+            <div class="profile-dropdown-divider"></div>
+            <button id="logoutButton" class="profile-dropdown-item profile-logout-action" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span>Sign out</span>
+            </button>
+          </div>
         </div>
-        <button id="viewSwitchBtn" class="button button-quiet button-small role-toggle-btn" type="button" title="Switch role">Switch view</button>
-        <button id="showLoginButton" class="button button-quiet button-small hidden" type="button">Login</button>
-        <button id="logoutButton" class="button button-quiet button-small logout-btn" type="button" title="Sign out">
-          <span>Sign out</span>
-        </button>
       </div>
     </header>
 
@@ -486,7 +513,7 @@
           <label>
             <span>Visible characteristics <span class="field-optional">Optional</span></span>
             <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two front pockets, black zip, small scratch on the outer flap"></textarea>
-            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim process.</small>
+            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
           </label>
 
           <label>
