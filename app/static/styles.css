@@ -1357,7 +1357,7 @@ input::placeholder, textarea::placeholder {
 .public-action-copy strong { font-size:1.05rem; }
 .public-action-copy small { color:#657184; font-size:.78rem; line-height:1.4; }
 .public-action-arrow { margin-left:auto; color:#a84f25; font-size:1.25rem; }
-.mascot-dock { position:absolute; z-index:2; right:22px; top:-112px; width:176px; height:125px; pointer-events:none; }
+.mascot-dock { position:absolute; z-index:2; right:22px; top:-112px; width:176px; height:125px; pointer-events:auto; cursor:pointer; }
 .finn-mascot { position:absolute; right:0; bottom:-7px; width:150px; height:134px; overflow:visible; filter:drop-shadow(0 7px 8px rgba(55,37,29,.18)); transform-origin:70% 100%; animation:finn-idle 4.8s ease-in-out infinite; }
 .finn-tail { fill:#c96832; stroke:#793d27; stroke-width:2; }.finn-tail-tip { fill:#fff0dc; }
 .finn-ear { fill:#c96832; stroke:#793d27; stroke-width:2; stroke-linejoin:round; }.finn-ear-inner { fill:#f6b18a; }
