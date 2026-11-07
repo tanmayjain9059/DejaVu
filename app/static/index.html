@@ -287,6 +287,36 @@
     </form>
   </dialog>
 
+
+  <aside id="lostlinkMascot" class="lostlink-mascot" aria-label="LostLink guide">
+    <div id="mascotTip" class="mascot-tip" role="status">
+      <button id="mascotTipClose" class="mascot-tip-close" type="button" aria-label="Dismiss message">×</button>
+      <strong>Hi! I'm Finn 🦊</strong>
+      <p id="mascotMessage">I'll help you find your way around LostLink.</p>
+      <button id="mascotHelpOpen" class="mascot-help-link" type="button">How can I help? <span aria-hidden="true">→</span></button>
+    </div>
+    <button id="mascotToggle" class="mascot-toggle" type="button" aria-expanded="false" aria-controls="mascotPanel" aria-label="Open Finn, your LostLink guide">
+      <img src="/static/mascot-fox.svg" alt="" width="88" height="88">
+      <span class="mascot-online-dot" aria-hidden="true"></span>
+    </button>
+    <section id="mascotPanel" class="mascot-panel hidden" aria-labelledby="mascotPanelTitle">
+      <header class="mascot-panel-head">
+        <img src="/static/mascot-fox.svg" alt="" width="44" height="44">
+        <div><strong id="mascotPanelTitle">Finn, your LostLink guide</strong><small>Here to help you find your way</small></div>
+        <button id="mascotPanelClose" type="button" class="mascot-panel-close" aria-label="Close guide">×</button>
+      </header>
+      <div class="mascot-panel-body">
+        <p id="mascotPanelMessage">Hey there! What are you trying to do?</p>
+        <div class="mascot-actions">
+          <button type="button" data-mascot-action="report">Report a lost or found item</button>
+          <button type="button" data-mascot-action="browse">Browse found items</button>
+          <button type="button" data-mascot-action="claims">Understand claims & verification</button>
+        </div>
+        <p class="mascot-footnote">Possible matches are leads, not proof of ownership. Staff verify claims before handover.</p>
+      </div>
+    </section>
+  </aside>
+
   <div id="toast" class="toast hidden" role="status"></div>
   <script src="/deployment-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
