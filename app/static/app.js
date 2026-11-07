@@ -1864,9 +1864,9 @@ function showPublicDestination(type) {
 }
 $("#officeAccessButton").addEventListener("click", () => $("#officeLoginPanel").classList.remove("hidden"));
 $("#closeOfficeAccess").addEventListener("click", () => $("#officeLoginPanel").classList.add("hidden"));
-$("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
-$("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
-$("[data-public-next]").forEach(button => button.addEventListener("click", () => {
+document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => showPublicDestination(button.dataset.publicReport)));
+document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
+document.querySelectorAll("[data-public-next]").forEach(button => button.addEventListener("click", () => {
   const type = button.dataset.publicNext;
   showToast(type === "lost" ? "The Lost Report form will be designed in the next step." : "The Found Report form will be designed in the next step.", false);
 }));
