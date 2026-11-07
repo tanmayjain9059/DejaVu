@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.services import supabase_auth
-from app.core.database import SCHEMA_MIGRATIONS, _migration_add_supabase_identity
+from app.core.database import SCHEMA_MIGRATIONS, _migration_add_supabase_identity, _migration_lock_down_supabase_data_api
 
 
 class FakeResponse:
@@ -86,7 +86,8 @@ def test_supabase_identity_migration_is_registered_and_idempotent():
     columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)").fetchall()}
     assert "supabase_user_id" in columns
     versions = [version for version, _, _ in SCHEMA_MIGRATIONS]
-    assert versions[-1] == 8
+    assert versions[-2:] == [8, 9]
+    _migration_lock_down_supabase_data_api(connection)
     connection.execute("INSERT INTO users(email, supabase_user_id) VALUES (?, ?)", ("one@example.edu", "auth-1"))
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute("INSERT INTO users(email, supabase_user_id) VALUES (?, ?)", ("two@example.edu", "auth-1"))
