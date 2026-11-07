@@ -5,6 +5,7 @@ A campus lost-and-found platform with intelligent item matching and verified phy
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![MiniLM](https://img.shields.io/badge/MiniLM-L6--v2-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 [![CLIP](https://img.shields.io/badge/CLIP-ViT--B%2F32-412991?logo=openai&logoColor=white)](https://huggingface.co/openai/clip-vit-base-patch32)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
@@ -14,27 +15,19 @@ A campus lost-and-found platform with intelligent item matching and verified phy
 # 🔗 LostLink — Lost & Found Platform
 
 <p align="center">
-  <a href="https://lostlink-q8ft.onrender.com/" target="_blank">
-    <img src="https://img.shields.io/badge/🚀_LIVE_DEMO-Click_Here_to_Try-2ea44f?style=for-the-badge" alt="Live Demo"/>
-  </a>
-</p>
-
-<p align="center">
   <b>Find what you've lost. Return what you've found.</b>
 </p>
 
-### 🌐 Live Application
+### Deployment status
 
-**Try LostLink now:** https://lostlink-q8ft.onrender.com/
-
-Explore the platform and experience how LostLink helps connect people with their lost belongings.
+The Render URL was used for the prototype and is not the target hosting environment. The target is a self-managed Oracle Cloud VM with Supabase PostgreSQL and private Supabase Storage, served on the project's own domain. See the [deployment runbook](docs/FREE_DEPLOYMENT.md).
 
 
 LostLink is a web application for managing campus lost property from initial report through verified physical return. Students submit lost or found reports and receive possible-match suggestions. Authorised office staff manage physical intake, item tagging and storage, private ownership-claim review, disputes and recorded handover.
 
 **The central rule is that a match is a lead, not proof of ownership.** A found item becomes visible for student discovery only after authorised staff confirm physical receipt and record custody. Claim approval and physical handover are separate steps; the application requires the exact physical LostLink Tag ID and identity/handover confirmations before recording a return.
 
-> **Project status:** working standalone prototype. It uses SQLite and local image files. It has not yet been validated for production-scale load or connected to an institutional identity provider.
+> **Project status:** working prototype with SQLite/local-file defaults for development and optional PostgreSQL plus private S3-compatible object storage for hosted deployments. The free-tier deployment path is documented in [Oracle Cloud + Supabase deployment](docs/FREE_DEPLOYMENT.md). It is intended for a small demo or supervised pilot, not production handling of sensitive campus records; production-scale load and institutional identity integration remain unvalidated.
 
 ## Contents
 
@@ -50,6 +43,7 @@ LostLink is a web application for managing campus lost property from initial rep
 - [Local installation](#local-installation)
 - [Configuration](#configuration)
 - [External database (PostgreSQL)](#external-database-postgresql)
+- [Free-tier deployment baseline](docs/FREE_DEPLOYMENT.md)
 - [Testing and matching evaluation](#testing-and-matching-evaluation)
 - [Limitations and production considerations](#limitations-and-production-considerations)
 - [Product-readiness checklist](docs/PRODUCT_READINESS.md)
@@ -72,6 +66,7 @@ LostLink brings the process into one traceable workflow:
 ### Student-facing features
 
 - Create a lost-item report or a found-item report through separate guided paths.
+- Correct the details of an owned open lost report or a found report still awaiting office intake; editing is locked while a claim is under review or after office custody begins.
 - Record title, description, category, approximate occurrence time and campus location. Brand, primary colour, visible characteristics and a photo can add detail.
 - Browse and filter available found items by keywords, category, block, room and date.
 - Open item details and suggested-match explanations.
@@ -145,6 +140,7 @@ These are prototype recognition features; the generated certificates are not off
 | Situation | Behaviour |
 |---|---|
 | Lost report is submitted | Starts as an open search record and may receive possible-match suggestions. |
+| Eligible report details need correction | The owner can edit an open lost report or a found report awaiting intake. Edits are blocked while a linked claim is under review or after the report leaves its editable state. |
 | Found report is submitted | Starts in an awaiting-intake state and is not visible in the student found-item search. |
 | Office confirms intake | Staff record actual storage and private verification details, assign a Tag ID, and make the found item available. |
 | Stored item is moved | Office staff update the location; the change is audited. |
@@ -175,9 +171,9 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
                          │
              ┌───────────┴───────────┐
              ▼                       ▼
-    SQLite database           Local image directory
-        ├── Users                  ├── Report images
-        ├── Reports                └── Private claim evidence
+    SQLite (local) OR PostgreSQL (hosted)
+        ├── Users
+        ├── Reports
         ├── Claims
         ├── Notifications
         ├── Storage and Tag IDs
@@ -185,6 +181,10 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
         ├── Reward ledger
         ├── Certificates
         └── Audit events
+
+    Local uploads (development) OR private S3-compatible object storage
+        ├── Report images
+        └── Private claim evidence
 
 ### Module responsibilities
 
@@ -197,8 +197,9 @@ LostLink uses a single FastAPI application composed of route groups, shared infr
 | <code>app/api/routes/claims.py</code> | Claim creation/listing, private evidence, office decisions, disputes and physical handover. |
 | <code>app/api/routes/engagement.py</code> | Notifications, activity, leaderboard, certificate downloads and office summary. |
 | <code>app/core/config.py</code> | Environment configuration, data paths, categories, sensitivity levels and workflow constants. |
-| <code>app/core/database.py</code> | SQLite connections, schema creation, additive migrations, indexes, transactions, audit writing and optional demo seeding. |
+| <code>app/core/database.py</code> | SQLite and optional PostgreSQL connections, schema creation, additive migrations, indexes, transactions, audit writing and optional demo seeding. |
 | <code>app/core/images.py</code> | Image validation/canonicalisation, hashing, perceptual fingerprints and watermarked student previews. |
+| <code>app/core/object_storage.py</code> | Private upload adapter: local filesystem for development or S3-compatible object storage for hosted deployment. |
 | <code>app/core/security.py</code> | Password hashing and verification. |
 | <code>app/services/auth.py</code> | Persistent login-failure tracking and temporary lockout calculations. |
 | <code>app/services/reports.py</code> | Report serialisation, role-aware response filtering and related report helpers. |
@@ -285,7 +286,7 @@ Candidate comparison may use:
 
 When a CLIP result is available, the component weights are text 0.42, category 0.18, image 0.20, location 0.10 and time 0.10. Without an image result, text is weighted 0.50, category 0.20, location 0.15 and time 0.15. Missing location/time signals are omitted and the available component weights are normalised. These are ranking weights, not calibrated probabilities of ownership.
 
-The report matching endpoint currently retrieves up to 500 of the most recently created available found-item records, scores them in application code and returns up to five ranked candidates. This explicit candidate limit helps bound a request but means the implementation is not a full-corpus search index.
+The report matching endpoint scans all available found-item records and returns up to five ranked candidates; it does not stop at an arbitrary recent-500 window. A composite database index supports the candidate scan. The deterministic lexical/structured baseline scores the eligible corpus, while optional semantic inference is restricted to the top 100 baseline candidates and optional CLIP image reranking to the top 25 of that shortlist. This keeps expensive inference bounded while allowing reports older than the newest 500 records to remain eligible. The scan is still an in-process full-corpus operation, not a dedicated search index; if measured report volume grows substantially beyond the initial campus scale, introduce a measured retrieval index rather than assuming this query is unboundedly scalable.
 
 ### Optional pretrained models
 
@@ -294,7 +295,9 @@ The report matching endpoint currently retrieves up to 500 of the most recently 
 | <code>sentence-transformers/all-MiniLM-L6-v2</code> | Creates sentence embeddings to compare the semantic similarity of report text. | Install <code>requirements-ml.txt</code> and set <code>USE_SEMANTIC_MODEL=true</code>. |
 | <code>openai/clip-vit-base-patch32</code> | Compares two item photos, or compares an available photo with the opposite report's text when only one image is present. | Install ML dependencies and set <code>USE_CLIP_MODEL=true</code>. |
 
-Semantic embeddings are compared using cosine similarity. When MiniLM is enabled, LostLink encodes the lost report and the candidate descriptions in one batch for each ranking request. The model-based ranking runs in a worker thread so CPU inference does not block the FastAPI event loop. In-app notification heuristics deliberately use the lexical baseline while the database write transaction is open; the full semantic/visual ranking is shown in the match view. CLIP still evaluates available photos per candidate, so its memory and latency must be measured before enabling it on a constrained host.
+Semantic embeddings are compared using cosine similarity. When MiniLM is enabled, LostLink encodes the lost report and the candidate descriptions in one batch for each ranking request. The Oracle free-tier deployment enables MiniLM semantic ranking and persists its model cache; CI requires the model to load and evaluates it against the synthetic benchmark. The deterministic fallback is explicitly identified as `lexical_baseline`, not semantic AI. The model-based ranking runs in a worker thread so CPU inference does not block the FastAPI event loop. In-app notification heuristics deliberately use the lexical baseline while the database write transaction is open; the full semantic/visual ranking is shown in the match view. CLIP still evaluates available photos per candidate, so its memory and latency must be measured before enabling it on a constrained host.
+
+Match cards disclose the actual method used: `Semantic AI`, `Semantic + visual AI`, `Visual AI + baseline`, or `Structured baseline`. A configured model that fails to load is not presented as active; the card identifies the fallback instead.
 
 If an optional model cannot load or inference fails, the matcher falls back to the deterministic text baseline or omits the unavailable image signal. Optional inference consumes additional memory and CPU/GPU resources; models should not be described as active unless their flags are enabled and loading has been verified.
 
@@ -312,7 +315,7 @@ A recorded development evaluation produced the following retrieval measurements:
 | Top-3 hit rate | 100% (15 of 15) | 100% (15 of 15) |
 | Mean reciprocal rank | 0.8778 | 0.9667 |
 
-These measurements are a small synthetic development check—not validated real-campus accuracy, a probability that a person owns an item, or a load test. The top-3 metric is already at the benchmark's ceiling. Before operational use, matching should be evaluated on a representative, privacy-reviewed labelled campus dataset with false positives, missed matches and top-k retrieval measured separately.
+These measurements are a small synthetic development check—not validated real-campus accuracy, a probability that a person owns an item, or a load test. CI additionally loads the actual pretrained CLIP weights and smoke-tests both image-to-image and image-to-text inference using synthetic in-memory images; that verifies the inference path, not real-campus visual retrieval accuracy. The top-3 metric is already at the benchmark's ceiling. Before operational use, matching should be evaluated on a representative, privacy-reviewed labelled campus dataset with false positives, missed matches and top-k retrieval measured separately.
 
 ## Security and privacy
 
@@ -352,6 +355,8 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/</code> | Serve the application interface. |
 | GET | <code>/api/config</code> | Return public configuration including category/location examples and demo settings. |
+| POST | <code>/api/office/registration-invites</code> | Office-only: issue a 72-hour, single-use invite bound to a verified student email. |
+| POST | <code>/api/register</code> | Create a student account using a valid office-issued invite and start a session. |
 | POST | <code>/api/login</code> | Authenticate and start a session. |
 | POST | <code>/api/logout</code> | End the current session. |
 | GET | <code>/api/me</code> | Return the signed-in user's public account details. |
@@ -362,6 +367,7 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/api/reports</code> | Search/list reports with supported filters. Student visibility is restricted to available found items except their own records; office visibility is wider. |
 | POST | <code>/api/reports</code> | Create a lost or found report. |
+| PUT | <code>/api/reports/{report_id}</code> | Owner-only: edit public report details before claim review or office intake locks the report. |
 | POST | <code>/api/reports/{report_id}/close</code> | Close an eligible owned lost report or withdraw a found report before intake. |
 | POST | <code>/api/reports/{report_id}/image</code> | Upload or replace a permitted report image. |
 | GET | <code>/api/reports/{report_id}/image</code> | Retrieve an image subject to role, status and category checks. |
@@ -480,6 +486,12 @@ Use the in-app role-switching control to change between student and office views
 
 The prototype database defaults to <code>data/lostlink.db</code> and local images to <code>data/uploads/</code>. Those runtime files are excluded from Git.
 
+## Student account onboarding
+
+Student accounts are created through a campus-office-issued, single-use registration invite. Office staff must verify the student's campus affiliation and email out of band before issuing an invite. Each invite is bound to one exact email address, expires after 72 hours, and is stored as a hash; the raw code is shown only once to the office user. Registration creates a student account and signs the student in. Office accounts are never created through this route and must be provisioned separately.
+
+This is an invite-based prototype onboarding flow, not institutional single sign-on or automated email verification. Connect the college identity provider before claiming institutional authentication or opening registration to the public.
+
 ## Configuration
 
 Values are loaded from environment variables and the local <code>.env</code> file.
@@ -495,10 +507,14 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 | <code>ALLOWED_HOSTS</code> | Comma-separated trusted HTTP hostnames. | Production Compose requires an explicit canonical hostname allowlist. |
 | <code>REQUIRE_REQUEST_ORIGIN</code> | Require Origin or Referer for state-changing API requests. | Enabled in production Compose; keep disabled only for local non-browser tooling if needed. |
 | <code>UPLOAD_DIR</code> | Directory for uploaded report images and private claim evidence. | Defaults to <code>data/uploads</code>. |
+| <code>CAMPUS_BLOCKS</code> | JSON array of verified campus building/common-area labels used in report and browse location selectors. | Optional; defaults to only <code>Other / not sure</code>. |
+| <code>CAMPUS_FLOORS</code> | JSON array of floor labels used in report location selectors. | Optional; defaults to only <code>Other / not sure</code>. |
 | <code>USE_SEMANTIC_MODEL</code> | Enable semantic text embeddings. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>SEMANTIC_MODEL</code> | Sentence Transformers model identifier. | <code>sentence-transformers/all-MiniLM-L6-v2</code>. |
 | <code>USE_CLIP_MODEL</code> | Enable CLIP-based image/image-text similarity. | <code>false</code> unless dependencies/model are installed and explicitly enabled. |
 | <code>CLIP_MODEL</code> | CLIP model identifier. | <code>openai/clip-vit-base-patch32</code>. |
+
+Campus location choices are not hard-coded to sample buildings. Set <code>CAMPUS_BLOCKS</code> and <code>CAMPUS_FLOORS</code> to JSON arrays containing the institution's verified labels (for example, <code>CAMPUS_BLOCKS='["Building name","Library"]'</code>). Each array accepts 1-250 unique, non-empty labels. If omitted, the selectors offer only <code>Other / not sure</code>; students can still describe the precise nearby area in the free-text area field. Do not configure unverified campus names.
 
 Keep secrets out of source control. The committed <code>.env.example</code> intentionally contains a placeholder and is not ready to use unchanged.
 
@@ -547,7 +563,7 @@ The current application is not a production deployment and has not been assigned
 
 - **Persistence:** SQLite remains the local default; a managed PostgreSQL database is available through <code>DATABASE_URL</code>. Production use still requires database backups, reviewed migrations, connection-capacity planning, query plans, transaction boundaries and uniqueness constraints.
 - **File storage:** local images work for a single instance. Multiple instances would need shared, access-controlled object storage and a plan for private evidence retrieval.
-- **Matching scale:** retrieval currently scores a bounded set of at most 500 available found records in application code. Larger collections may require better candidate pre-filtering, a search index, cached embeddings and a separate inference worker.
+- **Matching scale:** retrieval currently scans all available found records using the indexed candidate query and deterministic in-process scoring. Optional semantic and image models run only on bounded shortlists. At substantially larger measured volumes, evaluate a dedicated retrieval index, cached embeddings and a separate inference worker.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
 - **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.

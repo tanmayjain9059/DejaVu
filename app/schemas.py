@@ -3,6 +3,17 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, Field
 
+class RegistrationInviteBody(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+
+
+class StudentRegistrationBody(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    display_name: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=12, max_length=200)
+    invite_code: str = Field(min_length=20, max_length=100)
+
+
 class LoginBody(BaseModel):
     email: str = Field(min_length=3, max_length=200)
     password: str = Field(min_length=1, max_length=200)
@@ -14,6 +25,21 @@ class ReportBody(BaseModel):
     description: str = Field(min_length=10, max_length=1200)
     category: str
     # Optional public characteristics improve search/matching; never put secret proof here.
+    brand: str | None = Field(default=None, max_length=80)
+    primary_color: str | None = Field(default=None, max_length=60)
+    visible_features: str | None = Field(default=None, max_length=400)
+    occurred_at: str | None = None
+    location_block: str | None = Field(default=None, max_length=80)
+    location_floor: str | None = Field(default=None, max_length=40)
+    location_room: str | None = Field(default=None, max_length=80)
+    location_area: str | None = Field(default=None, max_length=120)
+
+
+class ReportUpdateBody(BaseModel):
+    report_type: Literal["lost", "found"]
+    title: str = Field(min_length=4, max_length=100)
+    description: str = Field(min_length=10, max_length=1200)
+    category: str
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
     visible_features: str | None = Field(default=None, max_length=400)

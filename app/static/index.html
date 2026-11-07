@@ -44,6 +44,18 @@
         <button class="button button-primary button-full" type="submit">Sign in <span aria-hidden="true">↗</span></button>
         <p id="loginError" class="form-error" role="alert"></p>
       </form>
+      <button id="showRegistrationForm" class="button button-quiet button-full" type="button">Have a campus invite? Create student account</button>
+      <form id="registrationForm" class="form-stack hidden">
+        <div class="divider-label"><span></span><small>STUDENT REGISTRATION</small><span></span></div>
+        <label>Campus email<input id="registrationEmail" type="email" autocomplete="email" required maxlength="200" placeholder="you@college.edu"></label>
+        <label>Full name<input id="registrationName" type="text" autocomplete="name" required minlength="2" maxlength="80" placeholder="Your name"></label>
+        <label>One-time invitation code<input id="registrationInviteCode" type="text" autocomplete="off" required minlength="20" maxlength="100" placeholder="Code provided by campus office"></label>
+        <label>Password<input id="registrationPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="200" placeholder="At least 12 characters"></label>
+        <label>Confirm password<input id="registrationPasswordConfirm" type="password" autocomplete="new-password" required minlength="12" maxlength="200" placeholder="Re-enter your password"></label>
+        <button class="button button-primary button-full" type="submit">Create student account</button>
+        <p id="registrationError" class="form-error" role="alert"></p>
+        <p class="field-hint">Registration requires an invite issued by authorised campus office staff. The invite is tied to your email and can be used once.</p>
+      </form>
       <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
       <div id="demoAccess" class="demo-access hidden">
         <div class="divider-label"><span></span><small>LOCAL DEMO ACCOUNTS</small><span></span></div>
@@ -107,6 +119,7 @@
         <button id="clearFilters" class="button button-quiet" type="button">Clear</button>
       </form>
       <div id="browseResults" class="item-grid"></div>
+      <div class="load-more-row"><button id="loadMoreReports" class="button button-quiet hidden" type="button">Load more items</button></div>
       <div id="browseEmpty" class="empty-state hidden"><span class="empty-icon">⌕</span><h3>No items found</h3><p>Try a broader search or remove a filter. Sensitive items may have limited public details.</p></div>
     </section>
 
@@ -159,6 +172,7 @@
     <section id="myReportsView" class="content-view hidden">
       <div class="section-heading"><div><p class="eyebrow">YOUR ACTIVITY</p><h2>My reports</h2><p class="muted">Check submitted reports and find possible matches for your lost items.</p></div><button class="button button-primary" type="button" data-go="report">＋ New report</button></div>
       <div id="myReportsList" class="stack-list"></div>
+      <div class="load-more-row"><button id="loadMoreMyReports" class="button button-quiet hidden" type="button">Load more reports</button></div>
       <div id="myReportsEmpty" class="empty-state hidden"><span class="empty-icon">▤</span><h3>No reports yet</h3><p>Your lost and found reports will appear here.</p></div>
       <div id="matchesPanel" class="matches-panel hidden"><div class="section-heading"><div><p class="eyebrow">AI-ASSISTED COMPARISON</p><h2>Possible matches</h2><p class="muted">These are suggestions, not proof of ownership.</p></div><button id="closeMatches" class="button button-quiet button-small" type="button">Close</button></div><div id="matchResults" class="item-grid"></div></div>
     </section>
@@ -166,6 +180,7 @@
     <section id="myClaimsView" class="content-view hidden">
       <div class="section-heading"><div><p class="eyebrow">CLAIM STATUS</p><h2>My claims</h2><p class="muted">Your private evidence is visible to you and authorised office reviewers only.</p></div></div>
       <div id="myClaimsList" class="stack-list"></div>
+      <div class="load-more-row"><button id="loadMoreMyClaims" class="button button-quiet hidden" type="button">Load more claims</button></div>
       <div id="myClaimsEmpty" class="empty-state hidden"><span class="empty-icon">◷</span><h3>No claims submitted</h3><p>When you submit a claim for an item, its review status will appear here.</p></div>
     </section>
 
@@ -186,10 +201,20 @@
     <section id="officeView" class="content-view hidden">
       <div class="section-heading"><div><p class="eyebrow">AUTHORISED STAFF ONLY</p><h2>Campus office console</h2><p class="muted">Confirm physical intake, review claims and record approved handovers with a tag check.</p></div><span class="role-chip role-chip-office">Office staff</span></div>
       <div id="officeStats" class="stats-grid"></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">PHYSICAL CUSTODY</p><h3>Found items awaiting intake</h3><p class="muted">Assign a physical tag only after confirming the item has been received.</p></div></div><div id="intakeQueue" class="stack-list"></div><div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">CAMPUS STORAGE REGISTER</p><h3>Items currently in custody</h3><p class="muted">Use the private tag ID to locate each physical item. Update the recorded location whenever it is moved within campus.</p></div></div><div id="officeInventory" class="stack-list"></div><div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items are currently in campus custody.</div></div>
+      <div class="office-section">
+        <div class="section-heading compact-heading"><div><p class="eyebrow">STUDENT ACCESS</p><h3>Issue a registration invite</h3><p class="muted">Verify the student's campus affiliation and email before issuing a single-use invite. It expires after 72 hours.</p></div></div>
+        <form id="registrationInviteForm" class="inline-form">
+          <label>Verified student email<input id="registrationInviteEmail" type="email" required maxlength="200" placeholder="student@college.edu"></label>
+          <button id="createRegistrationInviteButton" class="button button-primary" type="submit">Create invite</button>
+        </form>
+        <div id="registrationInviteResult" class="notice hidden" role="status"><p id="registrationInviteMessage"></p><label>One-time code<input id="registrationInviteCodeOutput" type="text" readonly></label><button id="copyRegistrationInvite" class="button button-quiet button-small" type="button">Copy code</button><small>Copy and share this code through a trusted channel. It is stored only as a hash and will not be shown again.</small></div>
+        <p id="registrationInviteError" class="form-error" role="alert"></p>
+      </div>
+      
+      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">PHYSICAL CUSTODY</p><h3>Found items awaiting intake</h3><p class="muted">Assign a physical tag only after confirming the item has been received.</p></div></div><div id="intakeQueue" class="stack-list"></div><div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div><div class="load-more-row"><button id="loadMoreIntake" class="button button-quiet hidden" type="button">Load more intake reports</button></div></div>
+      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">CAMPUS STORAGE REGISTER</p><h3>Items currently in custody</h3><p class="muted">Use the private tag ID to locate each physical item. Update the recorded location whenever it is moved within campus.</p></div></div><div id="officeInventory" class="stack-list"></div><div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items are currently in campus custody.</div><div class="load-more-row"><button id="loadMoreInventory" class="button button-quiet hidden" type="button">Load more inventory</button></div></div>
       <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">OWNERSHIP REVIEW</p><h3>Claims requiring attention</h3><p class="muted">Private evidence, internal risk level and tag details are never shown in the student view.</p></div></div><div id="officeClaims" class="stack-list"></div><div id="officeClaimsEmpty" class="inline-empty hidden">No claims have been submitted yet.</div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">APPROVED CLAIMS</p><h3>Ready for physical handover</h3><p class="muted">Check the claimant, verify the physical tag and confirm the item is actually handed over.</p></div></div><div id="handoverQueue" class="stack-list"></div><div id="handoverEmpty" class="inline-empty hidden">No approved claims are awaiting handover.</div></div>
+      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">APPROVED CLAIMS</p><h3>Ready for physical handover</h3><p class="muted">Check the claimant, verify the physical tag and confirm the item is actually handed over.</p></div></div><div id="handoverQueue" class="stack-list"></div><div id="handoverEmpty" class="inline-empty hidden">No approved claims are awaiting handover.</div><div class="load-more-row"><button id="loadMoreOfficeClaims" class="button button-quiet hidden" type="button">Load more claims</button></div></div>
     </section>
 
     <footer class="app-footer"><span>LostLink · Campus property assistance</span><span>Potential matches are suggestions, not proof of ownership.</span></footer>

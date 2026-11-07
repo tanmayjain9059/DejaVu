@@ -1,4 +1,11 @@
 import unittest
+import sys
+from contextlib import nullcontext
+from io import BytesIO
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from PIL import Image
 
 from app.matching import MatchingEngine, lexical_similarity
 
@@ -118,6 +125,134 @@ class MatchingTests(unittest.TestCase):
 
         self.assertEqual(result["engine"], "lexical_baseline")
         self.assertIsNone(result["signals"]["image"])
+
+    def test_rank_searches_candidates_beyond_previous_500_limit(self):
+        lost = {
+            "title": "Navy backpack", "description": "blue backpack with two front pockets",
+            "category": "bags_wallets", "location_block": "Block A",
+        }
+        candidates = [
+            {
+                "id": str(index), "title": f"Unrelated item {index}",
+                "description": "steel water bottle", "category": "accessories",
+            }
+            for index in range(550)
+        ]
+        candidates[0] = {
+            "id": "old-best", "title": "Navy backpack",
+            "description": "blue backpack with two front pockets", "category": "bags_wallets",
+            "location_block": "Block A",
+        }
+
+        ranked = self.engine.rank(lost, candidates, limit=5)
+
+        self.assertEqual(ranked[0]["report"]["id"], "old-best")
+        self.assertEqual(len(ranked), 5)
+
+    def test_optional_models_only_process_bounded_shortlists(self):
+        class FakeModel:
+            def __init__(self):
+                self.inputs = []
+
+            def encode(self, texts, **kwargs):
+                self.inputs = list(texts)
+                return [[1.0, 0.0] for _ in texts]
+
+        engine = MatchingEngine()
+        fake_model = FakeModel()
+        engine.semantic_enabled = True
+        engine._text_attempted = True
+        engine._text_model = fake_model
+        engine.clip_enabled = True
+        clip_calls = []
+        engine.image_similarity = lambda *_: clip_calls.append(True) or 0.8
+        lost = {"title": "Blue backpack", "description": "blue bag with pockets", "category": "bags_wallets"}
+        candidates = [
+            {"title": f"Candidate {index}", "description": "blue bag with pockets", "category": "bags_wallets"}
+            for index in range(550)
+        ]
+
+        ranked = engine.rank(lost, candidates, limit=5)
+
+        self.assertEqual(len(ranked), 5)
+        self.assertEqual(len(fake_model.inputs), engine.SEMANTIC_RERANK_LIMIT + 1)
+        self.assertEqual(len(clip_calls), engine.CLIP_RERANK_LIMIT)
+
+
+    def test_clip_reads_storage_keys_for_two_uploaded_report_images(self):
+        class FakeTensor:
+            def __init__(self, values): self.values = values
+            def __getitem__(self, index): return FakeTensor(self.values[index])
+            def __mul__(self, other): return FakeTensor([a * b for a, b in zip(self.values, other.values)])
+            def item(self): return self.values if isinstance(self.values, (int, float)) else sum(self.values)
+        fake_torch = SimpleNamespace(
+            no_grad=nullcontext,
+            nn=SimpleNamespace(functional=SimpleNamespace(normalize=lambda tensor, dim: tensor)),
+            sum=lambda tensor: FakeTensor(sum(tensor.values)),
+        )
+        class FakeProcessor:
+            def __call__(self, images=None, **kwargs): return {"pixel_values": object()}
+        class FakeModel:
+            visual_projection = staticmethod(lambda tensor: tensor)
+            def get_image_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0], [1.0, 0.0]]))
+        image = Image.new("RGB", (8, 8), (30, 90, 150))
+        stream = BytesIO(); image.save(stream, format="JPEG")
+        image_bytes = stream.getvalue()
+        engine = MatchingEngine()
+        engine.clip_enabled = True
+        engine._clip_attempted = True
+        engine._clip_model = FakeModel()
+        engine._clip_processor = FakeProcessor()
+        with patch.dict(sys.modules, {"torch": fake_torch}), patch(
+            "app.matching.read_upload",
+            side_effect=lambda key: {"lost-report.jpg": image_bytes, "found-report.jpg": image_bytes}[key],
+        ) as read_upload:
+            score = engine.image_similarity({"image_path": "lost-report.jpg"}, {"image_path": "found-report.jpg"})
+        self.assertEqual(score, 1.0)
+        self.assertEqual([call.args[0] for call in read_upload.call_args_list],
+                         ["lost-report.jpg", "found-report.jpg"])
+
+    def test_clip_compares_single_photo_with_opposite_report_text(self):
+        class FakeTensor:
+            def __init__(self, values): self.values = values
+            def __getitem__(self, index): return FakeTensor(self.values[index])
+            def __mul__(self, other): return FakeTensor([a * b for a, b in zip(self.values, other.values)])
+            def item(self): return self.values if isinstance(self.values, (int, float)) else sum(self.values)
+        fake_torch = SimpleNamespace(
+            no_grad=nullcontext,
+            nn=SimpleNamespace(functional=SimpleNamespace(normalize=lambda tensor, dim: tensor)),
+            sum=lambda tensor: FakeTensor(sum(tensor.values)),
+        )
+        class FakeProcessor:
+            def __call__(self, images=None, text=None, **kwargs):
+                if images is not None: return {"pixel_values": object()}
+                return {"input_ids": object(), "attention_mask": object()}
+        class FakeModel:
+            visual_projection = staticmethod(lambda tensor: tensor)
+            text_projection = staticmethod(lambda tensor: tensor)
+            def get_image_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0]]))
+            def get_text_features(self, **kwargs):
+                return SimpleNamespace(pooler_output=FakeTensor([[1.0, 0.0]]))
+        image = Image.new("RGB", (8, 8), (30, 90, 150))
+        stream = BytesIO(); image.save(stream, format="JPEG")
+        image_bytes = stream.getvalue()
+        engine = MatchingEngine()
+        engine.clip_enabled = True
+        engine._clip_attempted = True
+        engine._clip_model = FakeModel()
+        engine._clip_processor = FakeProcessor()
+        def read(key):
+            if key == "found-report.jpg": return image_bytes
+            raise FileNotFoundError(key)
+        with patch.dict(sys.modules, {"torch": fake_torch}), patch("app.matching.read_upload", side_effect=read) as read_upload:
+            score = engine.image_similarity(
+                {"title": "Blue backpack", "description": "two front pockets"},
+                {"image_path": "found-report.jpg"},
+            )
+        self.assertEqual(score, 1.0)
+        self.assertEqual([call.args[0] for call in read_upload.call_args_list], ["found-report.jpg"])
 
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}

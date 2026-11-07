@@ -1,2 +1,5 @@
+# Use CPU-only PyTorch wheels: the free Oracle VM has no CUDA GPU.
+--extra-index-url https://download.pytorch.org/whl/cpu
 -r requirements.txt
 sentence-transformers>=3.2,<6.0
+transformers>=4.45,<6.0

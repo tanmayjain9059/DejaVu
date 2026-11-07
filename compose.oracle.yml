@@ -1,0 +1,77 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_ML: ${INSTALL_ML:-true}
+    image: lostlink:oracle
+    restart: unless-stopped
+    init: true
+    read_only: true
+    expose:
+      - "8000"
+    environment:
+      APP_ENV: production
+      PORT: "8000"
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.oracle}
+      DATABASE_POOL_MAX_SIZE: ${DATABASE_POOL_MAX_SIZE:-3}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env.oracle}
+      SESSION_HTTPS_ONLY: "true"
+      REQUIRE_REQUEST_ORIGIN: "true"
+      DEMO_MODE: "false"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?Set ALLOWED_HOSTS in .env.oracle}
+      DATA_DIR: /tmp/lostlink
+      UPLOAD_DIR: /tmp/lostlink/uploads
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:?Set OBJECT_STORAGE_BUCKET}
+      OBJECT_STORAGE_ENDPOINT_URL: ${OBJECT_STORAGE_ENDPOINT_URL:?Set OBJECT_STORAGE_ENDPOINT_URL}
+      OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:?Set OBJECT_STORAGE_ACCESS_KEY_ID}
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY:?Set OBJECT_STORAGE_SECRET_ACCESS_KEY}
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:?Set OBJECT_STORAGE_REGION}
+      USE_SEMANTIC_MODEL: ${USE_SEMANTIC_MODEL:-true}
+      USE_CLIP_MODEL: ${USE_CLIP_MODEL:-false}
+      HF_HOME: /models
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - huggingface-cache:/models
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)"]
+      interval: 30s
+      timeout: 8s
+      start_period: 45s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    init: true
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env.oracle}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy-data:
+  caddy-config:
+  huggingface-cache:

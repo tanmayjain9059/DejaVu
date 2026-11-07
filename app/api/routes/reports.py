@@ -1,3 +1,5 @@
+from fastapi.responses import Response
+from app.core.object_storage import store_upload, read_upload, delete_upload
 """HTTP route group."""
 from fastapi import APIRouter
 from starlette.concurrency import run_in_threadpool
@@ -17,6 +19,8 @@ async def list_reports(
     date_to: str | None = None,
     status: str | None = None,
     mine: bool = False,
+    cursor: str | None = None,
+    page_size: int = 50,
     user: dict[str, Any] = Depends(authenticated_user),
 ):
     conditions: list[str] = []
@@ -64,15 +68,30 @@ async def list_reports(
         conditions.append("r.status=?")
         params.append(status)
 
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=422, detail="Page size must be between 1 and 100.")
+    if cursor:
+        try:
+            cursor_created_at, cursor_id = cursor.rsplit("|", 1)
+            if not cursor_created_at or not cursor_id:
+                raise ValueError("empty cursor")
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid report pagination cursor.")
+        conditions.append("(r.created_at < ? OR (r.created_at = ? AND r.id < ?))")
+        params.extend([cursor_created_at, cursor_created_at, cursor_id])
+
     sql = "SELECT r.* FROM reports r"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
-    sql += " ORDER BY r.created_at DESC LIMIT 250"
+    sql += " ORDER BY r.created_at DESC, r.id DESC LIMIT ?"
+    params.append(page_size + 1)
     with connect_db() as conn:
-        rows = conn.execute(sql, params).fetchall()
+        fetched_rows = conn.execute(sql, params).fetchall()
+        has_more = len(fetched_rows) > page_size
+        rows = fetched_rows[:page_size]
         reports = []
         for row in rows:
-            report_data = serialise_report(row, internal=internal)
+            report_data = serialise_report(row, internal=internal, owner=not internal and int(row["created_by"]) == int(user["id"]))
             if row["report_type"] == "lost" and int(row["created_by"]) == int(user["id"]):
                 active_claim = conn.execute(
                     """SELECT 1 FROM claims WHERE lost_report_id=?
@@ -81,11 +100,18 @@ async def list_reports(
                 ).fetchone()
                 report_data["has_active_linked_claim"] = active_claim is not None
             reports.append(report_data)
-    return {"reports": reports}
+    next_cursor = None
+    if has_more and rows:
+        next_cursor = str(rows[-1]["created_at"]) + "|" + str(rows[-1]["id"])
+    return {"reports": reports, "has_more": has_more, "next_cursor": next_cursor}
 
 
 @router.post("/api/reports")
 async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authenticated_user)):
+    if len(body.title.strip()) < 4:
+        raise HTTPException(status_code=422, detail="Enter an item name of at least 4 characters.")
+    if len(body.description.strip()) < 10:
+        raise HTTPException(status_code=422, detail="Add at least 10 characters describing the item.")
     if len(body.title.strip()) < 4:
         raise HTTPException(status_code=422, detail="Enter an item name of at least 4 characters.")
     if len(body.description.strip()) < 10:
@@ -129,6 +155,74 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
         row = read_report(conn, report_id)
     return {"report": serialise_report(row, internal=user["role"] == "office"),
             "message": "Lost report submitted." if body.report_type == "lost" else "Found-item report submitted for office intake. It will become searchable after staff confirm receipt."}
+
+
+@router.put("/api/reports/{report_id}")
+async def update_report(
+    report_id: str,
+    body: ReportUpdateBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only the report owner can edit report details.")
+    if body.occurred_at:
+        try:
+            datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Use a valid ISO date and time, or leave the date blank if unknown.")
+    if body.category not in CATEGORY_LABELS:
+        raise HTTPException(status_code=422, detail="Choose a valid item category.")
+    if not (body.location_block or body.location_area):
+        raise HTTPException(status_code=422, detail="Choose a campus block or area.")
+
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        report = read_report(conn, report_id)
+        if int(report["created_by"]) != int(user["id"]):
+            raise HTTPException(status_code=404, detail="Report not found.")
+        if body.report_type != report["report_type"]:
+            raise HTTPException(status_code=422, detail="A report's type cannot be changed after submission.")
+        editable = (
+            (report["report_type"] == "lost" and report["status"] == "open")
+            or (report["report_type"] == "found" and report["status"] == "awaiting_intake")
+        )
+        if not editable:
+            raise HTTPException(status_code=409, detail="This report can no longer be edited after it has been closed or accepted into office custody.")
+        if report["report_type"] == "lost":
+            active_claim = conn.execute(
+                """SELECT 1 FROM claims WHERE lost_report_id=?
+                   AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection') LIMIT 1""",
+                (report_id,),
+            ).fetchone()
+            if active_claim:
+                raise HTTPException(status_code=409, detail="This report is linked to a claim under review. Resolve the claim before editing its details.")
+
+        timestamp = now_iso()
+        conn.execute(
+            """UPDATE reports SET title=?, description=?, brand=?, primary_color=?, visible_features=?,
+               category=?, occurred_at=?, location_block=?, location_floor=?, location_room=?, location_area=?, updated_at=?
+               WHERE id=?""",
+            (body.title.strip(), body.description.strip(), (body.brand or "").strip() or None,
+             (body.primary_color or "").strip() or None, (body.visible_features or "").strip() or None,
+             body.category, body.occurred_at, body.location_block, body.location_floor,
+             body.location_room, body.location_area, timestamp, report_id),
+        )
+        audit(conn, user["id"], "report_details_updated", "report", report_id,
+              {"report_type": report["report_type"], "category": body.category})
+        event_suffix = uuid.uuid4().hex
+        if report["report_type"] == "found":
+            notify_role(conn, "office", "found-report-updated:" + report_id + ":" + event_suffix,
+                        "Found-item report updated",
+                        "A found-item report awaiting physical intake has updated details. Review the latest report before intake.",
+                        "report", report_id)
+            notify_user(conn, user["id"], "report-updated:" + report_id + ":" + event_suffix,
+                        "Found report updated", "Your found-item report details were updated.", "report", report_id)
+        else:
+            notify_user(conn, user["id"], "report-updated:" + report_id + ":" + event_suffix,
+                        "Lost report updated", "Your lost-item report details were updated.", "report", report_id)
+            notify_matches_for_lost_report(conn, read_report(conn, report_id))
+        updated = read_report(conn, report_id)
+    return {"report": serialise_report(updated), "message": "Report details updated successfully."}
 
 
 @router.post("/api/reports/{report_id}/close")
@@ -204,7 +298,7 @@ async def upload_report_image(
         raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
-    new_path = None
+    new_key = None
     old = None
     try:
         with connect_db() as conn:
@@ -222,10 +316,8 @@ async def upload_report_image(
                     detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
                 )
             filename = uuid.uuid4().hex + ".jpg"
-            new_path = (UPLOAD_DIR / filename).resolve()
-            if new_path.parent != UPLOAD_DIR.resolve():
-                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
-            new_path.write_bytes(normalized)
+            new_key = filename
+            store_upload(new_key, normalized)
             old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
@@ -235,21 +327,19 @@ async def upload_report_image(
             updated = read_report(conn, report_id)
     except Exception:
         # Also catches commit failures from the connection context manager.
-        if new_path is not None:
+        if new_key is not None:
             try:
-                new_path.unlink(missing_ok=True)
-            except OSError:
+                delete_upload(new_key)
+            except Exception:
                 pass
         raise
 
     # Only delete the previous image after the DB transaction has committed.
-    if old:
-        old_path = (UPLOAD_DIR / old).resolve()
-        if old_path.parent == UPLOAD_DIR.resolve() and old_path != new_path:
-            try:
-                old_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+    if old and old != new_key:
+        try:
+            delete_upload(old)
+        except Exception:
+            pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
 
 @router.get("/api/reports/{report_id}/image")
@@ -263,8 +353,9 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
             raise HTTPException(status_code=404, detail="Image not available.")
         if row["category"] in SENSITIVE_CATEGORIES:
             raise HTTPException(status_code=404, detail="Images of sensitive items are restricted.")
-    path = (UPLOAD_DIR / row["image_path"]).resolve()
-    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+    try:
+        image_bytes = read_upload(row["image_path"])
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image not found.")
     headers = {
         "Cache-Control": "private, no-store",
@@ -272,9 +363,8 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
         "X-Content-Type-Options": "nosniff",
     }
     if user["role"] != "office":
-        return StreamingResponse(BytesIO(watermark_image(path, row["public_ref"])),
-                                 media_type="image/jpeg", headers=headers)
-    return FileResponse(path, media_type="image/jpeg", headers=headers)
+        image_bytes = watermark_image_bytes(image_bytes, row["public_ref"])
+    return Response(content=image_bytes, media_type="image/jpeg", headers=headers)
 
 
 @router.get("/api/reports/{report_id}/matches")
@@ -290,27 +380,41 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
         if user["role"] != "office" and lost["created_by"] != user["id"]:
             raise HTTPException(status_code=403, detail="You can only view matches for your own lost reports.")
         candidates = conn.execute(
-            "SELECT * FROM reports WHERE report_type='found' AND status='available' ORDER BY created_at DESC LIMIT 500"
+            """SELECT id, title, description, brand, primary_color, visible_features, category,
+                      occurred_at, location_block, location_floor, location_room, location_area, image_path
+               FROM reports
+               WHERE report_type='found' AND status='available'
+               ORDER BY created_at DESC, id DESC"""
         ).fetchall()
     lost_for_matching = dict(lost)
-    if lost_for_matching.get("image_path"):
-        lost_for_matching["image_path"] = str(UPLOAD_DIR / lost_for_matching["image_path"])
     candidate_data = []
     for candidate in candidates:
         candidate_item = dict(candidate)
-        if candidate_item.get("image_path"):
-            candidate_item["image_path"] = str(UPLOAD_DIR / candidate_item["image_path"])
         candidate_data.append(candidate_item)
     ranked = await run_in_threadpool(matching_engine.rank, lost_for_matching, candidate_data, limit=5)
     internal = user["role"] == "office"
     results = []
+    ranked_ids = [match["report"]["id"] for match in ranked]
+    with connect_db() as conn:
+        result_rows = {}
+        if ranked_ids:
+            placeholders = ",".join("?" for _ in ranked_ids)
+            result_rows = {
+                row["id"]: row
+                for row in conn.execute(f"SELECT * FROM reports WHERE id IN ({placeholders})", ranked_ids).fetchall()
+            }
     for match in ranked:
-        item = serialise_report(next(row for row in candidates if row["id"] == match["report"]["id"]), internal=internal)
-        entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"]}
+        result_row = result_rows.get(match["report"]["id"])
+        if result_row is None:
+            continue
+        if not internal and not report_visible_to_student(result_row, user):
+            continue
+        item = serialise_report(result_row, internal=internal)
+        entry = {"report": item, "strength": match["strength"], "reasons": match["reasons"],
+                 "matching_engine": match["engine"]}
         if internal:
             entry["internal_score"] = match["score"]
             entry["signals"] = match["signals"]
-            entry["matching_engine"] = match["engine"]
         results.append(entry)
     return {"matches": results, "note": "Suggestions support discovery only; they do not establish ownership."}
 

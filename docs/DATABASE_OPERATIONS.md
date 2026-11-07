@@ -130,3 +130,38 @@ Repeat with the planned pool size and controlled contention, for example `--work
 - Set and test a retention/deletion schedule for account data, reports, images, evidence, and audit events.
 - Rotate secrets using the provider's procedure and verify old credentials are revoked.
 - Never log connection strings, session secrets, raw private evidence, or sensitive item details.
+
+
+## Supabase Storage backup
+
+The local `backup_uploads.sh` script archives a filesystem directory; it does not contact Supabase. For the private S3-compatible bucket used by the Oracle deployment, use the export wrapper:
+
+```bash
+AGE_RECIPIENT=age1... \
+OBJECT_STORAGE_BUCKET=lostlink-private \
+OBJECT_STORAGE_ENDPOINT_URL=https://<project-ref>.storage.supabase.co/storage/v1/s3 \
+OBJECT_STORAGE_ACCESS_KEY_ID=<server-side-s3-access-key> \
+OBJECT_STORAGE_SECRET_ACCESS_KEY=<server-side-s3-secret-key> \
+OBJECT_STORAGE_REGION=<region-from-supabase-s3-settings> \
+BACKUP_DIR=/secure/backups RETENTION_DAYS=14 \
+bash scripts/backup_supabase_storage.sh
+```
+
+The wrapper downloads every object from the configured bucket into a temporary, permission-restricted directory, then passes it to the existing encrypted uploads archive process. It refuses unsafe object keys and removes the temporary plaintext export when it exits. Keep the age private identity separate from the backup host and store encrypted archives off-host.
+
+Run the PostgreSQL and object-storage backups in a coordinated maintenance window with application writes paused. Supabase Storage metadata is held in PostgreSQL while object bytes live in the bucket; the two backups must represent the same recovery point. Supabase S3 compatibility does not provide object versioning, so do not assume deleted objects can be recovered from the bucket itself. Test restoring both database metadata and object bytes in an isolated project before relying on this procedure.
+
+
+To restore the Supabase bucket from an encrypted archive, first restore the archive to a new empty local directory using `restore_uploads.sh`. Then configure the same private Supabase S3 environment variables and run a dry run:
+
+```bash
+python scripts/import_object_storage.py --source /path/to/restored/uploads
+```
+
+After checking the reported file count and bytes against the backup manifest and database references, upload the files:
+
+```bash
+python scripts/import_object_storage.py --source /path/to/restored/uploads --execute
+```
+
+The import utility accepts only flat, regular files with safe generated object keys. It preserves the keys stored in LostLink's database. Run this against the intended private bucket only; the explicit `--execute` flag is required to write objects.

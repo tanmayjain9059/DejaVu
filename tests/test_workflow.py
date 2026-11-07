@@ -97,6 +97,318 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "location_area": "Library",
         }
 
+    def test_report_listing_uses_stable_cursor_pagination(self):
+        self.login("claimant@example.test", "claimant-password")
+        for index in range(53):
+            body = self.report_body(
+                "lost",
+                f"Pagination item {index:02d}",
+                f"Pagination regression item number {index:02d} with a distinct description.",
+            )
+            response = self.client.post("/api/reports", json=body)
+            self.assertEqual(response.status_code, 200, response.text)
+
+        collected = []
+        cursor = None
+        while True:
+            params = {"mine": "true", "q": "Pagination item", "page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.client.get("/api/reports", params=params)
+            self.assertEqual(page.status_code, 200, page.text)
+            payload = page.json()
+            collected.extend(item["id"] for item in payload["reports"])
+            if not payload["has_more"]:
+                self.assertIsNone(payload["next_cursor"])
+                break
+            self.assertTrue(payload["next_cursor"])
+            cursor = payload["next_cursor"]
+
+        self.assertEqual(len(collected), 53)
+        self.assertEqual(len(set(collected)), 53)
+        self.assertEqual(
+            self.client.get("/api/reports", params={"page_size": 101}).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get("/api/reports", params={"cursor": "invalid"}).status_code,
+            422,
+        )
+
+    def test_report_owner_can_edit_only_before_workflow_handoff(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Old blue backpack", "Old description for the blue backpack."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        updated_body = self.report_body("lost", "Updated blue backpack", "Updated description with a silver zipper.")
+        updated_body["brand"] = "Northline"
+        updated = self.client.put(f"/api/reports/{lost_id}", json=updated_body)
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["report"]["title"], "Updated blue backpack")
+        self.assertEqual(updated.json()["report"]["brand"], "Northline")
+
+        self.logout()
+        self.login("finder@example.test", "finder-password")
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 404)
+        self.logout()
+        self.login("office@example.test", "office-password")
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 403)
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        close = self.client.post(
+            f"/api/reports/{lost_id}/close",
+            json={"reason": "no_longer_searching"},
+        )
+        self.assertEqual(close.status_code, 200, close.text)
+        self.assertEqual(self.client.put(f"/api/reports/{lost_id}", json=updated_body).status_code, 409)
+
+        found = self.client.post(
+            "/api/reports",
+            json=self.report_body("found", "Found silver bottle", "Silver bottle found beside the library."),
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        found_id = found.json()["report"]["id"]
+        found_body = self.report_body("found", "Corrected silver bottle", "Corrected details for the silver bottle.")
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 200)
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        intake = self.client.post(
+            f"/api/reports/{found_id}/intake",
+            json={
+                "confirmed_physical_receipt": True,
+                "storage_location": "Lost and Found Office - Shelf A1",
+                "private_detail": "Small dent under the base.",
+                "value_band": "low",
+                "sensitivity_level": 1,
+            },
+        )
+        self.assertEqual(intake.status_code, 200, intake.text)
+        self.logout()
+
+        self.login("finder@example.test", "finder-password")
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 404)
+        public_found = self.client.get("/api/reports", params={"report_type": "found"})
+        self.assertEqual(public_found.status_code, 200, public_found.text)
+        public_item = next(item for item in public_found.json()["reports"] if item["id"] == found_id)
+        self.assertIsNone(public_item["location_room"])
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        own_found = self.client.get("/api/reports", params={"mine": "true", "report_type": "found"})
+        self.assertEqual(own_found.status_code, 200, own_found.text)
+        own_item = next(item for item in own_found.json()["reports"] if item["id"] == found_id)
+        self.assertEqual(own_item["location_room"], "A-101")
+        self.assertNotIn("private_verification_detail", own_item)
+        self.assertEqual(self.client.put(f"/api/reports/{found_id}", json=found_body).status_code, 409)
+
+        linked_lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Claim-linked backpack", "A backpack report awaiting ownership verification."),
+        )
+        self.assertEqual(linked_lost.status_code, 200, linked_lost.text)
+        linked_lost_id = linked_lost.json()["report"]["id"]
+        with main.connect_db() as conn:
+            finder_id = conn.execute("SELECT id FROM users WHERE email=?", ("finder@example.test",)).fetchone()["id"]
+            timestamp = main.now_iso()
+            conn.execute(
+                """INSERT INTO claims(id, report_id, lost_report_id, claimant_id, evidence, status, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)""",
+                ("edit-guard-claim", found_id, linked_lost_id, finder_id,
+                 "Evidence reserved for the active-claim edit guard test.", timestamp, timestamp),
+            )
+        linked_body = self.report_body("lost", "Changed linked backpack", "Changed details while a claim is pending.")
+        self.assertEqual(self.client.put(f"/api/reports/{linked_lost_id}", json=linked_body).status_code, 409)
+
+    def test_office_claim_queue_uses_stable_cursor_pagination(self):
+        with main.connect_db() as conn:
+            office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@example.test",)).fetchone()["id"]
+            claimant_id = conn.execute("SELECT id FROM users WHERE email=?", ("claimant@example.test",)).fetchone()["id"]
+            report_id = "claim-pagination-report"
+            conn.execute(
+                """INSERT INTO reports(id, public_ref, report_type, title, description, category, status,
+                   created_by, created_at, updated_at) VALUES (?, ?, 'found', ?, ?, ?, 'available', ?, ?, ?)""",
+                (report_id, "LL-CLAIM-PAGE", "Test item", "A report used for queue pagination tests.",
+                 "other", office_id, main.now_iso(), main.now_iso()),
+            )
+            for index in range(53):
+                status = "disputed" if index < 3 else "pending"
+                timestamp = f"2026-10-01T10:{index:02d}:00"
+                conn.execute(
+                    """INSERT INTO claims(id, report_id, claimant_id, evidence, status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (f"claim-page-{index:03d}", report_id, claimant_id,
+                     "Evidence for pagination regression test.", status, timestamp, timestamp),
+                )
+
+        self.login("office@example.test", "office-password")
+        collected = []
+        cursor = None
+        while True:
+            params = {"page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            response = self.client.get("/api/claims", params=params)
+            self.assertEqual(response.status_code, 200, response.text)
+            payload = response.json()
+            collected.extend((item["id"], item["status"]) for item in payload["claims"])
+            if cursor is None:
+                # A competing claim can change a row's status after page one.
+                # The immutable created_at/id cursor must still return it later.
+                with main.connect_db() as conn:
+                    conn.execute(
+                        "UPDATE claims SET status='disputed' WHERE id=?",
+                        ("claim-page-025",),
+                    )
+            if not payload["has_more"]:
+                self.assertIsNone(payload["next_cursor"])
+                break
+            self.assertTrue(payload["next_cursor"])
+            cursor = payload["next_cursor"]
+
+        self.assertEqual(len(collected), 53)
+        self.assertEqual(len({claim_id for claim_id, _ in collected}), 53)
+        self.assertIn(("claim-page-025", "disputed"), collected)
+        self.assertEqual(
+            self.client.get("/api/claims", params={"page_size": 101}).status_code,
+            422,
+        )
+        self.logout()
+
+        self.login("claimant@example.test", "claimant-password")
+        student_claim_ids = []
+        cursor = None
+        while True:
+            params = {"page_size": 20}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.client.get("/api/claims", params=params)
+            self.assertEqual(page.status_code, 200, page.text)
+            payload = page.json()
+            student_claim_ids.extend(item["id"] for item in payload["claims"])
+            if not payload["has_more"]:
+                break
+            cursor = payload["next_cursor"]
+        self.assertEqual(len(student_claim_ids), 53)
+        self.assertEqual(len(set(student_claim_ids)), 53)
+
+    def test_matching_searches_beyond_previous_500_candidate_window(self):
+        self.login("claimant@example.test", "claimant-password")
+        lost = self.client.post(
+            "/api/reports",
+            json=self.report_body("lost", "Navy backpack", "Blue backpack with two front pockets and a silver zipper."),
+        )
+        self.assertEqual(lost.status_code, 200, lost.text)
+        lost_id = lost.json()["report"]["id"]
+        self.logout()
+
+        with main.connect_db() as conn:
+            office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@example.test",)).fetchone()["id"]
+            records = []
+            for index in range(501):
+                relevant = index == 0
+                records.append((
+                    f"matching-candidate-{index}", f"LL-MATCH-{index:06d}", "found",
+                    "Navy backpack" if relevant else f"Unrelated bottle {index}",
+                    "Blue backpack with two front pockets and a silver zipper." if relevant else "Steel water bottle with a black cap.",
+                    "bags_wallets" if relevant else "accessories", "2026-10-13T12:00:00",
+                    "Block A" if relevant else "Block B", "1", "A-101" if relevant else "B-201",
+                    "Library" if relevant else "Cafeteria", "available", office_id,
+                    "2026-01-01T00:00:00" if relevant else f"2026-02-{(index % 27) + 1:02d}T12:00:00",
+                    "2026-01-01T00:00:00" if relevant else f"2026-02-{(index % 27) + 1:02d}T12:00:00",
+                ))
+            conn.executemany(
+                """INSERT INTO reports(
+                    id, public_ref, report_type, title, description, category, occurred_at,
+                    location_block, location_floor, location_room, location_area, status,
+                    created_by, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                records,
+            )
+
+        self.login("claimant@example.test", "claimant-password")
+        response = self.client.get(f"/api/reports/{lost_id}/matches")
+        self.assertEqual(response.status_code, 200, response.text)
+        matches = response.json()["matches"]
+        self.assertTrue(matches)
+        self.assertEqual(matches[0]["report"]["id"], "matching-candidate-0")
+
+    def test_public_config_uses_verified_campus_directory_settings(self):
+        old_blocks = auth_routes.CAMPUS_BLOCKS
+        old_floors = auth_routes.CAMPUS_FLOORS
+        auth_routes.CAMPUS_BLOCKS = ["Verified Main Building", "Library Annex"]
+        auth_routes.CAMPUS_FLOORS = ["Ground", "Mezzanine", "1"]
+        try:
+            response = self.client.get("/api/config")
+        finally:
+            auth_routes.CAMPUS_BLOCKS = old_blocks
+            auth_routes.CAMPUS_FLOORS = old_floors
+        self.assertEqual(response.status_code, 200, response.text)
+        locations = response.json()["locations"]
+        self.assertEqual(locations["blocks"], ["Verified Main Building", "Library Annex"])
+        self.assertEqual(locations["floors"], ["Ground", "Mezzanine", "1"])
+        self.assertIn("deployment-configured", locations["note"])
+
+    def test_office_invite_registers_email_bound_student_once(self):
+        self.login("finder@example.test", "finder-password")
+        denied = self.client.post(
+            "/api/office/registration-invites",
+            json={"email": "new.student@campus.example"},
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.logout()
+
+        self.login("office@example.test", "office-password")
+        invite = self.client.post(
+            "/api/office/registration-invites",
+            json={"email": "new.student@campus.example"},
+        )
+        self.assertEqual(invite.status_code, 200, invite.text)
+        invite_code = invite.json()["invite_code"]
+        self.assertTrue(invite_code)
+        self.logout()
+
+        wrong_email = self.client.post(
+            "/api/register",
+            json={
+                "email": "other.student@campus.example",
+                "display_name": "New Student",
+                "password": "secure-student-password",
+                "invite_code": invite_code,
+            },
+        )
+        self.assertEqual(wrong_email.status_code, 400)
+
+        registered = self.client.post(
+            "/api/register",
+            json={
+                "email": "new.student@campus.example",
+                "display_name": "New Student",
+                "password": "secure-student-password",
+                "invite_code": invite_code,
+            },
+        )
+        self.assertEqual(registered.status_code, 200, registered.text)
+        self.assertEqual(registered.json()["user"]["role"], "student")
+        self.assertEqual(self.client.get("/api/me").json()["user"]["email"], "new.student@campus.example")
+
+        reused = self.client.post(
+            "/api/register",
+            json={
+                "email": "new.student@campus.example",
+                "display_name": "New Student",
+                "password": "another-secure-password",
+                "invite_code": invite_code,
+            },
+        )
+        # The one-time code is invalidated after registration; do not reveal whether
+        # the email now belongs to an existing account.
+        self.assertEqual(reused.status_code, 400)
+
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
         self.login("claimant@example.test", "claimant-password")

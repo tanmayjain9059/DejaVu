@@ -22,9 +22,15 @@ jobs:
       - name: Compile application, tests and operational scripts
         run: python -m compileall -q app tests scripts
       - name: Check backup and restore shell syntax
-        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh scripts/backup_uploads.sh scripts/restore_uploads.sh
+        run: bash -n scripts/backup_postgres.sh scripts/restore_postgres.sh scripts/backup_uploads.sh scripts/restore_uploads.sh scripts/backup_supabase_storage.sh
       - name: Check JavaScript syntax
         run: node --check app/static/app.js
+      - name: Check operational Python CLIs
+        run: |
+          python scripts/export_object_storage.py --help
+          python scripts/import_object_storage.py --help
+          python scripts/migrate_uploads_to_object_storage.py --help
+          python scripts/migrate_sqlite_to_postgres.py --help
       - name: Run unit, workflow and frontend contract tests
         run: python -m unittest discover -s tests -v
       - name: Import application
@@ -42,6 +48,8 @@ jobs:
         run: docker compose -f compose.production.yml config --quiet
       - name: Validate production container build
         run: docker build --tag lostlink-ci .
+      - name: Validate Oracle and Supabase deployment Compose configuration
+        run: docker compose --env-file .env.oracle.example -f compose.oracle.yml config --quiet
 
   postgres-integration:
     runs-on: ubuntu-latest
@@ -162,6 +170,13 @@ jobs:
                   "SELECT id FROM users WHERE email=?", ("migration@example.test",)
               ).fetchone()["id"]
               conn.execute(
+                  """INSERT INTO registration_invites
+                     (id, email, code_hash, created_by, created_at, expires_at)
+                     VALUES (?, ?, ?, ?, ?, ?)""",
+                  ("migration-invite", "invite@example.test", "a" * 64, user_id,
+                   database.now_iso(), "2099-01-01T00:00:00+00:00"),
+              )
+              conn.execute(
                   """INSERT INTO reports
                      (id, public_ref, report_type, title, description, category, status,
                       created_by, image_path, created_at, updated_at)
@@ -189,7 +204,14 @@ jobs:
               report = conn.execute(
                   "SELECT image_path FROM reports WHERE id=?", ("migration-report",)
               ).fetchone()
-              assert user is not None and report is not None
+              invite = conn.execute(
+                  "SELECT email, code_hash, created_by FROM registration_invites WHERE id=?",
+                  ("migration-invite",),
+              ).fetchone()
+              assert user is not None and report is not None and invite is not None
+              assert invite["email"] == "invite@example.test"
+              assert invite["code_hash"] == "a" * 64
+              assert invite["created_by"] == user["id"]
               assert (database.UPLOAD_DIR / report["image_path"]).read_bytes() == b"migration-fixture"
           database.close_database_pool()
           print("SQLite-to-PostgreSQL migration and referenced-upload smoke test OK")
@@ -197,7 +219,6 @@ jobs:
 
   matching-evaluation:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -212,3 +233,11 @@ jobs:
           USE_SEMANTIC_MODEL: "true"
           SEMANTIC_MODEL: sentence-transformers/all-MiniLM-L6-v2
         run: python scripts/evaluate_matching.py --require-semantic-model
+
+      - name: Verify pretrained CLIP image inference
+        env:
+          USE_CLIP_MODEL: "true"
+          CLIP_MODEL: openai/clip-vit-base-patch32
+          OMP_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        run: python scripts/smoke_test_clip.py

@@ -7,12 +7,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN groupadd --system lostlink && useradd --system --gid lostlink --home-dir /app lostlink \
-    && mkdir -p /data/uploads \
-    && chown -R lostlink:lostlink /app /data
+    && mkdir -p /data/uploads /models \
+    && chown -R lostlink:lostlink /app /data /models
 
-COPY requirements.txt ./requirements.txt
+COPY requirements.txt requirements-ml.txt ./
+ARG INSTALL_ML=false
 RUN python -m pip install --upgrade pip \
-    && python -m pip install -r requirements.txt
+    && if [ "$INSTALL_ML" = "true" ]; then python -m pip install -r requirements-ml.txt; \
+       else python -m pip install -r requirements.txt; fi
 
 COPY --chown=lostlink:lostlink app ./app
 COPY --chown=lostlink:lostlink scripts ./scripts

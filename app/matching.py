@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from datetime import datetime
+from io import BytesIO
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
+from app.core.object_storage import read_upload
 
 SYNONYMS = {
     "backpack": "bag", "rucksack": "bag", "purse": "wallet",
@@ -116,23 +119,32 @@ class MatchingEngine:
         self._clip_model = None
         self._clip_processor = None
         self._clip_attempted = False
+        self._text_model_lock = threading.Lock()
+        self._clip_model_lock = threading.Lock()
+        self.last_text_error: str | None = None
+        self.last_clip_error: str | None = None
         self.semantic_enabled = os.getenv("USE_SEMANTIC_MODEL", "false").lower() == "true"
         self.clip_enabled = os.getenv("USE_CLIP_MODEL", "false").lower() == "true"
 
     def _load_text_model(self):
         if self._text_attempted:
             return self._text_model
-        self._text_attempted = True
-        if not self.semantic_enabled:
-            return None
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._text_model = SentenceTransformer(
-                os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-            )
-        except Exception:
-            self._text_model = None
-        return self._text_model
+        # Concurrent first requests must not observe a half-initialised model
+        # and silently fall back to lexical scoring while another thread loads it.
+        with self._text_model_lock:
+            if self._text_attempted:
+                return self._text_model
+            self._text_attempted = True
+            if not self.semantic_enabled:
+                return None
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._text_model = SentenceTransformer(
+                    os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+                )
+            except Exception:
+                self._text_model = None
+            return self._text_model
 
     def text_similarity(self, left: str, right: str) -> tuple[float, str]:
         model = self._load_text_model()
@@ -148,57 +160,78 @@ class MatchingEngine:
     def _load_clip(self):
         if self._clip_attempted:
             return self._clip_model, self._clip_processor
-        self._clip_attempted = True
-        if not self.clip_enabled:
-            return None, None
-        try:
-            from transformers import CLIPModel, CLIPProcessor
-            model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
-            self._clip_processor = CLIPProcessor.from_pretrained(model_name)
-            self._clip_model = CLIPModel.from_pretrained(model_name)
-            self._clip_model.eval()
-        except Exception:
-            self._clip_model = None
-            self._clip_processor = None
-        return self._clip_model, self._clip_processor
+        with self._clip_model_lock:
+            if self._clip_attempted:
+                return self._clip_model, self._clip_processor
+            self._clip_attempted = True
+            if not self.clip_enabled:
+                return None, None
+            try:
+                from transformers import CLIPModel, CLIPProcessor
+                model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
+                self._clip_processor = CLIPProcessor.from_pretrained(model_name)
+                self._clip_model = CLIPModel.from_pretrained(model_name)
+                self._clip_model.eval()
+            except Exception as exc:
+                self.last_clip_error = f"{type(exc).__name__}: {exc}"
+                self._clip_model = None
+                self._clip_processor = None
+            return self._clip_model, self._clip_processor
+
+    @staticmethod
+    def _clip_feature_tensor(output):
+        """Extract projected embeddings from Transformers model-output wrappers."""
+        pooled_output = getattr(output, "pooler_output", None)
+        return pooled_output if pooled_output is not None else output
 
     def image_similarity(self, lost: dict[str, Any], found: dict[str, Any]) -> float | None:
         """Use CLIP image-image similarity, or image-text similarity if one photo is absent."""
         model, processor = self._load_clip()
         if model is None or processor is None:
             return None
-        lost_path = Path(str(lost.get("image_path") or ""))
-        found_path = Path(str(found.get("image_path") or ""))
-        lost_has_image = bool(lost.get("image_path")) and lost_path.is_file()
-        found_has_image = bool(found.get("image_path")) and found_path.is_file()
+        lost_key = str(lost.get("image_path") or "")
+        found_key = str(found.get("image_path") or "")
+        try:
+            lost_bytes = read_upload(lost_key) if lost_key else None
+        except FileNotFoundError:
+            lost_bytes = None
+        try:
+            found_bytes = read_upload(found_key) if found_key else None
+        except FileNotFoundError:
+            found_bytes = None
+        lost_has_image, found_has_image = lost_bytes is not None, found_bytes is not None
         if not lost_has_image and not found_has_image:
             return None
         try:
             import torch
             with torch.no_grad():
                 if lost_has_image and found_has_image:
-                    with Image.open(lost_path) as left_image, Image.open(found_path) as right_image:
+                    with Image.open(BytesIO(lost_bytes)) as left_image, Image.open(BytesIO(found_bytes)) as right_image:
                         pixels = processor(images=[left_image.convert("RGB"), right_image.convert("RGB")], return_tensors="pt")
                     embeddings = model.get_image_features(pixel_values=pixels["pixel_values"])
+                    embeddings = self._clip_feature_tensor(embeddings)
                     embeddings = torch.nn.functional.normalize(embeddings, dim=-1)
                     cosine = torch.sum(embeddings[0] * embeddings[1]).item()
                 else:
-                    image_path = lost_path if lost_has_image else found_path
+                    image_bytes = lost_bytes if lost_has_image else found_bytes
                     text_report = found if lost_has_image else lost
-                    with Image.open(image_path) as source:
+                    with Image.open(BytesIO(image_bytes)) as source:
                         pixels = processor(images=source.convert("RGB"), return_tensors="pt")
                     text_inputs = processor(text=[_text_value(text_report)], return_tensors="pt",
                                             padding=True, truncation=True)
                     image_embedding = model.get_image_features(pixel_values=pixels["pixel_values"])
+                    image_embedding = self._clip_feature_tensor(image_embedding)
                     text_embedding = model.get_text_features(
                         input_ids=text_inputs["input_ids"],
                         attention_mask=text_inputs.get("attention_mask"),
                     )
+                    text_embedding = self._clip_feature_tensor(text_embedding)
                     image_embedding = torch.nn.functional.normalize(image_embedding, dim=-1)
                     text_embedding = torch.nn.functional.normalize(text_embedding, dim=-1)
                     cosine = torch.sum(image_embedding[0] * text_embedding[0]).item()
             return max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0))
-        except Exception:
+        except Exception as exc:
+            self.last_clip_error = f"{type(exc).__name__}: {exc}"
             return None
 
     def _batch_semantic_scores(
@@ -360,15 +393,50 @@ class MatchingEngine:
             "engine": engine,
         }
 
+    # Cheap deterministic scoring covers every eligible report. Expensive model
+    # inference is deliberately restricted to a shortlist so corpus size does not
+    # multiply model latency without bound.
+    SEMANTIC_RERANK_LIMIT = 100
+    CLIP_RERANK_LIMIT = 25
+
     def rank(self, lost: dict[str, Any], found_reports: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
-        semantic_scores = self._batch_semantic_scores(lost, found_reports)
-        ranked = []
-        for index, report in enumerate(found_reports):
-            text_result = semantic_scores[index] if semantic_scores is not None else None
-            result = self.compare(lost, report, text_result=text_result)
-            ranked.append({"report": report, **result})
-        ranked.sort(key=lambda item: item["score"], reverse=True)
-        return ranked[:limit]
+        if not found_reports or limit < 1:
+            return []
+
+        baseline = [
+            {"report": report, **self.compare(lost, report, use_models=False)}
+            for report in found_reports
+        ]
+        baseline.sort(key=lambda item: item["score"], reverse=True)
+        shortlist = baseline[: self.SEMANTIC_RERANK_LIMIT]
+        if not shortlist:
+            return []
+
+        shortlist_reports = [item["report"] for item in shortlist]
+        semantic_scores = self._batch_semantic_scores(lost, shortlist_reports)
+        if semantic_scores is not None:
+            shortlist = [
+                {
+                    "report": report,
+                    **self.compare(lost, report, use_models=False, text_result=semantic_scores[index]),
+                }
+                for index, report in enumerate(shortlist_reports)
+            ]
+            shortlist.sort(key=lambda item: item["score"], reverse=True)
+
+        if self.clip_enabled:
+            clip_candidates = shortlist[: self.CLIP_RERANK_LIMIT]
+            reranked = []
+            for item in clip_candidates:
+                text_result = (item["signals"]["text"], item["engine"])
+                reranked.append({
+                    "report": item["report"],
+                    **self.compare(lost, item["report"], text_result=text_result),
+                })
+            shortlist = reranked + shortlist[len(clip_candidates):]
+            shortlist.sort(key=lambda item: item["score"], reverse=True)
+
+        return shortlist[:limit]
 
 
 matching_engine = MatchingEngine()

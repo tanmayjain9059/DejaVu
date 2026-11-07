@@ -80,6 +80,34 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_match_cards_show_the_actual_matching_method(self):
+        self.assertIn('"matching_engine": match["engine"]', (ROOT / "app" / "api" / "routes" / "reports.py").read_text(encoding="utf-8"))
+        self.assertIn("matching_method: match.matching_engine || \"lexical_baseline\"", self.js)
+        self.assertIn("Semantic + visual AI", self.js)
+        self.assertIn("Structured baseline", self.js)
+        self.assertIn(".ai-method-pill", (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8"))
+
+    def test_browse_pagination_rejects_filters_changed_since_first_page(self):
+        self.assertIn("let browseFilters = null;", self.js)
+        self.assertIn("function currentBrowseFilters()", self.js)
+        self.assertIn("JSON.stringify(filters) !== JSON.stringify(browseFilters)", self.js)
+        self.assertIn("Press Search to apply them before loading more items.", self.js)
+        self.assertIn("browseFilters = filters;", self.js)
+        self.assertIn("...browseFilters,", self.js)
+
+    def test_offline_preview_supports_owner_report_edits(self):
+        self.assertIn('const editMatch=path.match(/^\\/api\\/reports\\/([^/]+)$/);', self.js)
+        self.assertIn('if(editMatch&&method==="PUT")', self.js)
+        self.assertIn("Report type cannot be changed.", self.js)
+        self.assertIn("This report cannot be edited while a linked claim is active.", self.js)
+        self.assertIn("const title=String(body.title||\"\").trim(),description=String(body.description||\"\").trim();", self.js)
+        self.assertIn("return {report:mockReportView(report,false),message:\"Report details updated.\"};", self.js)
+
+    def test_offline_preview_preserves_private_room_for_own_report_edits(self):
+        self.assertIn('const owner=Boolean(currentUser&&currentUser.role==="student"&&currentUser.id===report.created_by);', self.js)
+        self.assertIn('(internal||owner)?report.location_room:null', self.js)
+        self.assertIn('(internal||owner||!sensitive)?report.location_room:null', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
