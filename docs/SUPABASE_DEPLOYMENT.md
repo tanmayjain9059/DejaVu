@@ -38,11 +38,12 @@ Set these backend variables:
 - `SUPABASE_URL=https://<project-ref>.supabase.co`
 - `SUPABASE_ANON_KEY=<publishable-or-anon-key>`
 - `SUPABASE_REQUIRE_CONFIRMED_EMAIL=true`
+- `ALLOWED_EMAIL_DOMAINS=<comma-separated institution-approved domains>`
 - `OFFICE_USER_EMAILS=<comma-separated exact office email addresses>`
 
 The browser signs in or signs up with Supabase Auth. It sends the access token to FastAPI as a Bearer token. FastAPI validates it against Supabase Auth's `/auth/v1/user` endpoint before resolving the LostLink profile.
 
-A newly verified identity is provisioned as a **student** by default. The only office-role assignment is an exact email match in the server-side `OFFICE_USER_EMAILS` allowlist. Never accept a role from browser metadata, signup forms, or a user-editable profile field. Remove office addresses from the allowlist to prevent future provisioning as office; existing role downgrades require an explicit administrative process.
+A newly verified identity is accepted only when its email domain is in `ALLOWED_EMAIL_DOMAINS`, then provisioned as a **student** by default. The only office-role assignment is an exact email match in the server-side `OFFICE_USER_EMAILS` allowlist. Never accept a role from browser metadata, signup forms, or a user-editable profile field. Remove office addresses from the allowlist to prevent future provisioning as office; existing role downgrades require an explicit administrative process.
 
 For institutional onboarding, configure Supabase email delivery, allowed email domains, abuse protection and rate limits. The current implementation does not perform a college SIS/roll-number verification.
 
@@ -68,6 +69,7 @@ The storage adapter uses SigV4 and path-style addressing. Use the dedicated `.st
    - `DATABASE_URL` (Supabase session-pooler URL)
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
+   - `ALLOWED_EMAIL_DOMAINS`
    - `OFFICE_USER_EMAILS`
    - `FRONTEND_ORIGINS` (the exact Vercel origin, no trailing slash)
    - `S3_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
@@ -96,6 +98,7 @@ Set the exact Vercel production origin in Render's `FRONTEND_ORIGINS`. If you us
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Publishable/anon key |
 | `SUPABASE_REQUIRE_CONFIRMED_EMAIL` | `true` |
+| `ALLOWED_EMAIL_DOMAINS` | Institution-approved email domains; required |
 | `OFFICE_USER_EMAILS` | Exact office emails |
 | `DATABASE_URL` | Supabase PostgreSQL session-pooler URL |
 | `DATABASE_POOL_MAX_SIZE` | Start at 3; tune from measured connections |
