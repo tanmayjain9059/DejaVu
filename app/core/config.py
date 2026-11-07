@@ -11,12 +11,26 @@ DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(DATA_DIR / "lostlink.db"))).resolve()
 # Optional managed PostgreSQL database. Leave unset for local SQLite development.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "local").strip().lower()
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_REQUIRE_CONFIRMED_EMAIL = os.getenv("SUPABASE_REQUIRE_CONFIRMED_EMAIL", "true").lower() == "true"
+OFFICE_USER_EMAILS = {email.strip().lower() for email in os.getenv("OFFICE_USER_EMAILS", "").split(",") if email.strip()}
+ALLOWED_EMAIL_DOMAINS = {domain.strip().lower().lstrip("@") for domain in os.getenv("ALLOWED_EMAIL_DOMAINS", "").split(",") if domain.strip()}
+FRONTEND_ORIGINS = [origin.strip().rstrip("/") for origin in os.getenv("FRONTEND_ORIGINS", "").split(",") if origin.strip()]
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
+UPLOAD_STORAGE_BACKEND = os.getenv("UPLOAD_STORAGE_BACKEND", "local").strip().lower()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
 IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base").strip()
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
+try:
+    MATCHING_CANDIDATE_LIMIT = int(os.getenv("MATCHING_CANDIDATE_LIMIT", "2000"))
+except ValueError as exc:
+    raise RuntimeError("MATCHING_CANDIDATE_LIMIT must be an integer between 100 and 10000.") from exc
+if not 100 <= MATCHING_CANDIDATE_LIMIT <= 10000:
+    raise RuntimeError("MATCHING_CANDIDATE_LIMIT must be between 100 and 10000.")
 HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "false").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()] or ["*"]
 REQUIRE_REQUEST_ORIGIN = os.getenv("REQUIRE_REQUEST_ORIGIN", "false").lower() == "true"
