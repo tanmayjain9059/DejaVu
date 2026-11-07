@@ -15,7 +15,7 @@ if parsed.username or parsed.password:
     raise SystemExit("BACKEND_ORIGIN must not contain credentials.")
 STATIC.mkdir(parents=True, exist_ok=True)
 (STATIC / "deployment-config.js").write_text(
-    "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\\n",
+    "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\n",
     encoding="utf-8",
 )
 print("Prepared Vercel static frontend for " + origin)
