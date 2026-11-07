@@ -246,7 +246,7 @@ class MatchingTests(unittest.TestCase):
                 {"image_path": "found-report.jpg"},
             )
         self.assertEqual(score, 1.0)
-        self.assertEqual([call.args[0] for call in read_upload.call_args_list], ["", "found-report.jpg"])
+        self.assertEqual([call.args[0] for call in read_upload.call_args_list], ["found-report.jpg"])
 
     def test_rank_returns_best_candidates_first(self):
         lost = {"title": "Blue backpack", "description": "blue backpack with pockets", "category": "bags_wallets"}
