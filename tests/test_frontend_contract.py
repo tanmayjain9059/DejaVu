@@ -80,6 +80,23 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_pagination_controls_are_connected_to_keyset_loaders(self):
+        controls = {
+            "browseLoadMore": "loadBrowse(true)",
+            "myReportsLoadMore": "loadMyReports(true)",
+            "myClaimsLoadMore": "loadMyClaims(true)",
+            "intakeLoadMore": 'loadOffice("intake")',
+            "inventoryLoadMore": 'loadOffice("inventory")',
+            "officeClaimsLoadMore": 'loadOffice("officeClaims")',
+            "handoverLoadMore": 'loadOffice("handovers")',
+        }
+        for control_id, action in controls.items():
+            self.assertIn(control_id, self.id_set, f"Missing pagination control: {control_id}")
+            self.assertIn(action, self.js, f"Pagination control is not wired: {control_id}")
+        self.assertIn("function pageUrl(path, cursor)", self.js)
+        self.assertIn("next_cursor", self.js)
+        self.assertIn("has_more", self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)

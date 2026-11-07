@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 from fastapi import Header, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from app.core.database import connect_db, now_iso
 from app.core.config import AUTH_PROVIDER, OFFICE_USER_EMAILS, ALLOWED_EMAIL_DOMAINS
 from app.services.supabase_auth import verify_supabase_access_token
@@ -19,7 +20,7 @@ async def authenticated_user(
         scheme, _, token = (authorization or "").partition(" ")
         if scheme.lower() != "bearer" or not token:
             raise HTTPException(status_code=401, detail="Please sign in.")
-        identity = verify_supabase_access_token(token)
+        identity = await run_in_threadpool(verify_supabase_access_token, token)
         auth_id = str(identity["id"])
         email = str(identity["email"]).strip().lower()
         if ALLOWED_EMAIL_DOMAINS and email.rsplit("@", 1)[-1] not in ALLOWED_EMAIL_DOMAINS:

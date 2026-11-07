@@ -361,7 +361,7 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | <code>/api/reports</code> | Search/list reports with supported filters and keyset pagination (`page_size` 1–100, opaque `cursor`, `next_cursor`, `has_more`). Student visibility is restricted to available found items except their own records; office visibility is wider. |
+| GET | <code>/api/reports</code> | Search/list reports with supported filters and keyset pagination (`page_size` 1–100, opaque `cursor`, `next_cursor`, `has_more`). Office status filters accept comma-separated values such as `available,claim_approved`. Student visibility is restricted to available found items except their own records; office visibility is wider. |
 | POST | <code>/api/reports</code> | Create a lost or found report. |
 | PUT | <code>/api/reports/{report_id}</code> | Edit public details while owner/office authorization and report workflow state permit it; every edit is audited. |
 | POST | <code>/api/reports/{report_id}/close</code> | Close an eligible owned lost report or withdraw a found report before intake. |
@@ -371,14 +371,14 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 | POST | <code>/api/reports/{report_id}/intake</code> | Office-only: confirm physical receipt, record storage/verification data and assign the Tag ID. |
 | POST | <code>/api/reports/{report_id}/storage</code> | Office-only: update the item's recorded storage location. |
 
-Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter can isolate `disputed`, `pending`, or `other` claims, so staff can work the highest-priority queue first without putting mutable status into the cursor sort key. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision.
+Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter supports `active` (pending, disputed and more-evidence-needed), `handover` (approved for collection), `disputed`, `pending`, and `other`. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision. The student and office interfaces consume the API cursors with independent Load more controls. Office inventory can filter both `available` and `claim_approved` records in the same paginated query.
 
 ### Claims, evidence and handover
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | <code>/api/claims</code> | Create a claim with a private explanation and evidence categories. |
-| GET | <code>/api/claims</code> | Keyset-paginated claims (`page_size`, `cursor`, `next_cursor`, `has_more`). Office staff can select `queue=disputed`, `pending`, or `other`; cursor ordering uses immutable creation time and ID, with `priority_rank` metadata. |
+| GET | <code>/api/claims</code> | Keyset-paginated claims (`page_size`, `cursor`, `next_cursor`, `has_more`). Office staff can select `queue=active`, `handover`, `disputed`, `pending`, or `other`; cursor ordering uses immutable creation time and ID, with `priority_rank` metadata. Student responses include a total active-claim count for navigation badges. |
 | POST | <code>/api/claims/{claim_id}/evidence</code> | Update claim evidence text. |
 | POST | <code>/api/claims/{claim_id}/evidence-image</code> | Upload private supporting evidence image. |
 | GET | <code>/api/claims/{claim_id}/evidence-image</code> | Retrieve the evidence image subject to claimant/office access rules. |

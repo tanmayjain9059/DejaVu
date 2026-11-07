@@ -63,7 +63,7 @@ The storage adapter uses SigV4 and path-style addressing. Use the dedicated `.st
 
 ## 4. Deploy the API on Render
 
-1. Import this repository into Render and select the `codex/supabase-final-infrastructure` branch for the initial staging deployment.
+1. Import this repository into Render. After the infrastructure and end-to-end pagination PRs are reviewed and merged, deploy the `main` branch. For staging before merge, select the reviewed PR branch explicitly; do not deploy the old `codex/supabase-final-infrastructure` branch because it may have diverged from `main`.
 2. Use the included `render.yaml` blueprint.
 3. Set the required secret values when Render prompts:
    - `DATABASE_URL` (Supabase session-pooler URL)
@@ -82,9 +82,9 @@ The starter instance is a deployment baseline, not a capacity guarantee. Measure
 
 1. Import the same repository into Vercel.
 2. Set the project root to the repository root.
-3. Set the production branch to the reviewed release branch.
+3. Set the production branch to `main` after the reviewed infrastructure changes have been merged.
 4. Add build environment variable `BACKEND_ORIGIN=https://<your-render-api-origin>`.
-5. Keep the build command and output directory from `vercel.json`: `python3 scripts/build_vercel_frontend.py` and `app/static`.
+5. Keep the build command and output directory from `vercel.json`: `python3 scripts/build_vercel_frontend.py` and `dist`. The build script copies the static frontend into `dist` and generates `deployment-config.js` with the public API origin.
 6. Deploy. The build creates `deployment-config.js` with the public API origin; it contains no credentials.
 
 Set the exact Vercel production origin in Render's `FRONTEND_ORIGINS`. If you use preview deployments, add only the specific preview origins you intend to trust. Do not use a broad wildcard for production.

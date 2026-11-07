@@ -83,8 +83,16 @@ async def list_reports(
         conditions.append("COALESCE(r.occurred_at,'') <= ?")
         params.append(date_to + "T23:59:59")
     if internal and status:
-        conditions.append("r.status=?")
-        params.append(status)
+        statuses = [value.strip() for value in status.split(",") if value.strip()]
+        allowed_statuses = {"open", "awaiting_intake", "available", "claim_approved", "returned", "closed", "cancelled"}
+        if not statuses or len(statuses) > len(allowed_statuses) or any(value not in allowed_statuses for value in statuses):
+            raise HTTPException(status_code=422, detail="status contains an unsupported report status.")
+        if len(statuses) == 1:
+            conditions.append("r.status=?")
+            params.append(statuses[0])
+        else:
+            conditions.append("r.status IN (" + ",".join("?" for _ in statuses) + ")")
+            params.extend(statuses)
 
     if cursor_values is not None:
         conditions.append("(r.created_at < ? OR (r.created_at = ? AND r.id < ?))")

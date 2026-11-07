@@ -199,8 +199,8 @@ async def list_claims(
 
     if page_size < 1 or page_size > 100:
         raise HTTPException(status_code=422, detail="page_size must be between 1 and 100.")
-    if queue not in {"all", "disputed", "pending", "other"}:
-        raise HTTPException(status_code=422, detail="queue must be all, disputed, pending, or other.")
+    if queue not in {"all", "disputed", "pending", "active", "handover", "other"}:
+        raise HTTPException(status_code=422, detail="queue must be all, disputed, pending, active, handover, or other.")
     internal = user["role"] == "office"
     if not internal and queue != "all":
         raise HTTPException(status_code=403, detail="Queue filters are available to office staff only.")
@@ -224,8 +224,12 @@ async def list_claims(
             where.append("c.status='disputed'")
         elif queue == "pending":
             where.append("c.status='pending'")
+        elif queue == "active":
+            where.append("c.status IN ('pending','disputed','needs_more_evidence')")
+        elif queue == "handover":
+            where.append("c.status='approved_for_collection'")
         elif queue == "other":
-            where.append("c.status NOT IN ('disputed','pending')")
+            where.append("c.status NOT IN ('disputed','pending','needs_more_evidence','approved_for_collection')")
     else:
         where.append("c.claimant_id=?")
         params.append(user["id"])
@@ -250,6 +254,13 @@ async def list_claims(
     params.append(page_size + 1)
 
     with connect_db() as conn:
+        active_count = 0
+        if not internal:
+            count_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+                (user["id"],),
+            ).fetchone()
+            active_count = int(count_row["n"])
         rows = conn.execute(sql, params).fetchall()
         has_more = len(rows) > page_size
         if has_more:
@@ -307,6 +318,7 @@ async def list_claims(
         "next_cursor": next_cursor,
         "has_more": has_more,
         "queue": queue if internal else "mine",
+        "active_count": active_count if not internal else None,
     }
 
 

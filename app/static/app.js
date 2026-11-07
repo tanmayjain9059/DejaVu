@@ -45,6 +45,16 @@ function explainError(data, fallback) {
 
 let usingMockApi = false;
 let mockNoticeShown = false;
+const PAGE_SIZE = 50;
+const pageState = {
+  browse: { cursor: null, hasMore: false, loading: false },
+  myReports: { cursor: null, hasMore: false, loading: false },
+  myClaims: { cursor: null, hasMore: false, loading: false },
+  intake: { cursor: null, hasMore: false, loading: false, items: [] },
+  inventory: { cursor: null, hasMore: false, loading: false, items: [] },
+  officeClaims: { cursor: null, hasMore: false, loading: false, items: [] },
+  handovers: { cursor: null, hasMore: false, loading: false, items: [] }
+};
 let inspectedUser = null;
 let notificationPollTimer = null;
 let notificationPollInFlight = false;
@@ -149,13 +159,19 @@ async function mockApi(url,options){
    for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
    if(parsed.searchParams.get("block")&&!(r.location_block||"").toLowerCase().includes(parsed.searchParams.get("block").toLowerCase()))return false;
    if(parsed.searchParams.get("room")&&!(r.location_room||"").toLowerCase().includes(parsed.searchParams.get("room").toLowerCase()))return false;
-   if(internal&&parsed.searchParams.get("status")&&r.status!==parsed.searchParams.get("status"))return false;
+   if(internal&&parsed.searchParams.get("status")){
+    const statuses=parsed.searchParams.get("status").split(",").map(x=>x.trim()).filter(Boolean);
+    if(!statuses.includes(r.status))return false;
+   }
    if(parsed.searchParams.get("date_from")&&String(r.occurred_at||"")<parsed.searchParams.get("date_from"))return false;
    if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
    if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
    return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
-  return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
+  }).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {reports:page.map(r=>mockReportView(r,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore};
  }
  if(path==="/api/reports/category-suggestion"&&method==="POST"){
   const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
@@ -197,7 +213,21 @@ async function mockApi(url,options){
   if(action==="storage"&&method==="POST"){mockRequireOffice();if(!report.tag_id)throw new Error("Only tagged items in custody can be moved.");report.storage_location=String(body.storage_location||"").trim();report.updated_at=mockTimestamp(0);return {report:mockReportView(report,true),message:"Storage location updated."};}
   if(action==="close"&&method==="POST"){if(!currentUser||currentUser.role!=="student"||report.created_by!==currentUser.id)throw new Error("Report not found.");if(report.report_type==="lost"&&report.status==="open")report.status="closed";else if(report.report_type==="found"&&report.status==="awaiting_intake"&&body.reason==="found_report_withdrawn")report.status="cancelled";else throw new Error("Only an open lost report or found report awaiting office intake can be closed.");report.updated_at=mockTimestamp(0);return {report:mockReportView(report,false),message:"Report closed."};}
  }
- if(path==="/api/claims"&&method==="GET"){const internal=currentUser&&currentUser.role==="office";return {claims:mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id).sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(c=>mockClaimView(c,Boolean(internal)))};}
+ if(path==="/api/claims"&&method==="GET"){
+  const internal=currentUser&&currentUser.role==="office",queue=parsed.searchParams.get("queue")||"all";
+  let filtered=mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id);
+  if(internal&&queue==="disputed")filtered=filtered.filter(c=>c.status==="disputed");
+  if(internal&&queue==="pending")filtered=filtered.filter(c=>c.status==="pending");
+  if(internal&&queue==="active")filtered=filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status));
+  if(internal&&queue==="handover")filtered=filtered.filter(c=>c.status==="approved_for_collection");
+  if(internal&&queue==="other")filtered=filtered.filter(c=>!["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
+  const activeCount=internal?null:filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status)).length;
+  filtered.sort((a,b)=>internal?a.created_at.localeCompare(b.created_at):b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {claims:page.map(c=>mockClaimView(c,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore,active_count:activeCount};
+ }
  if(path==="/api/claims"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Claims must be submitted from a student account.");
   const report=mockStore.reports.find(r=>r.id===body.report_id);if(!report||report.report_type!=="found"||report.status!=="available")throw new Error("This item is not accepting claims.");
@@ -591,6 +621,34 @@ function buildQuery(formValues) {
   return params.toString();
 }
 
+function pageUrl(path, cursor) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("page_size", String(PAGE_SIZE));
+  if (cursor) url.searchParams.set("cursor", cursor);
+  else url.searchParams.delete("cursor");
+  return url.pathname + url.search;
+}
+
+function updatePageButton(buttonId, state) {
+  const button = $(buttonId);
+  if (!button) return;
+  button.classList.toggle("hidden", !state.hasMore && !state.loading);
+  button.disabled = Boolean(state.loading);
+  button.textContent = state.loading ? "Loading…" : "Load more";
+}
+
+async function fetchAllPages(path) {
+  const results = [];
+  let cursor = null;
+  do {
+    const page = await api(pageUrl(path, cursor));
+    results.push(...(page.reports || []));
+    cursor = page.next_cursor || null;
+    if (!page.has_more) break;
+  } while (cursor);
+  return results;
+}
+
 function itemCard(report, options) {
   const opts = options || {};
   const icon = CATEGORY_ICONS[report.category] || "◌";
@@ -626,8 +684,13 @@ function itemCard(report, options) {
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
-async function loadBrowse() {
+async function loadBrowse(append = false) {
   if (!currentUser) return;
+  const state = pageState.browse;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#browseLoadMore", state);
   const query = buildQuery({
     q: $("#filterQuery").value,
     category: $("#filterCategory").value,
@@ -636,14 +699,30 @@ async function loadBrowse() {
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
     date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
   });
+  if (append && state.query !== query) {
+    append = false;
+    state.cursor = null;
+    $("#browseResults").innerHTML = "";
+    lastKnownReports = [];
+  }
+  state.query = query;
   try {
-    const data = await api("/api/reports" + (query ? "?" + query : ""));
-    lastKnownReports = data.reports;
-    $("#browseResults").innerHTML = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
-    $("#browseCount").textContent = data.reports.length + (data.reports.length === 1 ? " item" : " items");
-    $("#browseEmpty").classList.toggle("hidden", data.reports.length > 0);
+    const path = "/api/reports" + (query ? "?" + query : "");
+    const data = await api(pageUrl(path, append ? state.cursor : null));
+    const reports = data.reports || [];
+    lastKnownReports = append ? lastKnownReports.concat(reports) : reports;
+    const html = reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
+    if (append) $("#browseResults").insertAdjacentHTML("beforeend", html);
+    else $("#browseResults").innerHTML = html;
+    $("#browseCount").textContent = lastKnownReports.length + (lastKnownReports.length === 1 ? " item loaded" : " items loaded");
+    $("#browseEmpty").classList.toggle("hidden", lastKnownReports.length > 0);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) {
     showToast(error.message, true);
+  } finally {
+    state.loading = false;
+    updatePageButton("#browseLoadMore", state);
   }
 }
 
@@ -764,47 +843,52 @@ async function submitReport(event) {
   }
 }
 
-async function loadMyReports() {
+async function loadMyReports(append = false) {
   if (!currentUser || currentUser.role !== "student") return;
+  const state = pageState.myReports;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#myReportsLoadMore", state);
   $("#matchesPanel").classList.add("hidden");
   try {
-    const data = await api("/api/reports?mine=true");
-    $("#myReportsList").innerHTML = data.reports.map((report) => {
+    const data = await api(pageUrl("/api/reports?mine=true", append ? state.cursor : null));
+    const reports = data.reports || [];
+    lastKnownReports = lastKnownReports.concat(reports);
+    const html = reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
-        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
-        : "";
+        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>' : "";
       const canClose = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
         (report.report_type === "found" && report.status === "awaiting_intake");
       const closeButton = canClose
         ? '<button class="button button-quiet button-small" type="button" data-close-report="' + escapeHTML(report.id) +
           '" data-close-type="' + escapeHTML(report.report_type) + '">' +
-          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>'
-        : "";
+          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>' : "";
       const linkedClaimNote = report.report_type === "lost" && report.status === "open" && report.has_active_linked_claim
-        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>'
-        : "";
+        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>' : "";
       const type = report.report_type === "lost" ? "Lost report" : "Found report";
       const imageNote = report.report_type === "found" && report.status === "awaiting_intake"
-        ? "The office must confirm physical receipt before the item can appear in search."
-        : "";
-      const characteristics = [
-        report.brand ? "Brand: " + report.brand : "",
-        report.primary_color ? "Colour: " + report.primary_color : "",
-        report.visible_features || ""
-      ].filter(Boolean);
+        ? "The office must confirm physical receipt before the item can appear in search." : "";
+      const characteristics = [report.brand ? "Brand: " + report.brand : "", report.primary_color ? "Colour: " + report.primary_color : "", report.visible_features || ""].filter(Boolean);
       const extra = characteristics.length
-        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>'
-        : "";
+        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>' : "";
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
         escapeHTML(type + " · " + report.public_ref) + "</p></div><span class=\"" + statusClass(report.status) + "\">" +
         escapeHTML(statusLabel(report.status)) + "</span></div><p>" + escapeHTML(report.description) + "</p>" + extra +
         '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>◷ " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
-        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") +
-        linkedClaimNote +
+        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") + linkedClaimNote +
         '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
     }).join("");
-    $("#myReportsEmpty").classList.toggle("hidden", data.reports.length > 0);
+    if (append) $("#myReportsList").insertAdjacentHTML("beforeend", html);
+    else $("#myReportsList").innerHTML = html;
+    $("#myReportsEmpty").classList.toggle("hidden", reports.length === 0 && !append);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) { showToast(error.message, true); }
+  finally {
+    state.loading = false;
+    updatePageButton("#myReportsLoadMore", state);
+  }
 }
 
 async function loadMatches(reportId) {
@@ -827,14 +911,22 @@ async function loadMatches(reportId) {
   } catch (error) { showToast(error.message, true); }
 }
 
-async function loadMyClaims() {
+async function loadMyClaims(append = false) {
   if (!currentUser || currentUser.role !== "student") return;
+  const state = pageState.myClaims;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#myClaimsLoadMore", state);
   try {
-    const data = await api("/api/claims");
-    const activeCount = data.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
+    const data = await api(pageUrl("/api/claims", append ? state.cursor : null));
+    const claims = data.claims || [];
+    const activeCount = Number.isFinite(Number(data.active_count))
+      ? Number(data.active_count)
+      : claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
     $("#claimNavCount").textContent = String(activeCount);
     $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
-    $("#myClaimsList").innerHTML = data.claims.map((claim) => {
+    const html = claims.map((claim) => {
       let guidance = "Your claim is awaiting review by authorised office staff.";
       if (claim.status === "disputed") guidance = claim.appeal_note
         ? "You requested a review of the earlier decision. The office must review the dispute before the claim can proceed."
@@ -846,36 +938,34 @@ async function loadMyClaims() {
         ? "This claim was not approved. You can request one review by explaining what evidence may have been overlooked."
         : "This claim was not approved after review. No further review request is available in this prototype; contact the campus office if needed.";
       const addEvidence = claim.status === "needs_more_evidence"
-        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>'
-        : "";
+        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>' : "";
       const disputeForm = claim.status === "rejected" && Number(claim.appeal_count || 0) < 1
-        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>'
-        : "";
-      const appealNote = claim.appeal_note
-        ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>'
-        : "";
+        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>' : "";
+      const appealNote = claim.appeal_note ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "";
       const linkedLost = claim.linked_lost_report
-        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' +
-          escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
-          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' +
-          escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>'
-        : "";
+        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' + escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
+          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' + escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>' : "";
       const evidenceTypes = Array.isArray(claim.evidence_types) ? claim.evidence_types : [];
       const evidenceChips = evidenceTypes.length
-        ? '<div class="evidence-type-list"><strong>Proof types</strong>' +
-          evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
-        : "";
+        ? '<div class="evidence-type-list"><strong>Proof types</strong>' + evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>' : "";
       const evidencePhoto = claim.evidence_image_available
-        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
-        : "";
+        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>' : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
         escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>⌖ ' +
         escapeHTML(claim.report.location) + "</span><span>Reference " + escapeHTML(claim.report.public_ref) + "</span></div>" +
         evidenceChips + evidencePhoto + '<div class="card-actions">' + addEvidence + "</div>" + disputeForm + "</article>";
     }).join("");
-    $("#myClaimsEmpty").classList.toggle("hidden", data.claims.length > 0);
+    if (append) $("#myClaimsList").insertAdjacentHTML("beforeend", html);
+    else $("#myClaimsList").innerHTML = html;
+    $("#myClaimsEmpty").classList.toggle("hidden", claims.length === 0 && !append);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) { showToast(error.message, true); }
+  finally {
+    state.loading = false;
+    updatePageButton("#myClaimsLoadMore", state);
+  }
 }
 
 async function openItemDetails(reportId) {
@@ -961,9 +1051,9 @@ async function loadClaimLostReports(preferredReportId) {
   select.disabled = true;
   select.innerHTML = '<option value="">Loading your open lost reports…</option>';
   try {
-    const data = await api("/api/reports?mine=true&report_type=lost");
+    const allReports = await fetchAllPages("/api/reports?mine=true&report_type=lost");
     if (requestId !== lostReportOptionsRequest) return;
-    const openReports = data.reports.filter((item) => item.report_type === "lost" && item.status === "open");
+    const openReports = allReports.filter((item) => item.report_type === "lost" && item.status === "open");
     select.innerHTML = '<option value="">No linked lost report</option>' + openReports.map((item) =>
       '<option value="' + escapeHTML(item.id) + '">' + escapeHTML(item.title + " · " + item.public_ref + " · " + humanDate(item.occurred_at)) + '</option>'
     ).join("");
@@ -1067,35 +1157,54 @@ async function submitAdditionalEvidence(event) {
   }
 }
 
-async function loadOffice() {
+async function loadOffice(appendKey = null) {
   if (!currentUser || currentUser.role !== "office") return;
+  const definitions = {
+    intake: { path: "/api/reports?report_type=found&status=awaiting_intake", target: "#intakeQueue", button: "#intakeLoadMore", empty: "#intakeEmpty", key: "reports", render: intakeCard },
+    inventory: { path: "/api/reports?report_type=found&status=available,claim_approved", target: "#officeInventory", button: "#inventoryLoadMore", empty: "#officeInventoryEmpty", key: "reports", render: officeInventoryCard },
+    officeClaims: { path: "/api/claims?queue=active", target: "#officeClaims", button: "#officeClaimsLoadMore", empty: "#officeClaimsEmpty", key: "claims", render: officeClaimCard },
+    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard }
+  };
+  const keys = appendKey ? [appendKey] : Object.keys(definitions);
+  if (appendKey && !definitions[appendKey]) return;
   try {
-    const [summary, queueData, claimData, inventoryData] = await Promise.all([
-      api("/api/office/summary"),
-      api("/api/reports?report_type=found&status=awaiting_intake"),
-      api("/api/claims"),
-      api("/api/reports?report_type=found")
-    ]);
-    $("#officeStats").innerHTML = [
-      ["Awaiting intake", summary.awaiting_intake],
-      ["Items available", summary.available_items],
-      ["Active claims", summary.active_claims],
-      ["Disputed claims", summary.disputed_claims],
-      ["Ready for handover", summary.approved_handover || 0],
-      ["Items returned", summary.returned_items || 0]
-    ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
-    const queue = queueData.reports.filter((report) => report.status === "awaiting_intake");
-    $("#intakeQueue").innerHTML = queue.map((report) => intakeCard(report)).join("");
-    $("#intakeEmpty").classList.toggle("hidden", queue.length > 0);
-    const inventory = inventoryData.reports.filter((report) => ["available", "claim_approved"].includes(report.status) && report.tag_id);
-    $("#officeInventory").innerHTML = inventory.map((report) => officeInventoryCard(report)).join("");
-    $("#officeInventoryEmpty").classList.toggle("hidden", inventory.length > 0);
-    const active = claimData.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
-    $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
-    $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
-    const handovers = claimData.claims.filter((claim) => claim.status === "approved_for_collection");
-    $("#handoverQueue").innerHTML = handovers.map((claim) => officeHandoverCard(claim)).join("");
-    $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
+    if (!appendKey) {
+      const summary = await api("/api/office/summary");
+      $("#officeStats").innerHTML = [
+        ["Awaiting intake", summary.awaiting_intake],
+        ["Items available", summary.available_items],
+        ["Active claims", summary.active_claims],
+        ["Disputed claims", summary.disputed_claims],
+        ["Ready for handover", summary.approved_handover || 0],
+        ["Items returned", summary.returned_items || 0]
+      ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
+      keys.forEach((key) => {
+        pageState[key].cursor = null;
+        pageState[key].items = [];
+        pageState[key].hasMore = false;
+      });
+    }
+    await Promise.all(keys.map(async (key) => {
+      const definition = definitions[key];
+      const state = pageState[key];
+      if (state.loading) return;
+      state.loading = true;
+      updatePageButton(definition.button, state);
+      try {
+        const data = await api(pageUrl(definition.path, appendKey ? state.cursor : null));
+        const items = data[definition.key] || [];
+        state.items = appendKey ? state.items.concat(items) : items;
+        const html = items.map(definition.render).join("");
+        if (appendKey) $(definition.target).insertAdjacentHTML("beforeend", html);
+        else $(definition.target).innerHTML = html;
+        $(definition.empty).classList.toggle("hidden", state.items.length > 0);
+        state.cursor = data.next_cursor || null;
+        state.hasMore = Boolean(data.has_more && state.cursor);
+      } finally {
+        state.loading = false;
+        updatePageButton(definition.button, state);
+      }
+    }));
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
 }
@@ -1692,6 +1801,13 @@ document.addEventListener("click", (event) => {
   const certificate = event.target.closest("[data-certificate-download]");
   if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
+$("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
+$("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
+$("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
+$("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
+$("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
+$("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
+$("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
