@@ -1823,7 +1823,15 @@ $("#publicReportForm").addEventListener("submit",async event => {
     $("#publicTrackReference").value = result.case.reference;
     $("#publicTrackRoll").value = body.roll_number;
     $("#publicTrackSecret").value = result.tracking_secret;
-    $("#publicTrackResult").textContent = (result.message || "Report submitted.")+" Reference: "+result.case.reference+". Save the tracking secret now; it is shown once.";
+    const matchCards = (result.matches || []).map(match => {
+      const item = match.report;
+      return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(item.title) + '</h3><p>' +
+        escapeHTML(item.public_ref || item.reference) + ' · ' + escapeHTML(categoryLabel(item.category)) +
+        '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
+        escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p></article>';
+    }).join("");
+    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML((result.message || "Report submitted.") + " Reference: " + result.case.reference + ". Save the tracking secret now; it is shown once.") + '</p>' +
+      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again using this tracking secret.</p>');
     showPublicDestination("track");
     showToast("Report submitted. Save the tracking secret shown here.",false);
     event.currentTarget.reset();
@@ -1841,7 +1849,10 @@ $("#publicTrackForm").addEventListener("submit",async event => {
     const data = await publicApi("/api/public/track/"+ref+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
     const record = data.case || data.claim || {};
     const item = data.case || data.item || {};
-    resultNode.textContent = "Reference "+(record.reference || $("#publicTrackReference").value)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || item.title || "");
+    const events = (data.events || []).map(entry => '<article class="list-card"><strong>' + escapeHTML(entry.title) + '</strong><p>' + escapeHTML(entry.message) + '</p><small>' + escapeHTML(humanDateTime(entry.created_at)) + '</small></article>').join("");
+    resultNode.innerHTML = '<p><strong>Reference ' + escapeHTML(record.reference || $("#publicTrackReference").value) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '. ' + escapeHTML(record.title || item.title || "") + '</p>' +
+      (typeof data.activity_points === "number" ? '<p class="field-hint">Verified activity points: ' + data.activity_points + '</p>' : "") +
+      (events ? '<h3>Case updates</h3>' + events : '<p class="field-hint">No additional updates have been recorded yet.</p>');
   } catch(error) { resultNode.textContent = error.message; }
 });
 
