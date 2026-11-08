@@ -3,291 +3,836 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#eef2f7">
-  <meta name="description" content="LostLink campus lost and found reporting and claim verification prototype.">
-  <title>LostLink · Campus Lost & Found</title>
+  <meta name="theme-color" content="#f8fafc">
+  <meta name="description" content="LostLink / DejaVu — Apple-grade campus lost and found verification network.">
+  <title>DejaVu · Campus Lost & Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
 
+  <!-- =====================================================================
+       LOGIN & CAMPUS ONBOARDING VIEW
+       ===================================================================== -->
   <main id="loginView" class="login-shell">
     <section class="login-story">
       <div class="brand-lockup">
-        <span class="brand-mark">LL</span>
-        <span><strong>LostLink</strong><small>Campus lost & found</small></span>
+        <span class="brand-mark" aria-hidden="true">LL</span>
+        <span><strong>DejaVu</strong><small>Campus Lost & Found Ecosystem</small></span>
       </div>
       <div class="story-copy">
-        <p class="eyebrow">A calmer way to find what matters</p>
+        <p class="eyebrow">A Calmer Way to Find What Matters</p>
         <h1>Lost something?<br><span>Start here.</span></h1>
-        <p class="lede">Report an item, find relevant campus records and submit a claim through a clear, staff-reviewed process.</p>
+        <p class="lede">Report missing belongings, discover likely campus records through AI signals, and verify ownership through an authorized, staff-reviewed process.</p>
         <div class="story-points">
-          <div><span class="point-icon">01</span><span><strong>Report clearly</strong><small>Useful details, without oversharing.</small></span></div>
-          <div><span class="point-icon">02</span><span><strong>Find likely matches</strong><small>Relevant reports, with reasons.</small></span></div>
-          <div><span class="point-icon">03</span><span><strong>Verify before release</strong><small>Matching is not proof of ownership.</small></span></div>
+          <div>
+            <span class="point-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </span>
+            <span><strong>Report clearly</strong><small>Useful details, without oversharing sensitive identifiers.</small></span>
+          </div>
+          <div>
+            <span class="point-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><path d="m11 8 1 2 2 1-2 1-1 2-1-2-2-1 2-1z"></path></svg>
+            </span>
+            <span><strong>Find likely matches</strong><small>Multi-signal discovery with transparent matching rationale.</small></span>
+          </div>
+          <div>
+            <span class="point-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+            </span>
+            <span><strong>Verify before release</strong><small>AI suggestions are discovery aids; physical handover is verified in-person.</small></span>
+          </div>
         </div>
       </div>
-      <div class="story-footer">LostLink is a standalone hackathon prototype prepared for a future campus workflow.</div>
+      <div class="story-footer">DejaVu LostLink · Secure campus property assistance prototype prepared for campus operations.</div>
     </section>
 
     <section class="login-panel">
-      <div class="panel-kicker"><span class="status-dot"></span> CAMPUS ACCESS</div>
+      <div class="panel-kicker"><span class="status-dot"></span> CAMPUS ACCESS PORTAL</div>
       <h2>Welcome back</h2>
-      <p class="muted">Sign in to report, search or review a claim.</p>
+      <p class="muted">Sign in with your verified campus credentials to report, search or review an item claim.</p>
       <form id="loginForm" class="form-stack">
-        <label>Email address<input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu"></label>
-        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="Enter password"></label>
-        <label id="signupNameLabel" class="hidden">Full name<input id="signupName" type="text" maxlength="120" autocomplete="name" placeholder="Your name"></label>
-        <button id="loginSubmitButton" class="button button-primary button-full" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+        <label>Campus email address<input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu"></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="••••••••••••"></label>
+        <label id="signupNameLabel" class="hidden">Full name<input id="signupName" type="text" maxlength="120" autocomplete="name" placeholder="Alex Chen"></label>
+        <button id="loginSubmitButton" class="button button-primary button-full" type="submit">Sign in to campus <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></button>
         <button id="signupToggle" class="button button-quiet button-full hidden" type="button">Create a student account</button>
         <p id="loginError" class="form-error" role="alert"></p>
       </form>
-      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
+      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to active dashboard</button>
       <div id="demoAccess" class="demo-access hidden">
-        <div class="divider-label"><span></span><small>LOCAL DEMO ACCOUNTS</small><span></span></div>
-        <button id="fillStudent" class="demo-account" type="button"><span class="avatar avatar-student">S</span><span><strong>Student 1 · Demo Student</strong><small>Report, search and submit claims</small></span><span class="arrow">→</span></button>
-        <button class="demo-account" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123"><span class="avatar avatar-student">A</span><span><strong>Student 2 · Aarav Mehta</strong><small>Separate test identity</small></span><span class="arrow">→</span></button>
-        <button class="demo-account" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123"><span class="avatar avatar-student">R</span><span><strong>Student 3 · Riya Sharma</strong><small>Separate test identity</small></span><span class="arrow">→</span></button>
-        <button class="demo-account" type="button" data-demo-email="student4@lostlink.local" data-demo-password="student4123"><span class="avatar avatar-student">K</span><span><strong>Student 4 · Kabir Rao</strong><small>Separate test identity</small></span><span class="arrow">→</span></button>
-        <button id="fillOffice" class="demo-account" type="button"><span class="avatar avatar-office">O</span><span><strong>Campus office staff</strong><small>Intake, tag and verify claims</small></span><span class="arrow">→</span></button>
-        <p class="demo-credentials">Local demo only. Do not use demo credentials on a deployed or shared server.</p>
+        <div class="divider-label"><span></span><small>LOCAL 1-CLICK DEMO ACCESS</small><span></span></div>
+        <button id="fillStudent" class="demo-account" type="button">
+          <span class="avatar avatar-student">S</span>
+          <span><strong>Student 1 · Alex Chen</strong><small>Report, search and submit claims</small></span>
+          <span class="arrow">→</span>
+        </button>
+        <button class="demo-account" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
+          <span class="avatar avatar-student">A</span>
+          <span><strong>Student 2 · Aarav Mehta</strong><small>Separate test student identity</small></span>
+          <span class="arrow">→</span>
+        </button>
+        <button class="demo-account" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
+          <span class="avatar avatar-student">R</span>
+          <span><strong>Student 3 · Riya Sharma</strong><small>Separate test student identity</small></span>
+          <span class="arrow">→</span>
+        </button>
+        <button class="demo-account" type="button" data-demo-email="student4@lostlink.local" data-demo-password="student4123">
+          <span class="avatar avatar-student">K</span>
+          <span><strong>Student 4 · Kabir Rao</strong><small>Separate test student identity</small></span>
+          <span class="arrow">→</span>
+        </button>
+        <button id="fillOffice" class="demo-account" type="button">
+          <span class="avatar avatar-office">O</span>
+          <span><strong>Campus Office Staff</strong><small>Intake items, assign Tag IDs, verify claims</small></span>
+          <span class="arrow">→</span>
+        </button>
+        <p class="demo-credentials">Local demo mode enabled. Test credentials stay isolated to this environment.</p>
       </div>
-      <div class="privacy-note"><span class="lock-icon">⌑</span><span><strong>Private by design</strong><small>Claim evidence and internal verification details are visible only to the claimant and authorised office staff.</small></span></div>
+      <div class="privacy-note">
+        <span class="lock-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </span>
+        <span><strong>Private & Secure by Design</strong><small>Claim explanations and sensitive verification evidence are restricted to claimant and authorized office staff.</small></span>
+      </div>
     </section>
   </main>
 
+  <!-- =====================================================================
+       AUTHENTICATED APPLICATION SHELL
+       ===================================================================== -->
   <main id="appView" class="app-shell hidden">
     <header class="app-header">
-      <a class="brand-lockup compact" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost & found</small></span></a>
+      <a class="brand-lockup compact" href="/" aria-label="DejaVu home">
+        <span class="brand-mark">LL</span>
+        <span><strong>DejaVu</strong><small>Campus Lost & Found</small></span>
+      </a>
       <div class="header-right">
         <span id="roleChip" class="role-chip">Student</span>
-        <div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Alex Chen</span></div>
-        <button id="viewSwitchBtn" class="button button-primary button-small" type="button">Switch to office</button>
-        <button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button>
+        <div class="user-menu">
+          <span id="userInitial" class="avatar avatar-student">A</span>
+          <span id="userName" class="user-name">Alex Chen</span>
+        </div>
+        <button id="viewSwitchBtn" class="button button-primary button-small" type="button">Switch to office console</button>
+        <button id="showLoginButton" class="button button-quiet button-small" type="button">Switch account</button>
         <button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button>
       </div>
     </header>
 
     <section class="welcome-row">
       <div>
-        <p class="eyebrow">CAMPUS PROPERTY, MADE EASIER</p>
+        <p class="eyebrow">CAMPUS CUSTODY & VERIFICATION NETWORK</p>
         <h1 id="welcomeTitle">Find what you are looking for.</h1>
-        <p id="welcomeSubtitle" class="muted">Search reports and explore possible matches.</p>
+        <p id="welcomeSubtitle" class="muted">Search campus-held inventory, explore AI match candidates, and track claim status.</p>
       </div>
-      <div class="welcome-mark" aria-hidden="true"><span>LL</span><i>↗</i></div>
+      <div class="welcome-mark" aria-hidden="true">
+        <span>LL</span>
+        <i><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 7 17 7 17 17"></polyline><line x1="7" y1="17" x2="17" y2="7"></line></svg></i>
+      </div>
     </section>
 
+    <!-- Tactile Segmented Navigation Bar -->
     <nav id="studentNav" class="tab-nav" aria-label="LostLink sections">
-      <button class="tab-button active" type="button" data-view="browse"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.5 4.5"></path></svg> Browse items</button>
-      <button class="tab-button" type="button" data-view="report"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg> New report</button>
-      <button class="tab-button" type="button" data-view="my-reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.8h7l4 4V20H7z"></path><path d="M14 4v4h4M10 13h5M10 16.5h5"></path></svg> My reports</button>
-      <button class="tab-button" type="button" data-view="my-claims"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg> My claims <span id="claimNavCount" class="nav-count hidden">0</span></button>
-      <button class="tab-button" type="button" data-view="notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg> Notifications <span id="notificationNavCount" class="nav-count hidden">0</span></button>
-      <button id="activityNavButton" class="tab-button" type="button" data-view="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path></svg> Activity & certificates</button>
-      <button id="officeNavButton" class="tab-button office-tab hidden" type="button" data-view="office"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> Office console</button>
+      <button class="tab-button active" type="button" data-view="browse">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Browse items</span>
+      </button>
+      <button class="tab-button" type="button" data-view="report">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        <span>New report</span>
+      </button>
+      <button class="tab-button" type="button" data-view="my-reports">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        <span>My reports</span>
+      </button>
+      <button class="tab-button" type="button" data-view="my-claims">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+        <span>My claims</span>
+        <span id="claimNavCount" class="nav-count hidden">0</span>
+      </button>
+      <button class="tab-button" type="button" data-view="notifications">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span>Notifications</span>
+        <span id="notificationNavCount" class="nav-count hidden">0</span>
+      </button>
+      <button id="activityNavButton" class="tab-button" type="button" data-view="activity">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="6"></circle><path d="m15.47 13.5 2.53 7.5-6-3-6 3 2.53-7.5"></path></svg>
+        <span>Activity & certificates</span>
+      </button>
+      <button id="officeNavButton" class="tab-button office-tab hidden" type="button" data-view="office">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span>Office console</span>
+      </button>
     </nav>
 
     <section id="notice" class="notice hidden" role="status"></section>
     <div id="appModeNote" class="app-mode-note hidden" role="status">Offline preview: changes stay in this browser session and are not saved to the campus database.</div>
 
+    <!-- =====================================================================
+         VIEW 1: BROWSE ITEMS
+         ===================================================================== -->
     <section id="browseView" class="content-view">
       <div class="section-heading">
-        <div><p class="eyebrow">SEARCH THE CAMPUS</p><h2>Items held by the office</h2><p class="muted">Only items received and registered by the office appear here.</p></div>
-        <span id="browseCount" class="count-pill">0 items</span>
+        <div>
+          <p class="eyebrow">CAMPUS INVENTORY SEARCH</p>
+          <h2>Items received by the campus office</h2>
+          <p class="muted">Only found items physically received, verified and registered in campus custody appear here.</p>
+        </div>
+        <span id="browseCount" class="count-pill">0 items registered</span>
       </div>
+
       <form id="searchForm" class="filter-panel">
-        <label class="search-field"><span>⌕</span><input id="filterQuery" type="search" placeholder="Try “blue backpack” or “earbuds”"></label>
+        <label class="search-field">
+          <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
+          <input id="filterQuery" type="search" placeholder="Search keywords (e.g. “navy backpack”, “Sony headphones”)" autocomplete="off">
+        </label>
         <label>Category<select id="filterCategory"><option value="">All categories</option></select></label>
-        <label>Block / building<select id="filterBlock"><option value="">All locations</option></select></label>
-        <label>Room<input id="filterRoom" maxlength="80" placeholder="Room code"></label>
-        <div class="date-filter"><label>From<input id="filterDateFrom" type="date"></label><label>To<input id="filterDateTo" type="date"></label></div>
-        <button class="button button-primary" type="submit">Search</button>
-        <button id="clearFilters" class="button button-quiet" type="button">Clear</button>
+        <label>Block / building<select id="filterBlock"><option value="">All campus blocks</option></select></label>
+        <label>Room<input id="filterRoom" maxlength="80" placeholder="e.g. A-102"></label>
+        <div class="date-filter">
+          <label>Date from<input id="filterDateFrom" type="date"></label>
+          <label>Date to<input id="filterDateTo" type="date"></label>
+        </div>
+        <button class="button button-primary" type="submit">Filter items</button>
+        <button id="clearFilters" class="button button-quiet" type="button">Reset</button>
       </form>
+
       <div id="browseResults" class="item-grid"></div>
-      <div id="browseEmpty" class="empty-state hidden"><span class="empty-icon">⌕</span><h3>No items found</h3><p>Try a broader search or remove a filter. Sensitive items may have limited public details.</p></div>
-      <div class="pagination-controls"><button id="browseLoadMore" class="button button-quiet hidden" type="button">Load more</button></div>
+
+      <div id="browseEmpty" class="empty-state hidden">
+        <span class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </span>
+        <h3>No matching items found</h3>
+        <p>Try broadening your query keywords or adjusting location and category filters. Sensitive items may have limited public details.</p>
+      </div>
+
+      <div class="pagination-controls">
+        <button id="browseLoadMore" class="button button-quiet hidden" type="button">Load more items</button>
+      </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 2: GUIDED REPORTING (LOST & FOUND)
+         ===================================================================== -->
     <section id="reportView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">CREATE A RECORD</p><h2 id="reportModeTitle">Choose your report type</h2><p id="reportModeDescription" class="muted">Lost and Found have separate guided paths so each report starts with the right context.</p></div></div>
-      <div id="reportTypeChooser" class="report-type-chooser">
-        <button class="report-type-card" type="button" data-report-kind="lost"><span class="report-type-icon">⌕</span><strong>I lost something</strong><small>Tell us what went missing, when you last saw it and where to search.</small><span class="report-type-action">Start lost report ↗</span></button>
-        <button class="report-type-card" type="button" data-report-kind="found"><span class="report-type-icon">✦</span><strong>I found something</strong><small>Record the item and where it was found. Office staff must receive it before it is searchable.</small><span class="report-type-action">Start found report ↗</span></button>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CAMPUS PROPERTY REPORTING</p>
+          <h2 id="reportModeTitle">Choose your report type</h2>
+          <p id="reportModeDescription" class="muted">Lost and Found reports follow tailored paths so campus staff and AI matching receive optimal context.</p>
+        </div>
       </div>
+
+      <div id="reportTypeChooser" class="report-type-chooser">
+        <button class="report-type-card" type="button" data-report-kind="lost">
+          <span class="report-type-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line></svg>
+          </span>
+          <strong>I lost something</strong>
+          <small>Document what went missing, when you last held it, and where to look. Our AI matching will alert you when likely items are turned in.</small>
+          <span class="report-type-action">Start guided lost report →</span>
+        </button>
+
+        <button class="report-type-card" type="button" data-report-kind="found">
+          <span class="report-type-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          </span>
+          <strong>I found something</strong>
+          <small>Document an item found on campus. Hand it over to the campus office for physical custody so it can be tagged and returned to its owner.</small>
+          <span class="report-type-action">Start guided found report →</span>
+        </button>
+      </div>
+
       <div class="form-layout">
         <form id="reportForm" class="form-card form-stack hidden">
           <input id="reportType" name="report_type" type="hidden" value="">
-          <div class="form-section-heading"><span class="step-number">01</span><div><strong id="reportFormStepTitle">Report details</strong><small id="reportFormStepHint">Add the item and context.</small></div></div>
-          <div class="two-columns">
-            <label>Item name <span class="field-required">Required</span><input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy backpack"></label>
-            <div><label for="reportCategory">Category <span class="field-required">Required</span></label><select id="reportCategory" name="category" required></select><div class="category-ai-control"><button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button><small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small></div></div>
+
+          <div class="form-section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <strong id="reportFormStepTitle">Primary Item Information</strong>
+              <small id="reportFormStepHint">Specify the item title and standard campus category.</small>
+            </div>
           </div>
-          <label>Description <span class="field-required">Required</span><textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea><small class="field-hint">Describe public/visible details only. Keep private proof of ownership, serial numbers, access codes and unique hidden marks out of this description.</small></label>
-          <div class="form-section-heading space-top"><span class="step-number">02</span><div><strong>Additional item details</strong><small>Optional details improve search and candidate matching.</small></div></div>
+
           <div class="two-columns">
-            <label>Brand / make <span class="field-optional">Optional</span><input id="reportBrand" name="brand" maxlength="80" placeholder="e.g. Wildcraft, Casio"></label>
-            <label>Main colour <span class="field-optional">Optional</span><input id="reportColor" name="primary_color" maxlength="60" placeholder="e.g. navy blue"></label>
+            <label>Item name <span class="field-required">Required</span>
+              <input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy Blue Wildcraft Backpack">
+            </label>
+            <div>
+              <label for="reportCategory">Category <span class="field-required">Required</span></label>
+              <select id="reportCategory" name="category" required></select>
+              <div class="category-ai-control">
+                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 2l2.4 4.8L20 8l-4 4 1 5.5-5-2.7-5 2.7 1-5.5-4-4 5.6-1.2L12 2z"></path></svg>
+                  Suggest category with AI
+                </button>
+                <small id="categorySuggestion" class="field-hint" role="status">AI suggestions are advisory. You choose the final category.</small>
+              </div>
+            </div>
           </div>
-          <label>Visible characteristics <span class="field-optional">Optional</span><textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. two front pockets, black zip, small scratch on the outside"></textarea><small class="field-hint">Only enter features that are safe to show to other students. Keep owner-only clues for the private claim process.</small></label>
-          <label><span id="reportDateLabel">Approximate date and time</span> <span class="field-optional">Optional</span><input id="reportDate" name="occurred_at" type="datetime-local"><small id="reportDateHelp" class="field-hint">Use your best estimate; leave blank if you are unsure rather than guessing.</small></label>
-          <div class="form-section-heading space-top"><span class="step-number">02</span><div><strong id="reportLocationHeading">Where did you last see it?</strong><small id="reportLocationHelp">Choose the closest known place. “Not sure” is okay.</small></div></div>
+
+          <label>Description <span class="field-required">Required</span>
+            <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Describe the item model, outer condition, approximate size, and visible indicators."></textarea>
+            <small class="field-hint">Public details only. Keep private proof of ownership, serial numbers, password hints, and hidden engravings confidential for private claims.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">02</span>
+            <div>
+              <strong>Distinctive Visual Clues</strong>
+              <small>Helpful attributes that improve matching accuracy.</small>
+            </div>
+          </div>
+
           <div class="two-columns">
-            <label>Block / building or nearby area <span class="field-required">Required</span><select id="reportBlock" name="location_block"><option value="">Choose a block or area</option></select><small class="field-hint">A block/building or the nearby area below is required. Choose “Other / not sure” when needed.</small></label>
-            <label>Floor <span class="field-optional">Optional</span><select id="reportFloor" name="location_floor"><option value="">Not sure</option></select></label>
+            <label>Brand / Manufacturer <span class="field-optional">Optional</span>
+              <input id="reportBrand" name="brand" maxlength="80" placeholder="e.g. Sony, Casio, Wildcraft">
+            </label>
+            <label>Primary colour <span class="field-optional">Optional</span>
+              <input id="reportColor" name="primary_color" maxlength="60" placeholder="e.g. Matte Black, Pacific Blue">
+            </label>
           </div>
+
+          <label>Visible characteristics <span class="field-optional">Optional</span>
+            <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two mesh bottle holders, reflective trim on shoulder strap, small scuff mark on base"></textarea>
+            <small class="field-hint">Only enter features safe to show publicly to other campus members.</small>
+          </label>
+
+          <label>
+            <span id="reportDateLabel">Approximate date and time</span> <span class="field-optional">Optional</span>
+            <input id="reportDate" name="occurred_at" type="datetime-local">
+            <small id="reportDateHelp" class="field-hint">Best estimate is fine. Leave blank if unsure rather than guessing.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">03</span>
+            <div>
+              <strong id="reportLocationHeading">Campus Location</strong>
+              <small id="reportLocationHelp">Specify where the item was last seen or found.</small>
+            </div>
+          </div>
+
           <div class="two-columns">
-            <label>Room <span class="field-optional">Optional</span><input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. A-102"></label>
-            <label>Nearby area <span class="field-optional">Optional</span><input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Library entrance"></label>
+            <label>Block / building or area <span class="field-required">Required</span>
+              <select id="reportBlock" name="location_block">
+                <option value="">Choose a building or area</option>
+              </select>
+            </label>
+            <label>Floor <span class="field-optional">Optional</span>
+              <select id="reportFloor" name="location_floor"><option value="">Not sure</option></select>
+            </label>
           </div>
-          <div class="form-section-heading space-top"><span class="step-number">03</span><div><strong>Photograph (optional)</strong><small>A clear photo can help people recognise the item.</small></div></div>
-          <label class="upload-box" for="reportImage"><span class="upload-symbol">↑</span><span><strong id="imageLabel">Choose a photo</strong><small>JPG, PNG or WebP · up to 5 MB</small></span><input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp"></label>
-          <p id="reportImageWarning" class="field-hint">Avoid photos that expose identity numbers, access codes or other sensitive information.</p>
+
+          <div class="two-columns">
+            <label>Room / Section <span class="field-optional">Optional</span>
+              <input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. 2nd Floor Study Hall, Lab 3B">
+            </label>
+            <label>Nearby landmark <span class="field-optional">Optional</span>
+              <input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Beside Water Cooler, Bleachers">
+            </label>
+          </div>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">04</span>
+            <div>
+              <strong>Photograph (Optional)</strong>
+              <small>A photo significantly speeds up identification.</small>
+            </div>
+          </div>
+
+          <label class="upload-box" for="reportImage">
+            <span class="upload-symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </span>
+            <span>
+              <strong id="imageLabel">Choose a photograph</strong>
+              <small>JPG, PNG or WebP · Up to 5 MB</small>
+            </span>
+            <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+          </label>
+          <p id="reportImageWarning" class="field-hint">Never upload photos that expose government IDs, student numbers, credit cards, or security keys.</p>
+
           <p id="reportError" class="form-error" role="alert"></p>
-          <div class="form-actions"><button id="reportSubmitButton" class="button button-primary" type="submit"><span id="reportSubmitLabel">Submit lost report</span> <span aria-hidden="true">↗</span></button><button id="backToReportTypes" class="button button-quiet" type="button">Change report type</button><button id="cancelReport" class="button button-quiet" type="button">Cancel</button></div>
+
+          <div class="form-actions">
+            <button id="reportSubmitButton" class="button button-primary" type="submit">
+              <span id="reportSubmitLabel">Submit lost report</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </button>
+            <button id="backToReportTypes" class="button button-quiet" type="button">Change report type</button>
+            <button id="cancelReport" class="button button-quiet" type="button">Cancel</button>
+          </div>
         </form>
+
         <aside class="side-guidance">
-          <div class="guidance-icon">✳</div><h3>Helpful details make better matches.</h3><p>Describe what is visible, when and where it was last seen, and any relevant non-sensitive characteristics.</p>
-          <div class="guidance-rule"><span>✓</span><span><strong>Be specific</strong><small>“Blue backpack with two front pockets” is more useful than “bag”.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save a distinctive mark or hidden detail for the verification process.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Use honest estimates</strong><small>Choose an approximate area if you do not remember the exact room.</small></span></div>
+          <div class="guidance-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <h3>Helpful details create instant matches.</h3>
+          <p class="muted">Specific descriptions allow our neural similarity models to suggest relevant candidate inventory to campus staff immediately.</p>
+          <div class="guidance-rule">
+            <span>✓</span>
+            <span><strong>Be specific with models</strong><small>“Wildcraft 32L Navy Blue Backpack” matches faster than simply “bag”.</small></span>
+          </div>
+          <div class="guidance-rule">
+            <span>✓</span>
+            <span><strong>Reserve secret clues for claims</strong><small>Save private marks, serial digits, or internal pouch contents to prove ownership.</small></span>
+          </div>
+          <div class="guidance-rule">
+            <span>✓</span>
+            <span><strong>Use estimated time windows</strong><small>Selecting the approximate period helps correlate office intake timestamps.</small></span>
+          </div>
         </aside>
       </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 3: MY REPORTS & AI MATCH EXPLORER
+         ===================================================================== -->
     <section id="myReportsView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">YOUR ACTIVITY</p><h2>My reports</h2><p class="muted">Check submitted reports and find possible matches for your lost items.</p></div><button class="button button-primary" type="button" data-go="report">＋ New report</button></div>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">STUDENT ACTIVITY</p>
+          <h2>My submitted reports</h2>
+          <p class="muted">Track active lost and found submissions and inspect AI-discovered candidate matches.</p>
+        </div>
+        <button class="button button-primary" type="button" data-go="report">＋ New report</button>
+      </div>
+
       <div id="myReportsList" class="stack-list"></div>
-      <div id="myReportsEmpty" class="empty-state hidden"><span class="empty-icon">▤</span><h3>No reports yet</h3><p>Your lost and found reports will appear here.</p></div>
-      <div class="pagination-controls"><button id="myReportsLoadMore" class="button button-quiet hidden" type="button">Load more</button></div>
-      <div id="matchesPanel" class="matches-panel hidden"><div class="section-heading"><div><p class="eyebrow">AI-ASSISTED COMPARISON</p><h2>Possible matches</h2><p class="muted">These are suggestions, not proof of ownership.</p></div><button id="closeMatches" class="button button-quiet button-small" type="button">Close</button></div><div id="matchResults" class="item-grid"></div></div>
+
+      <div id="myReportsEmpty" class="empty-state hidden">
+        <span class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+        </span>
+        <h3>No submitted reports yet</h3>
+        <p>Your lost item inquiries and found item notifications will be organized here with live status updates.</p>
+      </div>
+
+      <div class="pagination-controls">
+        <button id="myReportsLoadMore" class="button button-quiet hidden" type="button">Load more reports</button>
+      </div>
+
+      <!-- AI Match Exploration Drawer -->
+      <div id="matchesPanel" class="matches-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">AI-ASSISTED CANDIDATE DISCOVERY</p>
+            <h2>Possible matching items held by campus office</h2>
+            <p class="muted">Suggestions are ranked by multimodal similarity. AI matching is a discovery aid, never proof of ownership.</p>
+          </div>
+          <button id="closeMatches" class="button button-quiet button-small" type="button">Close matches</button>
+        </div>
+        <div id="matchResults" class="item-grid"></div>
+      </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 4: MY CLAIMS & EVIDENCE STATUS
+         ===================================================================== -->
     <section id="myClaimsView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">CLAIM STATUS</p><h2>My claims</h2><p class="muted">Your private evidence is visible to you and authorised office reviewers only.</p></div></div>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">OWNERSHIP CLAIMS</p>
+          <h2>My ownership claims</h2>
+          <p class="muted">Private claim evidence is accessible strictly to you and authorized office staff reviewing custody.</p>
+        </div>
+      </div>
+
       <div id="myClaimsList" class="stack-list"></div>
-      <div id="myClaimsEmpty" class="empty-state hidden"><span class="empty-icon">◷</span><h3>No claims submitted</h3><p>When you submit a claim for an item, its review status will appear here.</p></div>
-      <div class="pagination-controls"><button id="myClaimsLoadMore" class="button button-quiet hidden" type="button">Load more</button></div>
+
+      <div id="myClaimsEmpty" class="empty-state hidden">
+        <span class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </span>
+        <h3>No ownership claims submitted</h3>
+        <p>When you spot an item in Browse that belongs to you and submit a claim, its verification timeline will appear here.</p>
+      </div>
+
+      <div class="pagination-controls">
+        <button id="myClaimsLoadMore" class="button button-quiet hidden" type="button">Load more claims</button>
+      </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 5: NOTIFICATIONS
+         ===================================================================== -->
     <section id="notificationsView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">UPDATES</p><h2>Notifications</h2><p class="muted">Possible matches, claim reviews and contribution milestones appear here.</p></div><button id="readAllNotifications" class="button button-quiet button-small" type="button">Mark all read</button></div>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">REAL-TIME CAMPUS UPDATES</p>
+          <h2>Notifications & alerts</h2>
+          <p class="muted">Candidate matches, staff review decisions, and contribution rewards appear here.</p>
+        </div>
+        <button id="readAllNotifications" class="button button-quiet button-small" type="button">Mark all as read</button>
+      </div>
+
       <div id="notificationsList" class="stack-list"></div>
-      <div id="notificationsEmpty" class="empty-state hidden"><span class="empty-icon">♧</span><h3>You're all caught up</h3><p>New match suggestions and review updates will appear here.</p></div>
+
+      <div id="notificationsEmpty" class="empty-state hidden">
+        <span class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        </span>
+        <h3>You are all caught up</h3>
+        <p>New potential match alerts, evidence requests from office staff, and milestone updates will notify you here.</p>
+      </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 6: ACTIVITY, CERTIFICATES & LEADERBOARD
+         ===================================================================== -->
     <section id="activityView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">VERIFIED CONTRIBUTIONS</p><h2>Activity & certificates</h2><p class="muted">Earn recognition for found items that the campus office physically receives and verifies.</p></div><span class="count-pill">Verified activity only</span></div>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">COMMUNITY ENGAGEMENT & REPUTATION</p>
+          <h2>Activity & verified certificates</h2>
+          <p class="muted">Earn verifiable points and recognition whenever found items are physically turned in and verified by staff.</p>
+        </div>
+        <span class="count-pill">Office-verified events only</span>
+      </div>
+
       <div id="activityOverview" class="activity-overview"></div>
-      <div class="office-section leaderboard-section"><div class="section-heading compact-heading"><div><p class="eyebrow">CAMPUS COMMUNITY</p><h3>Contribution leaderboard</h3><p class="muted">Recognises verified contributions only. Email addresses and claim details are never shown.</p></div><span id="leaderboardParticipantCount" class="count-pill">0 contributors</span></div><div id="leaderboardSummary" class="leaderboard-summary"></div><div id="leaderboardList" class="leaderboard-list"></div><div id="leaderboardEmpty" class="inline-empty hidden">No verified contributions yet. Return accepted found items to start the board.</div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">RECOGNITION</p><h3>Your certificates</h3><p class="muted">Download certificates issued for earned milestones. Prototype certificates are not official college credentials.</p></div></div><div id="certificateList" class="certificate-grid"></div><div id="certificateEmpty" class="inline-empty hidden">No certificates yet. A certificate is issued when you reach a verified contribution milestone.</div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">POINTS HISTORY</p><h3>Activity ledger</h3><p class="muted">Points are added only once for office-confirmed contribution events.</p></div></div><div id="activityLedger" class="stack-list"></div><div id="activityEmpty" class="inline-empty hidden">No verified activity points yet.</div></div>
+
+      <div class="office-section leaderboard-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">CAMPUS HONORS</p>
+            <h3>Community contribution leaderboard</h3>
+            <p class="muted">Recognizes verified campus turn-ins and successful owner returns. Personal emails and private details are never exposed.</p>
+          </div>
+          <span id="leaderboardParticipantCount" class="count-pill">0 contributors</span>
+        </div>
+        <div id="leaderboardSummary" class="leaderboard-summary"></div>
+        <div id="leaderboardList" class="leaderboard-list"></div>
+        <div id="leaderboardEmpty" class="inline-empty hidden">No verified turn-ins yet. Turn in an accepted found item to start the community board.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">MILESTONE CREDENTIALS</p>
+            <h3>Earned milestone certificates</h3>
+            <p class="muted">Download PDF certificates generated for verified community contribution milestones.</p>
+          </div>
+        </div>
+        <div id="certificateList" class="certificate-grid"></div>
+        <div id="certificateEmpty" class="inline-empty hidden">No certificates issued yet. Certificates are awarded when reaching verified milestone thresholds.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">AUDIT TRAIL</p>
+            <h3>Verified points ledger</h3>
+            <p class="muted">Immutable ledger showing points awarded for office-confirmed turn-ins and verified returns.</p>
+          </div>
+        </div>
+        <div id="activityLedger" class="stack-list"></div>
+        <div id="activityEmpty" class="inline-empty hidden">No verified activity points recorded yet.</div>
+      </div>
     </section>
 
+    <!-- =====================================================================
+         VIEW 7: AUTHORIZED CAMPUS OFFICE CONSOLE
+         ===================================================================== -->
     <section id="officeView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">AUTHORISED STAFF ONLY</p><h2>Campus office console</h2><p class="muted">Confirm physical intake, review claims and record approved handovers with a tag check.</p></div><span class="role-chip role-chip-office">Office staff</span></div>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">AUTHORIZED CAMPUS STAFF ONLY</p>
+          <h2>Campus office management console</h2>
+          <p class="muted">Accept physical items into custody, update secure storage locations, adjudicate claims, and verify physical handovers.</p>
+        </div>
+        <span class="role-chip role-chip-office">Campus office staff</span>
+      </div>
+
       <div id="officeStats" class="stats-grid"></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">PHYSICAL CUSTODY</p><h3>Found items awaiting intake</h3><p class="muted">Assign a physical tag only after confirming the item has been received.</p></div></div><div id="intakeQueue" class="stack-list"></div><div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div><div class="pagination-controls"><button id="intakeLoadMore" class="button button-quiet hidden" type="button">Load more intake reports</button></div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">CAMPUS STORAGE REGISTER</p><h3>Items currently in custody</h3><p class="muted">Use the private tag ID to locate each physical item. Update the recorded location whenever it is moved within campus.</p></div></div><div id="officeInventory" class="stack-list"></div><div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items are currently in campus custody.</div><div class="pagination-controls"><button id="inventoryLoadMore" class="button button-quiet hidden" type="button">Load more inventory</button></div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">OWNERSHIP REVIEW</p><h3>Claims requiring attention</h3><p class="muted">Private evidence, internal risk level and tag details are never shown in the student view.</p></div></div><div id="officeClaims" class="stack-list"></div><div id="officeClaimsEmpty" class="inline-empty hidden">No claims require active review.</div><div class="pagination-controls"><button id="officeClaimsLoadMore" class="button button-quiet hidden" type="button">Load more claims</button></div></div>
-      <div class="office-section"><div class="section-heading compact-heading"><div><p class="eyebrow">APPROVED CLAIMS</p><h3>Ready for physical handover</h3><p class="muted">Check the claimant, verify the physical tag and confirm the item is actually handed over.</p></div></div><div id="handoverQueue" class="stack-list"></div><div id="handoverEmpty" class="inline-empty hidden">No approved claims are awaiting handover.</div><div class="pagination-controls"><button id="handoverLoadMore" class="button button-quiet hidden" type="button">Load more handovers</button></div></div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">PHYSICAL INTAKE WORKFLOW</p>
+            <h3>Found items awaiting physical intake</h3>
+            <p class="muted">Assign a physical barcode/tag only after physically receiving the item at the campus counter.</p>
+          </div>
+        </div>
+        <div id="intakeQueue" class="stack-list"></div>
+        <div id="intakeEmpty" class="inline-empty hidden">No found items are currently awaiting intake.</div>
+        <div class="pagination-controls">
+          <button id="intakeLoadMore" class="button button-quiet hidden" type="button">Load more intake reports</button>
+        </div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">CAMPUS STORAGE REGISTER</p>
+            <h3>Items in physical custody</h3>
+            <p class="muted">Locate items by official Tag ID. Keep the recorded storage position updated whenever items are moved.</p>
+          </div>
+        </div>
+        <div id="officeInventory" class="stack-list"></div>
+        <div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items currently stored in campus custody.</div>
+        <div class="pagination-controls">
+          <button id="inventoryLoadMore" class="button button-quiet hidden" type="button">Load more inventory</button>
+        </div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">OWNERSHIP ADJUDICATION</p>
+            <h3>Claims requiring staff review</h3>
+            <p class="muted">Inspect claimant private evidence, verify risk level, check conflicting claims, and execute decision.</p>
+          </div>
+        </div>
+        <div id="officeClaims" class="stack-list"></div>
+        <div id="officeClaimsEmpty" class="inline-empty hidden">No active claims require staff review.</div>
+        <div class="pagination-controls">
+          <button id="officeClaimsLoadMore" class="button button-quiet hidden" type="button">Load more claims</button>
+        </div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">COUNTER RELEASE</p>
+            <h3>Approved claims ready for physical handover</h3>
+            <p class="muted">Verify claimant identity against student registry, match the physical Tag ID label, and record handover.</p>
+          </div>
+        </div>
+        <div id="handoverQueue" class="stack-list"></div>
+        <div id="handoverEmpty" class="inline-empty hidden">No approved items currently awaiting physical collection.</div>
+        <div class="pagination-controls">
+          <button id="handoverLoadMore" class="button button-quiet hidden" type="button">Load more handovers</button>
+        </div>
+      </div>
     </section>
 
-    <footer class="app-footer"><span>LostLink · Campus property assistance</span><span>Potential matches are suggestions, not proof of ownership.</span></footer>
+    <footer class="app-footer">
+      <span>DejaVu LostLink · Campus Property Custody Protocol</span>
+      <span>Potential matches are AI-generated suggestions, not proof of ownership.</span>
+    </footer>
   </main>
 
+  <!-- =====================================================================
+       APPLE FROSTED DIALOGS & ACTION SHEETS
+       ===================================================================== -->
+
+  <!-- Close Report Dialog -->
   <dialog id="closeReportDialog" class="dialog-card">
     <form id="closeReportForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">REPORT LIFECYCLE</p><h2 id="closeReportDialogTitle">Close lost report</h2></div><button id="closeCloseReport" type="button" class="icon-button" aria-label="Close">×</button></div>
-      <p id="closeReportDescription" class="muted small-copy">Close a lost report when you recovered the item elsewhere, no longer need to search, or submitted a duplicate. Closed reports stop generating match suggestions.</p>
-      <label>Reason <span class="field-required">Required</span><select id="closeReportReason" required><option value="recovered_elsewhere">I recovered the item elsewhere</option><option value="no_longer_searching">I no longer need to search</option><option value="duplicate">This is a duplicate report</option></select></label>
-      <label>Additional note <span class="field-optional">Optional</span><textarea id="closeReportNote" rows="3" maxlength="400" placeholder="Optional context for your own record"></textarea></label>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">REPORT LIFECYCLE</p>
+          <h2 id="closeReportDialogTitle">Close lost report</h2>
+        </div>
+        <button id="closeCloseReport" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+      <p id="closeReportDescription" class="muted small-copy">Close this report if you recovered the item elsewhere, no longer need to search, or submitted a duplicate. Closed reports stop generating match alerts.</p>
+      <label>Reason for closing <span class="field-required">Required</span>
+        <select id="closeReportReason" required>
+          <option value="recovered_elsewhere">I recovered the item elsewhere</option>
+          <option value="no_longer_searching">I no longer need to search</option>
+          <option value="duplicate">This is a duplicate report</option>
+        </select>
+      </label>
+      <label>Additional note <span class="field-optional">Optional</span>
+        <textarea id="closeReportNote" rows="3" maxlength="400" placeholder="Optional context for your own records"></textarea>
+      </label>
       <p id="closeReportError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="confirmCloseReportButton" class="button button-danger" type="submit">Close report</button><button id="cancelCloseReport" class="button button-quiet" type="button">Keep it open</button></div>
+      <div class="form-actions">
+        <button id="confirmCloseReportButton" class="button button-danger" type="submit">Close report</button>
+        <button id="cancelCloseReport" class="button button-quiet" type="button">Keep it active</button>
+      </div>
     </form>
   </dialog>
 
+  <!-- Decision Confirm Dialog -->
   <dialog id="decisionConfirmDialog" class="dialog-card">
     <form id="decisionConfirmForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">CLAIM REVIEW</p><h2 id="decisionConfirmTitle">Confirm review decision</h2></div><button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">CLAIM DECISION REVIEW</p>
+          <h2 id="decisionConfirmTitle">Confirm review decision</h2>
+        </div>
+        <button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
       <p id="decisionConfirmMessage" class="muted small-copy"></p>
-      <p class="field-hint">The decision and any internal note will be recorded in the audit trail. Approval does not complete the return; the office must later verify the physical Tag ID and handover.</p>
+      <p class="field-hint">The decision and review notes will be recorded in the campus audit trail. Approval moves the claim to ready for collection; physical handover is confirmed at counter.</p>
       <p id="decisionConfirmError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="confirmDecisionButton" class="button button-primary" type="submit">Confirm decision</button><button id="cancelDecisionConfirm" class="button button-quiet" type="button">Cancel</button></div>
+      <div class="form-actions">
+        <button id="confirmDecisionButton" class="button button-primary" type="submit">Confirm decision</button>
+        <button id="cancelDecisionConfirm" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
 
-<dialog id="additionalEvidenceDialog" class="dialog-card">
+  <!-- Additional Evidence Dialog -->
+  <dialog id="additionalEvidenceDialog" class="dialog-card">
     <form id="additionalEvidenceForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">CLAIM FOLLOW-UP</p><h2>Add ownership evidence</h2></div><button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close">×</button></div>
-      <p id="additionalEvidenceSummary" class="muted small-copy">The office requested more evidence for this claim.</p>
-      <label>Additional ownership evidence <span class="field-required">Required</span><textarea id="additionalEvidenceText" rows="5" required minlength="20" maxlength="1800" placeholder="Add relevant details the office can check. Never share passwords, PINs or one-time codes."></textarea></label>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">CLAIM FOLLOW-UP</p>
+          <h2>Provide additional ownership proof</h2>
+        </div>
+        <button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+      <p id="additionalEvidenceSummary" class="muted small-copy">Campus staff requested additional evidence to verify this claim.</p>
+      <label>Additional ownership details <span class="field-required">Required</span>
+        <textarea id="additionalEvidenceText" rows="5" required minlength="20" maxlength="1800" placeholder="Add relevant details the office can check. Never share passwords, PINs or one-time codes."></textarea>
+      </label>
       <p id="additionalEvidenceError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="saveAdditionalEvidenceButton" class="button button-primary" type="submit">Submit evidence</button><button id="cancelAdditionalEvidence" class="button button-quiet" type="button">Cancel</button></div>
+      <div class="form-actions">
+        <button id="saveAdditionalEvidenceButton" class="button button-primary" type="submit">Submit additional evidence</button>
+        <button id="cancelAdditionalEvidence" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
 
+  <!-- Storage Location Update Dialog -->
   <dialog id="storageUpdateDialog" class="dialog-card">
     <form id="storageUpdateForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">CAMPUS INVENTORY</p><h2>Update storage location</h2></div><button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close">×</button></div>
-      <p id="storageUpdateSummary" class="muted small-copy">Update this record only after the item has physically been moved.</p>
-      <label>New physical location <span class="field-required">Required</span><input id="storageUpdateLocation" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>
-      <label>Internal move note <span class="field-optional">Optional</span><textarea id="storageUpdateNote" rows="3" maxlength="800" placeholder="Optional reason or custody note"></textarea></label>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">CAMPUS STORAGE AUDIT</p>
+          <h2>Update physical storage location</h2>
+        </div>
+        <button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+      <p id="storageUpdateSummary" class="muted small-copy">Update this record only after the item has physically been moved to the new location.</p>
+      <label>New storage location <span class="field-required">Required</span>
+        <input id="storageUpdateLocation" required minlength="4" maxlength="160" placeholder="e.g. Lost & Found Room B-104 · Cabinet A · Shelf 02">
+      </label>
+      <label>Internal move note <span class="field-optional">Optional</span>
+        <textarea id="storageUpdateNote" rows="3" maxlength="800" placeholder="Optional reason or custody note"></textarea>
+      </label>
       <p id="storageUpdateError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="saveStorageUpdateButton" class="button button-primary" type="submit">Save location</button><button id="cancelStorageUpdate" class="button button-quiet" type="button">Cancel</button></div>
+      <div class="form-actions">
+        <button id="saveStorageUpdateButton" class="button button-primary" type="submit">Save location</button>
+        <button id="cancelStorageUpdate" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
 
-<dialog id="handoverDialog" class="dialog-card">
+  <!-- Physical Handover Dialog -->
+  <dialog id="handoverDialog" class="dialog-card">
     <form id="handoverForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">PHYSICAL RETURN</p><h2>Confirm item handover</h2></div><button id="closeHandover" type="button" class="icon-button" aria-label="Close">×</button></div>
-      <p id="handoverSummary" class="muted small-copy">Read the physical label and verify the claimant before release.</p>
-      <label>Physical Tag ID <span class="field-required">Required</span><input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read the ID printed on the item's physical label"></label>
-      <label class="checkbox-line"><input id="handoverIdentityChecked" type="checkbox" required> I checked the claimant's identity under campus policy.</label>
-      <label class="checkbox-line"><input id="handoverPhysicalChecked" type="checkbox" required> I physically handed the item to the verified claimant.</label>
-      <label>Internal handover note <span class="field-optional">Optional</span><textarea id="handoverNote" rows="2" maxlength="800" placeholder="Do not include sensitive personal data"></textarea></label>
-      <p class="field-hint">If the Tag ID does not match the record, stop the release and re-check the physical item.</p>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">PHYSICAL COUNTER RELEASE</p>
+          <h2>Confirm item return to claimant</h2>
+        </div>
+        <button id="closeHandover" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+      <p id="handoverSummary" class="muted small-copy">Read the physical label attached to the item and inspect claimant credentials before release.</p>
+      <label>Physical Tag ID on item label <span class="field-required">Required</span>
+        <input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read barcode/Tag ID printed on the physical label">
+      </label>
+      <label class="checkbox-line">
+        <input id="handoverIdentityChecked" type="checkbox" required>
+        <span>I checked the claimant's student identity against campus records.</span>
+      </label>
+      <label class="checkbox-line">
+        <input id="handoverPhysicalChecked" type="checkbox" required>
+        <span>I physically handed the verified item to the authorized claimant.</span>
+      </label>
+      <label>Internal handover note <span class="field-optional">Optional</span>
+        <textarea id="handoverNote" rows="2" maxlength="800" placeholder="Internal custody remarks. Do not include sensitive personal data."></textarea>
+      </label>
+      <p class="field-hint">If the scanned Tag ID does not match the database record, release is immediately blocked.</p>
       <p id="handoverError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="confirmHandoverButton" class="button button-primary" type="submit">Record physical handover</button><button id="cancelHandover" class="button button-quiet" type="button">Cancel</button></div>
+      <div class="form-actions">
+        <button id="confirmHandoverButton" class="button button-primary" type="submit">Record physical handover</button>
+        <button id="cancelHandover" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
 
-<dialog id="itemDetailsDialog" class="dialog-card">
+  <!-- Item Details Dialog -->
+  <dialog id="itemDetailsDialog" class="dialog-card">
     <div class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">PUBLIC ITEM RECORD</p><h2 id="itemDetailsTitle">Item details</h2></div><button id="closeItemDetails" type="button" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">PUBLIC ITEM RECORD</p>
+          <h2 id="itemDetailsTitle">Item details</h2>
+        </div>
+        <button id="closeItemDetails" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
       <div id="itemDetailsContent" class="item-details-content"></div>
-      <div class="form-actions"><button id="itemDetailsClaimButton" class="button button-primary" type="button">Submit claim</button><button id="cancelItemDetails" class="button button-quiet" type="button">Close details</button></div>
+      <div class="form-actions">
+        <button id="itemDetailsClaimButton" class="button button-primary" type="button">Submit ownership claim →</button>
+        <button id="cancelItemDetails" class="button button-quiet" type="button">Close details</button>
+      </div>
     </div>
   </dialog>
 
+  <!-- Ownership Claim Dialog -->
   <dialog id="claimDialog" class="dialog-card">
     <form id="claimForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Help verify this item</h2></div><button id="closeClaim" type="button" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">OWNERSHIP CLAIM</p>
+          <h2>Help verify ownership of this item</h2>
+        </div>
+        <button id="closeClaim" type="button" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+
       <div id="claimItemSummary" class="claim-item-summary"></div>
-      <label>Link to your lost report <span class="field-optional">Optional</span><select id="claimLostReport"><option value="">No linked lost report</option></select><small class="field-hint">If this claim is approved and the item is physically returned, the linked lost report will be closed automatically.</small></label>
-      <p class="muted small-copy">Explain details that can establish ownership. This response is private and will be reviewed by authorised office staff. Never share passwords, PINs or one-time codes.</p>
+
+      <label>Link to your open lost report <span class="field-optional">Optional</span>
+        <select id="claimLostReport"><option value="">No linked lost report</option></select>
+        <small class="field-hint">If this claim is approved and physically returned, the linked report is automatically closed.</small>
+      </label>
+
+      <p class="muted small-copy">Provide verifiable evidence establishing ownership. This explanation is private and reviewed strictly by authorized campus staff. Never share passwords or PINs.</p>
+
       <fieldset class="evidence-type-fieldset">
         <legend>Which kinds of proof can support your claim? <span class="field-required">Choose at least one</span></legend>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="purchase_or_receipt"> Purchase / receipt proof available for staff to check</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="packaging_or_accessory"> Matching packaging, accessory or paired item</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="timeline_and_location"> Consistent date and place of loss</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="device_or_account_context"> Device/account context that staff can independently verify</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> Other verifiable evidence</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="distinctive_features"> <span>Distinctive features, stickers, or hidden owner-only markings</span></label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="purchase_or_receipt"> <span>Original purchase receipt, invoice, or digital order record</span></label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="packaging_or_accessory"> <span>Matching original packaging, accessories, or paired items</span></label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="timeline_and_location"> <span>Consistent date, route, and timeline of loss</span></label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="device_or_account_context"> <span>Device/account context staff can independently verify</span></label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> <span>Other verifiable supporting evidence</span></label>
       </fieldset>
-      <label class="upload-box" for="claimEvidenceImage"><span class="upload-symbol">＋</span><span><strong id="claimEvidenceImageLabel">Attach one supporting photo (optional)</strong><small>JPG, PNG or WebP · up to 5 MB · do not upload IDs, passwords or access codes</small></span><input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp"></label>
-      <p class="field-hint">A photo already used in a LostLink report or another claim will be rejected, including visually similar copies. Images are private to the claimant and office reviewers and are watermarked in the preview.</p>
-      <label>Private explanation <span class="field-required">Required</span><textarea id="claimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Explain what proves this is yours and how the office can verify it. Never share passwords, PINs or one-time codes."></textarea></label>
+
+      <label class="upload-box" for="claimEvidenceImage">
+        <span class="upload-symbol" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </span>
+        <span>
+          <strong id="claimEvidenceImageLabel">Attach supporting photo evidence (Optional)</strong>
+          <small>JPG, PNG or WebP · Up to 5 MB · Do not upload IDs or passwords</small>
+        </span>
+        <input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp">
+      </label>
+      <p class="field-hint">Photos already used on a report or another claim are rejected. Images are private to you and office reviewers.</p>
+
+      <label>Private ownership explanation <span class="field-required">Required (min 20 characters)</span>
+        <textarea id="claimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Explain details that prove this item is yours and how campus staff can verify it in person."></textarea>
+      </label>
+
       <p id="claimError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="claimSubmitButton" class="button button-primary" type="submit">Submit private claim</button><button id="cancelClaim" class="button button-quiet" type="button">Cancel</button></div>
+
+      <div class="form-actions">
+        <button id="claimSubmitButton" class="button button-primary" type="submit">Submit private claim →</button>
+        <button id="cancelClaim" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
 
+  <!-- Interactive Toast Notification -->
   <div id="toast" class="toast hidden" role="status"></div>
+
   <script src="/deployment-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/static/app.js" defer></script>

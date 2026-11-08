@@ -22,9 +22,16 @@ let selectedCloseReportId = null;
 let selectedCloseReportType = null;
 
 const CATEGORY_ICONS = {
-  stationery: "▤", clothing: "◈", bags_wallets: "▣", accessories: "◇",
-  electronics: "⌁", identity_documents: "▧", keys_access: "⌘",
-  cash_jewellery: "✧", sports_instruments: "◎", other: "◌"
+  stationery: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
+  clothing: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>',
+  bags_wallets: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M8 14h8"></path><path d="M12 12v4"></path></svg>',
+  accessories: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6"></circle><polyline points="12 10 12 12 14 14"></polyline><path d="m9 2 1 4h4l1-4"></path><path d="m9 22 1-4h4l1 4"></path></svg>',
+  electronics: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>',
+  identity_documents: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><line x1="15" y1="8" x2="17" y2="8"></line><line x1="15" y1="12" x2="17" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>',
+  keys_access: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>',
+  cash_jewellery: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9Z"></path><path d="M11 3 8 9l4 12 4-12-3-6"></path><path d="M2 9h20"></path></svg>',
+  sports_instruments: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M4.93 4.93c4.2 4.2 4.2 11 0 15.2"></path><path d="M19.07 4.93c-4.2 4.2-4.2 11 0 15.2"></path></svg>',
+  other: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>'
 };
 const STATUS_LABELS = {
   open: "Open", awaiting_intake: "Awaiting office intake", available: "Available at office",
@@ -651,12 +658,12 @@ async function fetchAllPages(path) {
 
 function itemCard(report, options) {
   const opts = options || {};
-  const icon = CATEGORY_ICONS[report.category] || "◌";
+  const icon = CATEGORY_ICONS[report.category] || '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
   const visual = report.image_url
     ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
   const claimButton = opts.claim
-    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
+    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></button>'
     : "";
   const detailsButton = '<button class="button button-quiet button-small" type="button" data-view-details="' + escapeHTML(report.id) + '">View details</button>';
   const characteristics = [
@@ -673,14 +680,16 @@ function itemCard(report, options) {
   const strength = opts.strength
     ? '<span class="strength-pill strength-' + escapeHTML(opts.strength) + '">' + escapeHTML(opts.strength) + " match</span>"
     : "";
+  const locSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+  const timeSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
   return '<article class="item-card">' + visual +
     '<div class="item-card-body"><div class="item-topline"><span class="item-ref">' + escapeHTML(report.public_ref) + "</span>" +
     '<span class="category-pill">' + escapeHTML(report.category_label || categoryLabel(report.category)) + "</span></div>" +
     "<h3>" + escapeHTML(report.title) + "</h3>" +
     '<p class="item-description">' + escapeHTML(report.description) + "</p>" +
     characteristicBlock + reasons +
-    '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
-    '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+    '<div class="item-meta"><span>' + locSvg + " " + escapeHTML(report.location || "Location not specified") + "</span>" +
+    '<span>' + timeSvg + " " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
@@ -1243,7 +1252,7 @@ function officeHandoverCard(claim) {
 function intakeCard(report) {
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
-    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
+    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" style=\"display:inline-block;vertical-align:-1px;margin-right:4px;\"><path d=\"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z\"></path><circle cx=\"12\" cy=\"10\" r=\"3\"></circle></svg>" + escapeHTML(report.location) +
     "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
     '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
@@ -1394,34 +1403,35 @@ async function loadActivity() {
       ? (data.points_to_next_milestone + " more points to " + next.tier)
       : "All current recognition milestones earned";
     $("#activityOverview").innerHTML =
-      '<div class="activity-points-card"><div><p class="eyebrow">VERIFIED ACTIVITY</p><strong>' + escapeHTML(total) +
-      '</strong><span>total points</span></div><div class="points-symbol">✦</div><p class="muted">Points are awarded for contributions verified by the campus office.</p></div>' +
-      '<div class="milestone-card"><div class="milestone-heading"><div><p class="eyebrow">NEXT MILESTONE</p><h3>' +
-      escapeHTML(next ? next.tier : "Recognition complete") + '</h3></div><span class="count-pill">' +
+      '<div class="activity-points-card"><div><p class="eyebrow">VERIFIED CAMPUS ACTIVITY</p><strong>' + escapeHTML(total) +
+      '</strong><span>verified points earned</span></div><div class="points-symbol"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div><p class="muted">Points are awarded for verified turn-ins and campus returns.</p></div>' +
+      '<div class="milestone-card"><div class="milestone-heading"><div><p class="eyebrow">NEXT RECOGNITION TIER</p><h3>' +
+      escapeHTML(next ? next.tier : "Recognition Complete") + '</h3></div><span class="count-pill">' +
       escapeHTML(next ? (next.threshold + " pts") : "Complete") + "</span></div><div class=\"progress-track\"><span style=\"width:" +
-      progress + '%"></span></div><p class="muted">' + escapeHTML(nextText) + '</p><div class="point-rules"><span>+' +
+      progress + '%\"></span></div><p class="muted">' + escapeHTML(nextText) + '</p><div class="point-rules"><span>+' +
       escapeHTML(data.rules.verified_intake) + ' <small>verified office intake</small></span><span>+' +
       escapeHTML(data.rules.verified_return) + ' <small>verified return</small></span></div></div>';
     const leaderboard = await api("/api/leaderboard");
     $("#leaderboardParticipantCount").textContent = leaderboard.participant_count + (leaderboard.participant_count === 1 ? " contributor" : " contributors");
     $("#leaderboardSummary").innerHTML = leaderboard.my_rank
-      ? '<div class="leaderboard-self"><span>Your current rank</span><strong>#' + escapeHTML(leaderboard.my_rank) + '</strong><small>' + escapeHTML(leaderboard.my_total_points) + ' verified points</small></div>'
-      : '<div class="leaderboard-self"><span>Your current rank</span><strong>—</strong><small>Earn points when the office verifies a contribution.</small></div>';
-    $("#leaderboardList").innerHTML = leaderboard.leaders.map((leader) =>
-      '<div class="leaderboard-row ' + (leader.is_me ? "leaderboard-row-self" : "") + '"><span class="leaderboard-rank">#' +
-      escapeHTML(leader.rank) + '</span><span class="leaderboard-name">' + escapeHTML(leader.display_name) + '</span><span class="leaderboard-detail">' +
-      escapeHTML(leader.verified_reports) + ' reports</span><strong class="leaderboard-points">' + escapeHTML(leader.total_points) + ' pts</strong></div>'
-    ).join("");
+      ? '<div class="leaderboard-self"><span>Your current standing</span><strong>#' + escapeHTML(leaderboard.my_rank) + '</strong><small>' + escapeHTML(leaderboard.my_total_points) + ' verified points</small></div>'
+      : '<div class="leaderboard-self"><span>Your current standing</span><strong>—</strong><small>Turn in found items to start climbing the board.</small></div>';
+    $("#leaderboardList").innerHTML = leaderboard.leaders.map((leader) => {
+      const rankBadge = leader.rank === 1 ? "🥇 #1" : (leader.rank === 2 ? "🥈 #2" : (leader.rank === 3 ? "🥉 #3" : "#" + escapeHTML(leader.rank)));
+      return '<div class="leaderboard-row ' + (leader.is_me ? "leaderboard-row-self" : "") + '"><span class="leaderboard-rank">' +
+      rankBadge + '</span><span class="leaderboard-name">' + escapeHTML(leader.display_name) + '</span><span class="leaderboard-detail">' +
+      escapeHTML(leader.verified_reports) + ' reports</span><strong class="leaderboard-points">' + escapeHTML(leader.total_points) + ' pts</strong></div>';
+    }).join("");
     $("#leaderboardEmpty").classList.toggle("hidden", leaderboard.leaders.length > 0);
     $("#certificateList").innerHTML = data.certificates.map((certificate) =>
-      '<article class="certificate-card"><div class="certificate-emblem">✧</div><div class="certificate-copy"><span class="item-ref">' +
+      '<article class="certificate-card"><div class="certificate-emblem"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="6"></circle><path d="m15.47 13.5 2.53 7.5-6-3-6 3 2.53-7.5"></path></svg></div><div class="certificate-copy"><span class="item-ref">' +
       escapeHTML(certificate.serial) + "</span><h3>" + escapeHTML(certificate.tier) + '</h3><p class="muted">' +
       escapeHTML(certificate.points_at_issue + " points at issue · " + humanDate(certificate.issued_at)) + '</p></div><button class="button button-primary button-small" type="button" data-certificate-download="' +
-      escapeHTML(certificate.id) + '">Download PDF ↗</button></article>'
+      escapeHTML(certificate.id) + '">Download PDF <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></button></article>'
     ).join("");
     $("#certificateEmpty").classList.toggle("hidden", data.certificates.length > 0);
     $("#activityLedger").innerHTML = data.ledger.map((entry) =>
-      '<article class="ledger-row"><div class="ledger-icon">＋</div><div class="ledger-copy"><strong>' +
+      '<article class="ledger-row"><div class="ledger-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div><div class="ledger-copy"><strong>' +
       escapeHTML(entry.reason) + '</strong><small>' + escapeHTML(humanDateTime(entry.created_at)) +
       (entry.report_id ? " · Verified report recorded" : "") + '</small></div><span class="ledger-points">+' +
       escapeHTML(entry.points) + " pts</span></article>"
@@ -1816,12 +1826,22 @@ $("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
 $("#backToReportTypes").addEventListener("click", resetReportMode);
 $("#reportImage").addEventListener("change", () => {
   const file = $("#reportImage").files[0];
-  $("#imageLabel").textContent = file ? file.name : "Choose a photo";
+  if (file) {
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    $("#imageLabel").textContent = file.name + " (" + sizeMb + " MB)";
+  } else {
+    $("#imageLabel").textContent = "Choose a photograph";
+  }
 });
 $("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("browse"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
-  $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
+  if (file) {
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    $("#claimEvidenceImageLabel").textContent = file.name + " (" + sizeMb + " MB)";
+  } else {
+    $("#claimEvidenceImageLabel").textContent = "Attach supporting photo evidence (Optional)";
+  }
 });
 $("#claimForm").addEventListener("submit", submitClaim);
 $("#closeItemDetails").addEventListener("click", () => { $("#itemDetailsDialog").close(); selectedDetailsReportId = null; });
