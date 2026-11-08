@@ -1794,6 +1794,7 @@ async function loadPublicFound() {
   }
 }
 function openPublicOfficeSignIn() {
+  setFinnMessage("Welcome to the campus desk. This sign-in is for authorised office staff.", false);
   $("#loginView").classList.add("office-access-open");
   $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
   $("#loginPanelTitle").textContent = "Office staff sign in";
