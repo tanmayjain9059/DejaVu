@@ -16,6 +16,7 @@ class MarkupInventory(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.ids: list[str] = []
         self.view_names: list[str] = []
+        self.form_ids: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -23,6 +24,8 @@ class MarkupInventory(HTMLParser):
             self.ids.append(values["id"])
         if values.get("data-view"):
             self.view_names.append(values["data-view"])
+        if tag == "form" and values.get("id"):
+            self.form_ids.append(values["id"])
 
 
 class FrontendContractTests(unittest.TestCase):
@@ -35,6 +38,7 @@ class FrontendContractTests(unittest.TestCase):
         cls.ids = parser.ids
         cls.id_set = set(parser.ids)
         cls.views = set(parser.view_names)
+        cls.form_ids = parser.form_ids
 
     def test_html_ids_are_unique(self):
         duplicates = sorted({item for item in self.ids if self.ids.count(item) > 1})
@@ -118,6 +122,36 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('form.reset();', self.js)
         self.assertIn('const form = event.currentTarget;', self.js)
         self.assertIn('if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);', self.js)
+
+
+
+    def test_every_form_has_a_submit_handler(self):
+        direct = set(re.findall(
+            r"""\$\(["']#([A-Za-z0-9_-]+)["']\)\.addEventListener\(["']submit["']""",
+            self.js,
+        ))
+        self.assertIn('if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);', self.js)
+        direct.add("reportForm")
+        missing = sorted(set(self.form_ids) - direct)
+        self.assertEqual(missing, [], f"Forms without submit handlers: {missing}")
+
+    def test_each_report_form_reset_is_preceded_by_a_null_guard(self):
+        for function_name in ("setReportMode", "resetReportMode"):
+            start = self.js.index(f"function {function_name}(")
+            next_function = self.js.find("\\nfunction ", start + 1)
+            block = self.js[start:next_function if next_function >= 0 else len(self.js)]
+            guard = re.search(r"if \(!form \\|\\| !chooser\) \\{[\\s\\S]*?return;\\s*\\}", block)
+            self.assertIsNotNone(guard, f"{function_name} must return when the form or chooser is absent")
+            reset_at = block.find("form.reset();")
+            self.assertGreater(reset_at, guard.end(), f"{function_name} resets before its null guard")
+
+    def test_report_submission_uses_the_submitted_form_and_guards_its_button(self):
+        start = self.js.index("async function submitReport(event)")
+        end = self.js.find("\\nasync function ", start + 1)
+        block = self.js[start:end if end >= 0 else len(self.js)]
+        self.assertIn("const form = event.currentTarget;", block)
+        self.assertRegex(block, r"if \(!form \\|\\| !errorNode\) \\{[\\s\\S]*?return;")
+        self.assertRegex(block, r"if \(!submitButton\) \\{[\\s\\S]*?return;")
 
 
 
