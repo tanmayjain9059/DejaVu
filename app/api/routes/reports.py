@@ -562,6 +562,10 @@ async def intake_found_item(
         row = read_report(conn, report_id)
         if row["report_type"] != "found" or row["status"] != "awaiting_intake":
             raise HTTPException(status_code=409, detail="Only found-item reports awaiting intake can be accepted.")
+        if row["submission_channel"] == "public":
+            verified_roll = (body.verified_roll_number or "").strip().upper()
+            if not body.identity_verified_in_person or verified_roll != (row["roll_number"] or "").strip().upper():
+                raise HTTPException(status_code=422, detail="Physically verify the Found reporter's college ID and matching roll number before intake.")
         level = effective_level(row["category"], body.value_band, body.sensitivity_level)
         detail_length = len((body.private_detail or "").strip())
         minimum_detail = 8 if level >= 3 else (6 if level >= 2 else 0)
