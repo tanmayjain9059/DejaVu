@@ -50,7 +50,7 @@ services:
       - key: OFFICE_USER_EMAILS
         sync: false
       - key: FRONTEND_ORIGINS
-        sync: false
+        value: https://lostlink.jaintanmay9059.workers.dev,https://deja-vu-strivers3.vercel.app
       - key: S3_ENDPOINT_URL
         sync: false
       - key: S3_REGION
