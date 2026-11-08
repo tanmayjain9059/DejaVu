@@ -793,3 +793,12 @@ input:focus,select:focus,textarea:focus { border-color:#8aa5ff; box-shadow:inset
   .report-kind-guidance { padding: 16px; border-radius: 14px; }
 }
 
+
+:root { --water-blue: #2563eb; --accent: #2563eb; --accent-strong: #1d4ed8; }
+.report-type-card { border-color: rgba(37,99,235,.22); }
+.report-type-card:hover, .report-type-card.selected { border-color: #2563eb; box-shadow: 0 12px 32px rgba(37,99,235,.12); }
+.report-kind-guidance { border-color: rgba(37,99,235,.2); background: linear-gradient(135deg, rgba(239,246,255,.98), rgba(248,250,252,.92)); }
+.found-report-guidance { border-color: rgba(14,116,144,.2); background: linear-gradient(135deg, rgba(236,254,255,.98), rgba(248,250,252,.92)); }
+.category-ai-control { display: grid; justify-items: start; gap: 7px; margin-top: 8px; }
+.report-path-note { color: var(--muted); font-size: .88rem; margin: 10px 0 18px; }
+.found-report-form { border-color: rgba(14,116,144,.22); }
