@@ -94,7 +94,10 @@ def main() -> int:
                 audit(page, f"office sign-in {width}x{height}")
                 page.locator("#loginEmail").fill("layout-audit@lostlink.test")
                 page.locator("#loginPassword").fill("layout-audit-password")
-                page.locator("#loginForm button[type=submit]").click()
+                page.locator("#loginForm").evaluate("(form) => form.requestSubmit()")
+                page.wait_for_timeout(500)
+                if not page.locator("#appView").is_visible():
+                    raise AssertionError("Office browser-audit login failed: " + page.locator("#loginError").inner_text())
                 page.locator("#appView").wait_for(state="visible")
                 page.locator("#officeView").wait_for(state="visible")
                 audit(page, f"office dashboard {width}x{height}")
