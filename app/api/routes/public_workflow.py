@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
@@ -362,11 +362,10 @@ async def submit_public_report(body: PublicReportBody, request: Request):
 
 
 @router.get("/search")
-def search_public_reports(category: str | None = None, q: str | None = None, report_type: str = "all", limit: int = 50):
+def search_public_reports(category: str | None = Query(default=None, max_length=60), q: str | None = Query(default=None, max_length=100), report_type: Literal["all", "lost", "found"] = "all", limit: int = Query(default=50, ge=1, le=100)):
     """Public discovery across open Lost reports and office-received Found inventory."""
-    limit = max(1, min(limit, 100))
-    if report_type not in {"all", "lost", "found"}:
-        raise HTTPException(status_code=422, detail="report_type must be all, lost, or found.")
+    if category and category not in CATEGORY_LABELS:
+        raise HTTPException(status_code=422, detail="Choose a valid report category.")
     clauses = []
     params: list[Any] = []
     if report_type in {"all", "lost"}:
@@ -387,8 +386,9 @@ def search_public_reports(category: str | None = None, q: str | None = None, rep
 
 
 @router.get("/found")
-def browse_public_found(category: str | None = None, q: str | None = None, limit: int = 50):
-    limit = max(1, min(limit, 100))
+def browse_public_found(category: str | None = Query(default=None, max_length=60), q: str | None = Query(default=None, max_length=100), limit: int = Query(default=50, ge=1, le=100)):
+    if category and category not in CATEGORY_LABELS:
+        raise HTTPException(status_code=422, detail="Choose a valid report category.")
     clauses = ["report_type='found'", "status='available'"]
     params: list[Any] = []
     if category and category in CATEGORY_LABELS:
