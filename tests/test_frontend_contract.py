@@ -80,6 +80,11 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_public_lost_and_found_buttons_scroll_to_shared_report_form(self):
+        self.assertIn('const title = $("#publicLostPage .public-title");', self.js)
+        self.assertIn('Both report types use the shared public report form', self.js)
+        self.assertNotIn('$("#public"+(type === "lost" ? "Lost" : "Found")+"Page")', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
