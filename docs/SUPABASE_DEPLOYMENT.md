@@ -141,11 +141,12 @@ Expected response:
   "status": "ready",
   "database": "postgresql",
   "schema_version": 10,
-  "canonical_tables": "ready"
+  "canonical_tables": "ready",
+  "storage": "s3"
 }
 ```
 
-The exact schema version may increase with later migrations. If it says `sqlite`, the API is **not** connected to your Supabase PostgreSQL database, even if Vercel itself is linked to Supabase. If it returns 503, inspect the Render deployment logs and its `DATABASE_URL` configuration. The endpoint intentionally does not return credentials, hostnames or database names.
+The exact schema version may increase with later migrations. In production, `database` must be `postgresql` and `storage` must be `s3`. If it says `sqlite`, the API is **not** connected to your Supabase PostgreSQL database, even if Vercel itself is linked to Supabase. A 503 also indicates that PostgreSQL or the private Storage bucket is unreachable; inspect Render logs and the corresponding environment variables. The endpoint intentionally does not return credentials, hostnames or database names.
 
 ### D. Create one real test record from the deployed Vercel site
 
