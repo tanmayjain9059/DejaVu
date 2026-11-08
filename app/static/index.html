@@ -98,14 +98,6 @@
             <button class="button button-liquid" type="submit">Submit lost report ↗</button>
           </form>
         </section>
-        <section id="publicFoundPage" class="public-destination hidden">
-          <button class="public-back" type="button" data-public-home>← Back to home</button>
-          <p class="eyebrow">PUBLIC REPORT · FOUND</p>
-          <h1 class="public-title">You found it.<br><span>Let's reunite it.</span></h1>
-          <p class="public-lede">Tell us what you found. The campus office will verify your college ID when you hand in the item.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <div class="destination-card"><span class="destination-symbol">✦</span><div><strong>Physical hand-in required</strong><p>Found items become searchable only after staff receive, tag, and record them.</p></div></div>
-        </section>
         <section id="publicBrowsePage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PUBLIC DISCOVERY</p><h1 class="public-title">Search <span>campus reports.</span></h1>
@@ -118,6 +110,7 @@
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
           <p class="public-lede">Use the reference, roll number, and one-time tracking secret shown when you submitted the report. Roll number alone cannot open a case.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicTrackForm" class="form-stack">
             <label><span>Case / claim reference</span><input id="publicTrackReference" required maxlength="24" placeholder="LL-XXXXXXXX or CL-XXXXXXXX"></label>
             <label><span>College roll number</span><input id="publicTrackRoll" required minlength="5" maxlength="20"></label>
