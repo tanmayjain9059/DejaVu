@@ -32,7 +32,6 @@ from app.core.database import audit, connect_db, now_iso, table_columns
 from app.core.security import hash_password
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
 from app.services.reports import read_report, serialise_report
-from app.services.rewards import points_total
 
 router = APIRouter(prefix="/api/public", tags=["public-student-workflow"])
 ROLL_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{4,19}$")
@@ -109,6 +108,11 @@ def _public_report(row) -> dict[str, Any]:
     item = serialise_report(row, internal=False)
     item["reference"] = item["public_ref"]
     return item
+
+
+def _case_points(conn, user_id: int, entity_id: str) -> int:
+    row = conn.execute("SELECT COALESCE(SUM(points),0) AS total FROM reward_ledger WHERE user_id=? AND reference_id=?", (user_id,entity_id)).fetchone()
+    return int(row["total"] or 0)
 
 
 def _tracking_events(conn, user_id: int, entity_type: str, entity_id: str) -> list[dict[str, str]]:
@@ -370,7 +374,7 @@ def track_one_case(
             return {
                 "case": _public_report(report),
                 "events": _tracking_events(conn,int(report["created_by"]),"report",report["id"]),
-                "activity_points": points_total(conn,int(report["created_by"])),
+                "case_points": _case_points(conn,int(report["created_by"]),report["id"]),
             }
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
         if claim and claim["claimant_roll_number"] == roll and claim["submission_channel"] == "public" and _verify_token(claim["tracking_hash"],tracking_secret):
@@ -384,7 +388,7 @@ def track_one_case(
                 },
                 "item": _public_report(parent),
                 "events": _tracking_events(conn,int(claim["claimant_id"]),"claim",claim["id"]),
-                "activity_points": points_total(conn,int(claim["claimant_id"])),
+                "case_points": _case_points(conn,int(claim["claimant_id"]),claim["id"]),
             }
     raise HTTPException(status_code=404,detail="Tracking access not found.")
 
