@@ -3146,3 +3146,151 @@ label:has(select) {
 .liquid-glass-panel:has(select)::after {
   pointer-events: none !important;
 }
+
+
+/* Integrated Lost/Found guidance and blue liquid-glass report styling. */
+
+/* Lost and Found reports have distinct guidance and task-specific prompts. */
+.report-kind-guidance {
+  padding: 20px 22px;
+  margin: 4px 0 8px;
+  border: 1px solid var(--line, rgba(70, 90, 120, .16));
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(238,244,250,.78));
+}
+.report-kind-guidance h3 {
+  margin: 8px 0 7px;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+.report-kind-guidance p {
+  margin: 0;
+  color: var(--muted, #64748b);
+  line-height: 1.65;
+}
+.report-kind-guidance ul {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding-left: 19px;
+  color: var(--muted, #64748b);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.report-guidance-kicker {
+  color: var(--accent, #4775a8);
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.found-report-guidance {
+  background: linear-gradient(135deg, rgba(242,249,245,.96), rgba(232,243,237,.82));
+}
+.found-report-guidance .report-guidance-kicker {
+  color: #347456;
+}
+@media (max-width: 700px) {
+  .report-kind-guidance { padding: 16px; border-radius: 14px; }
+}
+
+
+:root { --water-blue: #2563eb; --accent: #2563eb; --accent-strong: #1d4ed8; }
+.report-type-card { border-color: rgba(37,99,235,.22); }
+.report-type-card:hover, .report-type-card.selected { border-color: #2563eb; box-shadow: 0 12px 32px rgba(37,99,235,.12); }
+.report-kind-guidance { border-color: rgba(37,99,235,.2); background: linear-gradient(135deg, rgba(239,246,255,.98), rgba(248,250,252,.92)); }
+.found-report-guidance { border-color: rgba(14,116,144,.2); background: linear-gradient(135deg, rgba(236,254,255,.98), rgba(248,250,252,.92)); }
+.category-ai-control { display: grid; justify-items: start; gap: 7px; margin-top: 8px; }
+.report-path-note { color: var(--muted); font-size: .88rem; margin: 10px 0 18px; }
+.found-report-form { border-color: rgba(14,116,144,.22); }
+
+
+/* Blue liquid-glass identity ported from the earlier blue UI branch. */
+:root {
+  color-scheme: light;
+  --ink: #0b132b;
+  --ink-soft: rgba(11, 19, 43, .72);
+  --muted: rgba(11, 19, 43, .56);
+  --paper: #dcebf5;
+  --surface: rgba(255,255,255,.78);
+  --line: rgba(92, 143, 178, .22);
+  --primary: #0284c7;
+  --primary-dark: #0369a1;
+  --primary-soft: rgba(14,165,233,.12);
+  --amber: #b45309;
+  --amber-soft: rgba(245,158,11,.14);
+  --danger: #dc2626;
+  --danger-soft: rgba(239,68,68,.12);
+  --shadow: 0 16px 40px -14px rgba(0,40,90,.18), 0 2px 8px rgba(0,40,90,.05);
+  --radius: 22px;
+  --water-blue: #00a2ff;
+  --water-deep: #0284c7;
+  --water-dark: #0369a1;
+  --canvas-bg: #dcebf5;
+  --canvas-gradient: radial-gradient(130% 120% at 50% 0%, #e8f3fa 0%, #dcebf5 55%, #cfe2f0 100%);
+}
+html { background: var(--canvas-bg); }
+body {
+  color: var(--ink);
+  background: var(--canvas-gradient);
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.ambient-one { background: rgba(0,162,255,.18); }
+.ambient-two { background: rgba(56,189,248,.18); }
+.brand-lockup { color: var(--ink); }
+.brand-mark {
+  background: linear-gradient(145deg, #0284c7, #0369a1);
+  box-shadow: 0 8px 22px rgba(2,132,199,.24);
+}
+h1 span, .eyebrow { color: var(--primary); }
+.login-panel, .form-card, .filter-panel, .side-guidance, .list-card,
+.office-section, .matches-panel, .notice, .report-type-card {
+  border-color: rgba(255,255,255,.78);
+  background: rgba(255,255,255,.68);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.login-panel { border-color: rgba(255,255,255,.88); }
+input, select, textarea {
+  border-color: rgba(100,149,180,.28);
+  background: rgba(255,255,255,.88);
+  color: var(--ink);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(0,162,255,.14);
+}
+.button-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  box-shadow: 0 8px 20px rgba(2,132,199,.22);
+}
+.button-primary:hover { background: linear-gradient(135deg, #0369a1, #075985); }
+.button-quiet { color: #16415d; border-color: rgba(100,149,180,.25); background: rgba(255,255,255,.72); }
+.button-quiet:hover { border-color: rgba(2,132,199,.45); background: rgba(239,248,255,.94); }
+.tab-nav { border-color: rgba(255,255,255,.82); background: rgba(255,255,255,.58); backdrop-filter: blur(18px); }
+.tab-button { color: rgba(11,19,43,.65); }
+.tab-button:hover { color: var(--ink); background: rgba(224,242,254,.75); }
+.tab-button.active { color: #fff; background: linear-gradient(135deg,#0284c7,#0369a1); box-shadow: 0 5px 16px rgba(2,132,199,.2); }
+.tab-button.office-tab.active { background: linear-gradient(135deg,#0369a1,#075985); }
+.role-chip { border-color: rgba(2,132,199,.22); color: #0369a1; background: rgba(224,242,254,.8); }
+.avatar { color: #075985; background: #e0f2fe; }
+.point-icon, .lock-icon { color: #0369a1; background: #e0f2fe; }
+.welcome-mark { border-color: rgba(2,132,199,.18); color: #0369a1; background: rgba(224,242,254,.85); }
+.welcome-mark i { background: #0284c7; }
+.report-type-card:hover, .report-type-card.selected {
+  border-color: rgba(0,162,255,.62);
+  background: rgba(239,248,255,.9);
+  box-shadow: 0 14px 36px rgba(0,90,160,.15);
+}
+.report-kind-guidance {
+  border-color: rgba(2,132,199,.2);
+  background: linear-gradient(135deg,rgba(239,248,255,.96),rgba(255,255,255,.76));
+}
+.found-report-guidance {
+  border-color: rgba(14,116,144,.2);
+  background: linear-gradient(135deg,rgba(236,254,255,.96),rgba(255,255,255,.78));
+}
+.report-path-note { color: var(--muted); }
+.category-ai-control .button { color: #0369a1; }
+.form-error { color: #dc2626; }
