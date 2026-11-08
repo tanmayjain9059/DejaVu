@@ -18,7 +18,7 @@ LostLink uses a public student workflow. Students do **not** create accounts, si
 4. A successful submission displays a public reference and one-time tracking secret. The student must save both.
 5. A Lost report starts open and can receive ranked possible-match suggestions.
 6. A Found report starts as `awaiting_intake`. It is not publicly searchable until office staff physically receive the item, verify the reporter's college ID, record custody, assign a Tag ID and complete intake.
-7. Students can browse only found items whose status is `available`. A claim requires roll attribution and private evidence text.
+7. Students can search open Lost reports and Found items whose status is `available`; only Found items can be claimed. A claim requires roll attribution and private evidence text.
 8. A student tracks a report or claim with its reference, roll number and matching tracking secret.
 
 ## Public API contract
@@ -28,7 +28,7 @@ All public routes are under `/api/public`. They do not require a session cookie 
 | Method | Route | Purpose |
 |---|---|---|
 | POST | `/api/public/reports` | Submit a Lost or Found report |
-| GET | `/api/public/found` | Browse available Found items only |
+| GET | `/api/public/search` | Search open Lost reports and available Found items |\n| GET | `/api/public/found` | Browse available Found items only |
 | GET | `/api/public/track/{reference}?roll_number=...` | Read one token-authorised report or claim |
 | GET | `/api/public/reports/{reference}/matches?roll_number=...` | Retrieve ranked matches for one Lost report |
 | POST | `/api/public/found/{report_id}/claims` | Submit a claim with private evidence |
