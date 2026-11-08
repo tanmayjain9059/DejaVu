@@ -17,6 +17,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
+from app.api.routes.public_workflow import router as public_workflow_router, ensure_public_schema
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
@@ -120,4 +121,6 @@ app.include_router(auth_router)
 app.include_router(reports_router)
 app.include_router(claims_router)
 app.include_router(engagement_router)
+app.include_router(public_workflow_router)
 initialise_db()
+ensure_public_schema()
