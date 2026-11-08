@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, Field
 
 from app.core.runtime import (
-    connect_db, now_iso, CATEGORY_LABELS, require_office, authenticated_user,
+    connect_db, now_iso, CATEGORY_LABELS, CATEGORY_DEFAULT_LEVEL, require_office, authenticated_user,
     audit,
 )
 
@@ -295,7 +295,7 @@ def track_one_case(reference: str, roll_number: str,
 def submit_public_claim(case_id: str, body: PublicClaimBody, request: Request):
     roll = _roll(body.roll_number)
     allowed = {"distinctive_features","date_location","physical_inspection","supporting_evidence",
-               "owner_specific_detail","claimant_identity","authorised_record"}
+               "owner_specific_detail","authorised_record"}
     if set(body.evidence_types) - allowed:
         raise HTTPException(status_code=422, detail="Unknown evidence type.")
     token = _issue_token()
@@ -398,15 +398,34 @@ def decide_public_claim(claim_id: str, body: StaffClaimDecisionBody, user: dict[
         others=conn.execute("SELECT COUNT(*) AS n FROM public_claims WHERE case_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",(claim["case_id"],claim_id)).fetchone()["n"]
         if body.action=="approve" and others:
             raise HTTPException(status_code=409,detail="Competing claims must be resolved before approval.")
-        if body.action=="approve" and not body.identity_verified_in_person:
-            raise HTTPException(status_code=422,detail="Office staff must confirm identity in person before approval.")
+        if body.action=="approve":
+            if not body.identity_verified_in_person:
+                raise HTTPException(status_code=422,detail="Office staff must confirm identity in person before approval.")
+            allowed_checks={"distinctive_features","date_location","physical_inspection",
+                            "supporting_evidence","owner_specific_detail","authorised_record"}
+            checked=set(body.verification_checks)
+            if checked-allowed_checks:
+                raise HTTPException(status_code=422,detail="Unknown verification check.")
+            level=int(CATEGORY_DEFAULT_LEVEL.get(conn.execute(
+                "SELECT category FROM public_cases WHERE id=?",(claim["case_id"],)
+            ).fetchone()["category"],3))
+            required={1:2,2:3,3:4,4:4}.get(level,4)
+            if len(checked)<required:
+                raise HTTPException(status_code=422,detail=f"Verification level L{level} requires {required} distinct checks.")
+            if level>=4 and "authorised_record" not in checked:
+                raise HTTPException(status_code=422,detail="Restricted items require an authorised record/custodian check.")
         status={"approve":"approved_for_collection","reject":"rejected",
                 "request_more_evidence":"needs_more_evidence","mark_disputed":"disputed"}[body.action]
         timestamp=now_iso()
         conn.execute("UPDATE public_claims SET status=?,reviewer_id=?,reviewer_note=?,updated_at=? WHERE id=?",
                      (status,user["id"],body.note,timestamp,claim_id))
+        remaining = conn.execute(
+            "SELECT COUNT(*) AS n FROM public_claims WHERE case_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+            (claim["case_id"],),
+        ).fetchone()["n"]
+        case_status = "claim_approved" if status=="approved_for_collection" else ("claim_hold" if remaining else "available")
         conn.execute("UPDATE public_cases SET status=?,updated_at=? WHERE id=?",
-                     ("claim_approved" if status=="approved_for_collection" else ("claim_hold" if status in ("pending","disputed","needs_more_evidence") else "available"),timestamp,claim["case_id"]))
+                     (case_status,timestamp,claim["case_id"]))
         conn.execute("INSERT INTO public_case_events(id,case_id,claim_id,actor_user_id,event_type,created_at) VALUES (?,?,?,?,?,?)",
                      (uuid.uuid4().hex,claim["case_id"],claim_id,user["id"],"claim_"+status,timestamp))
         audit(conn,user["id"],"public_claim_decision","public_claim",claim_id,{"decision":body.action,"status":status})
