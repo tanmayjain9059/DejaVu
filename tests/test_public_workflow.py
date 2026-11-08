@@ -127,7 +127,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         denied = self.client.post(
             "/api/public/reports/" + reference + "/image",
             headers={"X-LostLink-Roll-Number": "25B81A66J8", "X-LostLink-Tracking-Secret": "wrong-secret"},
-            files={"file": ("wallet.png", upload, "image/png")},
+            files={"file": ("wallet.png", b"not-an-image", "image/png")},
         )
         self.assertEqual(denied.status_code, 404)
         accepted = self.client.post(
@@ -233,6 +233,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         office_queue = self.client.get("/api/claims?queue=active")
         self.assertEqual(office_queue.status_code,200,office_queue.text)
         self.assertEqual(office_queue.json()["claims"][0]["claimant_roll_number"],"25B81A66J9")
+        self.assertEqual(office_queue.json()["claims"][0]["evidence_types"],["distinctive_features","other"])
         claim_id = claim["id"]
         checks = ["distinctive_features","date_location","physical_inspection","claimant_identity"]
         denied = self.client.post("/api/claims/"+claim_id+"/decision",json={
