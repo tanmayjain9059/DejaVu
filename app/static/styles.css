@@ -2445,3 +2445,6 @@ body:has(.public-finn-slot #finnDock) .public-finn-slot #finnDock {
 
 .app-finn-slot { display:flex; justify-content:flex-end; min-height:100px; padding:12px 24px; }
 .app-finn-slot #finnDock { position:relative !important; inset:auto !important; width:112px !important; height:100px !important; }
+
+
+.login-shell.office-access-open .public-story-footer { display:none !important; }
