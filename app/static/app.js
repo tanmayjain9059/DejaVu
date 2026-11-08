@@ -1859,6 +1859,22 @@ $("#publicReportForm").addEventListener("submit",async event => {
   button.disabled = true;
   try {
     const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    let photoStatus = "";
+    const photo = $("#publicImage").files && $("#publicImage").files[0];
+    if (photo) {
+      const photoBody = new FormData();
+      photoBody.append("file", photo);
+      try {
+        await publicApi("/api/public/reports/"+encodeURIComponent(result.case.reference)+"/image", {
+          method:"POST",
+          headers:{"X-LostLink-Roll-Number":body.roll_number,"X-LostLink-Tracking-Secret":result.tracking_secret},
+          body:photoBody
+        });
+        photoStatus = " Your photo was saved privately for office review.";
+      } catch (photoError) {
+        photoStatus = " The report was saved, but its photo could not be uploaded: " + photoError.message;
+      }
+    }
     $("#publicTrackReference").value = result.case.reference;
     $("#publicTrackRoll").value = body.roll_number;
     $("#publicTrackSecret").value = result.tracking_secret;
@@ -1870,8 +1886,10 @@ $("#publicReportForm").addEventListener("submit",async event => {
         escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p></article>';
     }).join("");
     $("#publicTrackResult").innerHTML = '<p>' + escapeHTML((result.message || "Report submitted.") + " Reference: " + result.case.reference + ". Save the tracking secret now; it is shown once.") + '</p>' +
-      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again using this tracking secret.</p>');
+      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again using this tracking secret.</p>') +
+      (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
     showPublicDestination("track");
+    setFinnMessage("Case opened! Keep your reference and one-time secret safe.", true);
     showToast("Report submitted. Save the tracking secret shown here.",false);
     event.currentTarget.reset();
   } catch(error) { errorNode.textContent = error.message; }
