@@ -2408,3 +2408,29 @@ button:focus-visible,a:focus-visible { outline:3px solid rgba(168,94,50,.45); ou
     top:-18px !important; right:48px !important;
   }
 }
+
+
+/* Finn lives in reserved document flow slots on public screens, never over a form. */
+.public-finn-slot {
+  position:relative; display:flex; align-items:center; justify-content:flex-end;
+  min-height:104px; margin:12px 0; overflow:visible;
+}
+.public-finn-slot #finnDock {
+  position:relative !important; inset:auto !important; right:auto !important; bottom:auto !important; top:auto !important;
+  width:112px !important; height:100px !important; margin:0 !important; flex:0 0 auto;
+}
+.public-finn-slot #finnDock .mascot-note { top:0 !important; right:92px !important; width:172px !important; max-width:calc(100vw - 150px) !important; }
+.public-finn-slot #finnDock .finn-character { width:100% !important; height:100% !important; }
+#appView > #finnDock {
+  position:relative !important; inset:auto !important; margin:24px 24px 24px auto !important;
+}
+@media(max-width:700px) {
+  .public-finn-slot { min-height:82px; margin:8px 0; }
+  .public-finn-slot #finnDock { width:88px !important; height:78px !important; }
+  .public-finn-slot #finnDock .mascot-note { right:72px !important; width:152px !important; }
+}
+@media(max-width:340px) {
+  .public-finn-slot { min-height:66px; }
+  .public-finn-slot #finnDock { width:64px !important; height:58px !important; }
+  .public-finn-slot #finnDock .mascot-note { right:52px !important; top:-8px !important; width:132px !important; }
+}
