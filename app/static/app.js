@@ -544,7 +544,7 @@ function navigate(view) {
   if (view === "office" && currentUser.role !== "office") view = "browse";
   if (currentUser.role === "office" && ["report", "my-reports", "my-claims", "activity"].includes(view)) view = "office";
   const sections = {
-    browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
+    start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
     activity: "#activityView", office: "#officeView"
   };
