@@ -619,20 +619,24 @@ function resetReportMode() {
     form.classList.add("hidden");
   });
   activeReportKind = "lost";
-  const lostType = document.querySelector("#reportType");
-  const foundType = document.querySelector("#reportTypeFound");
+  const setText = (selector, value) => {
+    const node = $(selector);
+    if (node) node.textContent = value;
+  };
+  const lostType = $("#reportType");
+  const foundType = $("#reportTypeFound");
   if (lostType) lostType.value = "lost";
   if (foundType) foundType.value = "found";
   const chooser = $("#reportTypeChooser");
   if (chooser) chooser.classList.remove("hidden");
-  $("#reportError").textContent = "";
-  $("#reportErrorFound").textContent = "";
-  $("#imageLabel").textContent = "Choose a photo";
-  $("#imageLabelFound").textContent = "Choose a photo";
-  $("#categorySuggestion").textContent = "AI suggestion is optional. You choose the final category.";
-  $("#categorySuggestionFound").textContent = "AI suggestion is optional. You choose the final category.";
-  $("#reportModeTitle").textContent = "Choose your report type";
-  $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
+  setText("#reportError", "");
+  setText("#reportErrorFound", "");
+  setText("#imageLabel", "Choose a photo");
+  setText("#imageLabelFound", "Choose a photo");
+  setText("#categorySuggestion", "AI suggestion is optional. You choose the final category.");
+  setText("#categorySuggestionFound", "AI suggestion is optional. You choose the final category.");
+  setText("#reportModeTitle", "Choose your report type");
+  setText("#reportModeDescription", "Lost and Found have separate guided paths so each report starts with the right context.");
   $$("[data-report-kind]").forEach((button) => {
     button.classList.remove("selected");
     button.setAttribute("aria-pressed", "false");
