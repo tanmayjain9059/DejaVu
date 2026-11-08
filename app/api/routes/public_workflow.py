@@ -647,9 +647,10 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         ).fetchone()
         if duplicate:
             raise HTTPException(status_code=409,detail="You already have an active claim for this item.")
+        active_status_placeholders = ",".join("?" for _ in ACTIVE_CLAIMS)
         active_count = conn.execute(
-            "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
-            (actor_id,),
+            f"SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ({active_status_placeholders})",
+            (actor_id, *ACTIVE_CLAIMS),
         ).fetchone()["n"]
         if int(active_count) >= MAX_OPEN_CLAIMS_PER_STUDENT:
             raise HTTPException(status_code=429,detail="You have reached the active claim limit.")
