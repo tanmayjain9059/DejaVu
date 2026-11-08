@@ -515,6 +515,30 @@ function enterApp(user) {
   startNotificationPolling();
 }
 
+function setFinnMessage(message, awake = true) {
+  const dock = $("#finnDock");
+  const note = $("#mascotMessage");
+  if (!dock || !note) return;
+  note.textContent = message;
+  dock.classList.add("has-tip");
+  if (awake) {
+    dock.classList.remove("is-awake");
+    void dock.offsetWidth;
+    dock.classList.add("is-awake");
+  }
+}
+function updateFinnForView(view) {
+  const messages = {
+    browse: "Let's look through the found-item desk. Try a category or a few details.",
+    report: "Tell me what happened. Clear visible details help me find better matches.",
+    "my-reports": "I’m checking your case notes. Open a report to see its possible matches.",
+    "my-claims": "I’ll keep an eye on your claim. The campus team handles the ownership checks.",
+    notifications: "New clues land here. I’ll point out match updates and claim decisions.",
+    activity: "Every verified return helps the campus community. Nice work!",
+    office: "Welcome to the campus desk. Verify the item and claimant before handover."
+  };
+  setFinnMessage(messages[view] || "Psst… got a campus mystery? I’m on the case.", false);
+}
 function navigate(view) {
   if (!currentUser) return;
   if (view !== "my-reports") selectedLostReportForMatchId = null;
@@ -535,6 +559,7 @@ function navigate(view) {
   if (view === "office") loadOffice();
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
+  updateFinnForView(view);
   refreshNotificationBadge();
 }
 
@@ -2068,6 +2093,8 @@ $("#cancelCloseReport").addEventListener("click", () => { $("#closeReportDialog"
 $("#closeClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#cancelClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#closeMatches").addEventListener("click", () => $("#matchesPanel").classList.add("hidden"));
+$("#finnCharacter").addEventListener("click", () => { const tips = ["A useful match starts with a clear item name and category.","Keep one distinctive ownership detail private for the claim review.","Found an item? It becomes searchable after the campus office records it.","Use your case reference and tracking secret to check updates."]; const node = $("#mascotMessage"); const current = tips.indexOf(node.textContent); setFinnMessage(tips[(current + 1) % tips.length]); });
+$("#finnTipsToggle").addEventListener("click", event => { const dock = $("#finnDock"); const hidden = dock.classList.toggle("tips-disabled"); event.currentTarget.setAttribute("aria-pressed",String(hidden)); event.currentTarget.textContent = hidden ? "Show Finn’s tips" : "Hide Finn’s tips"; if (!hidden) setFinnMessage("I’m back! Tap me whenever you need a clue."); });
 $("#appView").addEventListener("submit", submitIntake);
 $("#browseResults").addEventListener("click", (event) => {
   const button = event.target.closest("[data-claim]");
