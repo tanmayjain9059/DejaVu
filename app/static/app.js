@@ -1719,6 +1719,7 @@ async function submitDecision(event) {
 
 function showPublicHome() {
   stopNotificationPolling();
+  setFinnMessage("Welcome back to campus, detective. What are we looking for today?", false);
   currentUser = null;
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
@@ -1728,6 +1729,7 @@ function showPublicHome() {
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showPublicDestination(type) {
+  setFinnMessage(type === "browse" ? "Let’s search both open Lost reports and items the office has received." : type === "track" ? "Have your reference and tracking secret ready. I’ll find your case updates." : type === "found" ? "Tell us what you found. The office will record it before it appears in search." : "Let’s make a clear Lost report so we can find useful matches.", false);
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
