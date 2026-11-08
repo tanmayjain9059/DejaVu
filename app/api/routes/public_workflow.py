@@ -430,7 +430,7 @@ async def public_report_matches(
 @router.get("/track/{reference}")
 def track_one_case(
     reference: str,
-    roll_number: str,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
