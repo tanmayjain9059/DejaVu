@@ -329,8 +329,8 @@ LostLink applies prototype-level controls to keep sensitive information out of p
 ### Data minimisation and private fields
 - Public/student report serialisation omits private Tag IDs, exact storage locations, private verification details and internal risk fields.
 - Claim explanations and evidence are available only to the claimant and authorised office staff.
-- Image routes are role-aware; sensitive categories have additional student-facing image restrictions.
-- Student-facing photo responses are watermarked. Watermarks and disabled right-click/drag actions cannot prevent screenshots or access through browser developer tools, so they are deterrents rather than access controls.
+- Existing image routes require authenticated application access; public image upload and public image retrieval are not enabled yet.
+- The legacy authenticated image serializer can watermark previews. Public image access is intentionally withheld until a case-token-scoped private-storage flow is implemented.
 
 ### Image processing and duplicate detection
 - Uploads are capped at 5 MB and must pass image validation.
@@ -345,7 +345,7 @@ These are prototype protections. A production system still requires a security r
 
 ## HTTP API reference
 
-All API paths below are served by the FastAPI application. Endpoints that require a signed-in user need a valid session. Office actions additionally require the office role. Request payloads are validated using Pydantic models.
+All API paths below are served by FastAPI. Public student routes under `/api/public` require no session; tracking routes require a case-specific secret. Authenticated application routes are restricted to allowlisted office staff in production. Legacy account-owned student routes remain for historical compatibility and are not the public student interface. Request payloads are validated using Pydantic models.
 
 ### Authentication and configuration
 
@@ -353,32 +353,46 @@ All API paths below are served by the FastAPI application. Endpoints that requir
 |---|---|---|
 | GET | <code>/</code> | Serve the application interface. |
 | GET | <code>/api/config</code> | Return public configuration including category/location examples and demo settings. |
-| POST | <code>/api/login</code> | Authenticate and start a session. |
+| POST | <code>/api/login</code> | Authenticate an authorised local office account only. |
 | POST | <code>/api/logout</code> | End the current session. |
-| GET | <code>/api/me</code> | Return the signed-in user's public account details. |
+| GET | <code>/api/me</code> | Return the authenticated office user's public account details. |
+
+### Public student workflow (no login)
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | <code>/api/public/reports</code> | Submit a Lost or Found report using roll-number attribution; returns a reference and one-time tracking secret. |
+| GET | <code>/api/public/found</code> | Browse Found items only after office-confirmed physical intake. |
+| GET | <code>/api/public/track/{reference}</code> | Track exactly one report or claim using its reference, roll number and <code>X-LostLink-Tracking-Secret</code>. |
+| GET | <code>/api/public/reports/{reference}/matches</code> | Retrieve the existing bounded AI-ranked match suggestions for one token-authorised Lost report. |
+| POST | <code>/api/public/found/{report_id}/claims</code> | Submit a claim with private evidence text. |
+| POST | <code>/api/public/claims/{reference}/evidence</code> | Add evidence after an office request. |
+| POST | <code>/api/public/cases/{reference}/close</code> | Close an eligible Lost report or withdraw a Found report before intake. |
+
+The roll number is never an authentication credential and is never returned by public serializers. Every report and claim has an independent tracking secret; one case's secret cannot unlock another case. Public reports and claims are stored in the canonical <code>reports</code> and <code>claims</code> tables.
 
 ### Reports, photos and matching
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | <code>/api/reports</code> | Search/list reports with supported filters and keyset pagination (`page_size` 1–100, opaque `cursor`, `next_cursor`, `has_more`). Office status filters accept comma-separated values such as `available,claim_approved`. Student visibility is restricted to available found items except their own records; office visibility is wider. |
-| POST | <code>/api/reports</code> | Create a lost or found report. |
+| GET | <code>/api/reports</code> | Office-only search/list for the authenticated console with supported filters and keyset pagination (`page_size` 1–100, opaque `cursor`, `next_cursor`, `has_more`). Public students use `GET /api/public/found` and token-scoped tracking instead. |
+| POST | <code>/api/reports</code> | Legacy account-owned report creation; public students use `POST /api/public/reports`. |
 | PUT | <code>/api/reports/{report_id}</code> | Edit public details while owner/office authorization and report workflow state permit it; every edit is audited. |
 | POST | <code>/api/reports/{report_id}/close</code> | Close an eligible owned lost report or withdraw a found report before intake. |
 | POST | <code>/api/reports/{report_id}/image</code> | Upload or replace a permitted report image. |
 | GET | <code>/api/reports/{report_id}/image</code> | Retrieve an image subject to role, status and category checks. |
-| GET | <code>/api/reports/{report_id}/matches</code> | Rank up to five possible matches for an owned open lost report or an office user. |
+| GET | <code>/api/reports/{report_id}/matches</code> | Legacy authenticated matching route. Public students use the token-authorised `/api/public/reports/{reference}/matches` route. |
 | POST | <code>/api/reports/{report_id}/intake</code> | Office-only: confirm physical receipt, record storage/verification data and assign the Tag ID. |
 | POST | <code>/api/reports/{report_id}/storage</code> | Office-only: update the item's recorded storage location. |
 
-Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter supports `active` (pending, disputed and more-evidence-needed), `handover` (approved for collection), `disputed`, `pending`, and `other`. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision. The student and office interfaces consume the API cursors with independent Load more controls. Office inventory can filter both `available` and `claim_approved` records in the same paginated query.
+Office claim pagination uses immutable `created_at ASC, id ASC` cursor ordering. The `queue` filter supports `active` (pending, disputed and more-evidence-needed), `handover` (approved for collection), `disputed`, `pending`, and `other`. The default `queue=all` view is chronological and includes a `priority_rank` field for display; it is not a cross-page disputed-first snapshot. Status changes can move a claim between filtered queues, so refresh the relevant queue after a decision. The office console consumes the API cursors with Load more controls. Public found-item browsing uses its separate bounded public endpoint. Office inventory can filter both `available` and `claim_approved` records in the same paginated query.
 
 ### Claims, evidence and handover
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | <code>/api/claims</code> | Create a claim with a private explanation and evidence categories. |
-| GET | <code>/api/claims</code> | Keyset-paginated claims (`page_size`, `cursor`, `next_cursor`, `has_more`). Office staff can select `queue=active`, `handover`, `disputed`, `pending`, or `other`; cursor ordering uses immutable creation time and ID, with `priority_rank` metadata. Student responses include a total active-claim count for navigation badges. |
+| GET | <code>/api/claims</code> | Keyset-paginated claims (`page_size`, `cursor`, `next_cursor`, `has_more`). Office staff can select `queue=active`, `handover`, `disputed`, `pending`, or `other`; cursor ordering uses immutable creation time and ID, with `priority_rank` metadata. Production student requests do not use this authenticated route; public students use `/api/public/found/{report_id}/claims` and token-scoped tracking. |
 | POST | <code>/api/claims/{claim_id}/evidence</code> | Update claim evidence text. |
 | POST | <code>/api/claims/{claim_id}/evidence-image</code> | Upload private supporting evidence image. |
 | GET | <code>/api/claims/{claim_id}/evidence-image</code> | Retrieve the evidence image subject to claimant/office access rules. |
@@ -413,7 +427,7 @@ This is a route overview, not a replacement for endpoint schema validation. The 
 | PDF certificates | ReportLab | Generate downloadable milestone certificates. |
 | Optional semantic model | Sentence Transformers | Text embeddings. |
 | Optional visual model | Transformers, PyTorch and CLIP | Image-image or image-text similarity. |
-| Frontend | HTML, CSS and vanilla JavaScript | Student and office workflows. |
+| Frontend | HTML, CSS and vanilla JavaScript | Public student experience and authenticated office console. |
 | Testing and CI | Python unittest, Node.js syntax check and GitHub Actions | Workflow, matching, rewards, frontend contract and import checks. |
 
 ## Prerequisites
@@ -538,18 +552,15 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. Keep Terminal open while testing. Press **Ctrl+C** to stop the server.
 
-### 4. Sign in to the local demo
+### 4. Use the local demo
 
-When `DEMO_MODE=true`, LostLink creates local demonstration users and sample records:
+When `DEMO_MODE=true`, LostLink creates sample records and one local office demonstration account:
 
 | Role | Email | Password |
 |---|---|---|
-| Student | `student@lostlink.local` | `student123` |
 | Office staff | `office@lostlink.local` | `office123` |
 
-Use the in-app role switcher to move between student and office views in the same browser session. Both roles use the same local database. Revisit or refresh a view after switching to load its current data.
-
-These credentials are for local testing only. Do not use them for a public deployment or expose the local development server to the internet.
+Students do not sign in. Open the landing page and use the public Lost/Found, Browse and Track actions. The office demo account is for local testing only; do not use it for a public deployment or expose the local development server to the internet.
 
 By default, local data is stored in:
 
@@ -668,7 +679,7 @@ The default benchmark is <code>tests/data/matching_benchmark_v1.json</code>: 100
 
 Students use the public workflow documented in [Public student workflow](docs/PUBLIC_STUDENT_WORKFLOW.md). Public image/evidence upload is intentionally disabled until token-scoped access to private object storage is implemented.
 
-The report form includes an optional category suggestion action. It analyses the item name, description and visible characteristics, returns up to three category candidates, and requires the student to explicitly apply a suggestion. It never changes a submitted report or makes ownership decisions. MiniLM category inference shares the existing `USE_SEMANTIC_MODEL` setting; without it, a deterministic keyword fallback is used.
+The optional category-suggestion service analyses item names, descriptions and visible characteristics and returns advisory candidates. It is not currently exposed in the public student form. MiniLM inference shares the existing `USE_SEMANTIC_MODEL` setting; without it, a deterministic keyword fallback is used.
 
 The current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
 
