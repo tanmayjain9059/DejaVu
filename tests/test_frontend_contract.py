@@ -104,6 +104,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("stopNotificationPolling();", self.js)
 
 
+    def test_public_navigation_is_visible_before_authentication(self):
+        self.assertIn('id="publicNav"', self.html)
+        self.assertIn('class="public-topbar"', self.html)
+        for destination in ("home", "browse", "lost", "found", "track", "office"):
+            self.assertIn(f'data-public-destination="{destination}"', self.html)
+        self.assertIn('$("#publicNav").addEventListener("click"', self.js)
+        self.assertIn("function setPublicNavActive(destination)", self.js)
+
     def test_obsolete_student_to_office_switch_is_not_rendered(self):
         # Public student accounts were intentionally removed. Office staff sign in
         # through the dedicated staff entry point, so this legacy control is invalid.
