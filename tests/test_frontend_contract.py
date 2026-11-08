@@ -108,13 +108,27 @@ class FrontendContractTests(unittest.TestCase):
 
 
     def test_lost_and_found_reports_have_distinct_student_guidance(self):
-        self.assertIn('id="lostReportGuidance"', self.html)
-        self.assertIn('id="foundReportGuidance"', self.html)
-        self.assertIn("LOST ITEM · HELP US RETRACE IT", self.html)
-        self.assertIn("FOUND ITEM · HELP RETURN IT SAFELY", self.html)
-        self.assertIn("last time you remember having the item", self.js)
+        lost_start = self.html.index('<form id="lostReportForm"')
+        lost_end = self.html.index("</form>", lost_start)
+        found_start = self.html.index('<form id="foundReportForm"')
+        found_end = self.html.index("</form>", found_start)
+        lost_form = self.html[lost_start:lost_end]
+        found_form = self.html[found_start:found_end]
+        self.assertIn('id="lostReportGuidance"', lost_form)
+        self.assertNotIn('id="foundReportGuidance"', lost_form)
+        self.assertIn('id="foundReportGuidanceFound"', found_form)
+        self.assertNotIn('id="lostReportGuidanceFound"', found_form)
+        self.assertIn("LOST ITEM · HELP US RETRACE IT", lost_form)
+        self.assertIn("FOUND ITEM · HELP RETURN IT SAFELY", found_form)
+        self.assertIn("Where did you last have it?", self.js)
         self.assertIn("actual discovery place", self.js)
         self.assertIn("Keep one or two unique ownership clues private", self.js)
+        self.assertIn("Submit found report", found_form)
+        self.assertNotIn("Submit lost report", found_form)
+        self.assertIn("What does the item look like?", found_form)
+        self.assertIn("Where exactly did you find it?", found_form)
+        self.assertIn("Suggest found-item category with AI", self.js)
+        self.assertIn("Help us return this item safely.", self.js)
 
     def test_report_reset_is_safe_when_forms_are_not_mounted(self):
         self.assertIn("function activeReportForm()", self.js)
