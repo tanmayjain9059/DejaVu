@@ -30,7 +30,7 @@ from app.core.config import (
 from app.core.database import audit, connect_db, now_iso, table_columns
 from app.core.security import hash_password
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
-from app.services.reports import new_public_ref, read_report, serialise_report
+from app.services.reports import read_report, serialise_report
 from app.services.rewards import points_total
 
 router = APIRouter(prefix="/api/public", tags=["public-student-workflow"])
