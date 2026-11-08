@@ -43,7 +43,7 @@ function explainError(data, fallback) {
 }
 
 
-let usingMockApi = false;
+const usingMockApi = false;
 let mockNoticeShown = false;
 const PAGE_SIZE = 50;
 const pageState = {
@@ -97,8 +97,7 @@ function seedMockStore(){
  mockStore.session=mockCopy(MOCK_USERS.student);
 }
 function enableMockMode(){
- usingMockApi=true;seedMockStore();
- if(!mockNoticeShown){mockNoticeShown=true;window.setTimeout(()=>{if($("#appModeNote"))$("#appModeNote").classList.remove("hidden");showToast("Backend unavailable. Interactive offline preview is active; changes will not persist.",false);},0);}
+  throw new Error("Client-side mock authentication is disabled. Use the configured LostLink API and office-only demo access.");
 }
 function mockNotify(userId,title,message,entityType,entityId,eventKey){
  const key=eventKey||("demo:"+title+":"+entityId+":"+Date.now());
