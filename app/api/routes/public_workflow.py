@@ -455,6 +455,7 @@ def confirm_public_intake(case_reference: str, body: StaffIntakeBody, user: dict
             raise HTTPException(status_code=409, detail="This report is not awaiting intake.")
         if not secrets.compare_digest(row["roll_number"], verified_roll):
             raise HTTPException(status_code=422, detail="The physical college ID roll number does not match this found report.")
+        case_id = row["id"]
         timestamp = now_iso()
         conn.execute("""UPDATE public_cases SET status='available',storage_location=?,private_detail=?,
                      tag_id=?,intake_by=?,intake_at=?,updated_at=? WHERE id=?""",
