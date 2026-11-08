@@ -170,10 +170,22 @@ def health_ready():
         # Log only the failing stage and exception class. Never log connection
         # strings, credentials, request headers, or exception messages.
         import logging
+        error_code = ""
+        http_status = ""
+        response = getattr(exc, "response", None)
+        if isinstance(response, dict):
+            error = response.get("Error", {})
+            metadata = response.get("ResponseMetadata", {})
+            if isinstance(error, dict):
+                error_code = str(error.get("Code", ""))[:80]
+            if isinstance(metadata, dict):
+                http_status = str(metadata.get("HTTPStatusCode", ""))[:8]
         logging.getLogger(__name__).error(
-            "Readiness check failed at %s (%s)",
+            "Readiness check failed at %s (%s, code=%s, http_status=%s)",
             readiness_stage,
             type(exc).__name__,
+            error_code or "unavailable",
+            http_status or "unavailable",
         )
         return JSONResponse(
             status_code=503,
