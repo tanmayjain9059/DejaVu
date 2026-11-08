@@ -669,12 +669,14 @@ async function loadConfig() {
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
   $("#reportCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
+  ["publicCategory","publicBrowseCategory"].forEach(id => { if ($("#"+id)) $("#"+id).innerHTML = (id === "publicCategory" ? '<option value="">Choose a category</option>' : '<option value="">All categories</option>') + categoryOptions; });
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
   const blocks = appConfig.locations.blocks || [];
   const blockOptions = blocks.map((block) =>
     '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
   ).join("");
   $("#reportBlock").innerHTML = '<option value="">Choose a block or area</option>' + blockOptions;
+  if ($("#publicBlock")) $("#publicBlock").innerHTML = '<option value="">Choose block</option>' + blockOptions;
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
   $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
@@ -1886,15 +1888,37 @@ function showPublicHome() {
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.remove("hidden");
   $("#publicLostPage").classList.add("hidden");
-  $("#publicFoundPage").classList.add("hidden");
+  ["publicFoundPage","publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
   placeFinnForView("home");
 }
 function showPublicDestination(type) {
+  $("#loginView").classList.remove("hidden");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.add("hidden");
-  $("#publicLostPage").classList.toggle("hidden", type !== "lost");
-  $("#publicFoundPage").classList.toggle("hidden", type !== "found");
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden", id !== (type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "lost" ? "publicLostPage" : "publicFoundPage")));
+  if (type === "browse") loadPublicFound();
   placeFinnForView(type);
 }
+async function publicApi(path, options) {
+  const response = await fetch(path, Object.assign({credentials:"same-origin", headers:{}}, options || {}));
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(explainError(data, "Request failed ("+response.status+")."));
+  return data;
+}
+async function loadPublicFound() {
+  const q = $("#publicBrowseQuery").value.trim();
+  const category = $("#publicBrowseCategory").value;
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (category) params.set("category", category);
+  try {
+    const data = await publicApi("/api/public/found"+(params.size ? "?"+params.toString() : ""));
+    $("#publicBrowseResults").innerHTML = data.reports.map(item => '<article class="list-card"><div class="list-card-head"><div><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p>'+escapeHTML(item.description)+'</p><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p><button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button></article>').join("");
+    $("#publicBrowseEmpty").classList.toggle("hidden", data.reports.length > 0);
+  } catch (error) { showToast(error.message, true); }
+}
+
 function openPublicSignIn(mode = "student") {
   const office = mode === "office";
   $("#loginPanelKicker").textContent = "STUDENT ACCESS";
@@ -1910,16 +1934,78 @@ function openPublicSignIn(mode = "student") {
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
 }
-$("#publicSignInButton").addEventListener("click", () => openPublicSignIn("student"));
+$("#publicBrowseButton").addEventListener("click", () => showPublicDestination("browse"));
+$("#publicTrackButton").addEventListener("click", () => showPublicDestination("track"));
 $("#closeOfficeAccess").addEventListener("click", () => {
   $("#officeLoginPanel").classList.add("hidden");
   $("#loginError").textContent = "";
 });
 document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click", () => {
-  if (!currentUser) enterPublicPreview();
-  setReportMode(button.dataset.publicReport);
+  const type = button.dataset.publicReport;
+  $("#publicReportType").value = type;
+  showPublicDestination(type);
+  const title = $("#public"+(type === "lost" ? "Lost" : "Found")+"Page").querySelector(".public-title");
+  if (title) title.scrollIntoView({behavior:"smooth",block:"start"});
 }));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
+$("#publicBrowseForm").addEventListener("submit", event => { event.preventDefault(); loadPublicFound(); });
+$("#publicBrowseResults").addEventListener("click", async event => {
+  const button = event.target.closest("[data-public-claim]");
+  if (!button) return;
+  const roll = prompt("Enter your college roll number to start a claim:");
+  if (!roll) return;
+  const evidence = prompt("Describe a private detail that helps prove ownership (at least 20 characters):");
+  if (!evidence) return;
+  try {
+    const result = await publicApi("/api/public/found/"+encodeURIComponent(button.dataset.publicClaim)+"/claims", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({roll_number:roll,evidence,evidence_types:["owner_specific_detail","distinctive_features"]})
+    });
+    $("#publicTrackReference").value = result.claim.reference;
+    $("#publicTrackRoll").value = roll;
+    $("#publicTrackSecret").value = result.tracking_secret;
+    $("#publicTrackResult").textContent = "Save this tracking secret securely. It is shown once.";
+    showPublicDestination("track");
+  } catch(error) { showToast(error.message,true); }
+});
+$("#publicReportForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const type = $("#publicReportType").value;
+  const body = {
+    report_type:type, roll_number:$("#publicRollNumber").value.trim(),
+    title:$("#publicTitle").value.trim(), category:$("#publicCategory").value,
+    description:$("#publicDescription").value.trim(), location_block:$("#publicBlock").value || null,
+    location_area:$("#publicArea").value.trim() || null, occurred_at:$("#publicDate").value || null
+  };
+  const errorNode = $("#publicReportError"), button = event.currentTarget.querySelector('button[type="submit"]');
+  errorNode.textContent = "";
+  button.disabled = true;
+  try {
+    const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    errorNode.textContent = "";
+    $("#publicTrackReference").value = result.case.reference;
+    $("#publicTrackRoll").value = body.roll_number;
+    $("#publicTrackSecret").value = result.tracking_secret;
+    $("#publicTrackResult").textContent = result.message+" Reference: "+result.case.reference;
+    showPublicDestination("track");
+    showToast("Report submitted. Save the tracking secret shown here.",false);
+    event.currentTarget.reset();
+  } catch(error) { errorNode.textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$("#publicTrackForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const ref = encodeURIComponent($("#publicTrackReference").value.trim());
+  const roll = $("#publicTrackRoll").value.trim();
+  const secret = $("#publicTrackSecret").value;
+  const resultNode = $("#publicTrackResult");
+  resultNode.textContent = "Checking private case access…";
+  try {
+    const data = await publicApi("/api/public/track/"+ref+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
+    const record = data.case || data.claim;
+    resultNode.textContent = "Reference "+(record.reference || $("#publicTrackReference").value)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || "");
+  } catch(error) { resultNode.textContent = error.message; }
+});
 let finnLines = {
   "home": [
     "Lost something? Finn's got you 👀",
