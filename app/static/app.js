@@ -1964,7 +1964,9 @@ document.querySelectorAll("[data-public-report]").forEach(button => button.addEv
   const type = button.dataset.publicReport;
   $("#publicReportType").value = type;
   showPublicDestination(type);
-  const title = $("#public"+(type === "lost" ? "Lost" : "Found")+"Page").querySelector(".public-title");
+  // Both report types use the shared public report form in #publicLostPage.
+  // The legacy #publicFoundPage is informational only; scrolling to it hid the active form.
+  const title = $("#publicLostPage .public-title");
   if (title) title.scrollIntoView({behavior:"smooth",block:"start"});
 }));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
