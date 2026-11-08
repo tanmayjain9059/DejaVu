@@ -412,7 +412,7 @@ def browse_public_found(category: str | None = None, q: str | None = None, limit
 @router.get("/reports/{reference}/matches")
 async def public_report_matches(
     reference: str,
-    roll_number: str,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
@@ -576,7 +576,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
 def add_public_claim_evidence(
     reference: str,
     body: PublicEvidenceBody,
-    roll_number: str,
+    roll_number: str = Header(...,alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(...,alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
