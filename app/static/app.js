@@ -1729,7 +1729,9 @@ function placeFinnIn(selector) {
 }
 
 function setPublicNavActive(destination) {
-  $("#publicNav [data-public-destination]").forEach(button => {
+  const nav = $("#publicNav");
+  if (!nav) return;
+  nav.querySelectorAll("[data-public-destination]").forEach(button => {
     const active = button.dataset.publicDestination === destination;
     button.classList.toggle("active", active);
     if (active) button.setAttribute("aria-current", "page");
