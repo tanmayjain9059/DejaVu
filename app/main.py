@@ -15,7 +15,7 @@ from app.core.images import *
 from app.core.security import *
 from app.core.runtime import *
 from app.schemas import *
-from app.services.object_storage import storage_backend
+from app.services.object_storage import check_storage_ready, storage_backend
 from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
@@ -162,6 +162,7 @@ def health_ready():
             version = conn.execute(
                 "SELECT COALESCE(MAX(version),1) AS schema_version FROM schema_migrations"
             ).fetchone()["schema_version"]
+        storage_status = check_storage_ready()
     except Exception:
         return JSONResponse(status_code=503, content={"status": "not_ready"})
     return {
@@ -169,6 +170,7 @@ def health_ready():
         "database": "postgresql" if DATABASE_URL else "sqlite",
         "schema_version": int(version),
         "canonical_tables": "ready",
+        "storage": storage_status,
     }
 
 
