@@ -1,7 +1,6 @@
 {
   "home": [
-    "Lost something? Finn's got you 👀",
-    "Let's find your stuff."
+    "Lost something? Finn's got you 👀"
   ],
   "search_lost": [
     "Describe it, I'll sniff it out.",
@@ -57,5 +56,17 @@
   "error": [
     "Oops, something broke. Try again?",
     "No signal, I'll wait with you."
+  ],
+  "activity": [
+    "Verified contributions deserve a little recognition."
+  ],
+  "my_reports": [
+    "Your reports, all in one place."
+  ],
+  "my_claims": [
+    "Keep an eye on your ownership claims."
+  ],
+  "office": [
+    "Let's keep campus returns accountable."
   ]
 }
