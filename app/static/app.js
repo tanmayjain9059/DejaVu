@@ -1903,24 +1903,46 @@ document.addEventListener("click", event => {
   }
 });
 $("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
-$("#publicBrowseResults").addEventListener("click",async event => {
+let selectedPublicFoundId = null;
+$("#publicBrowseResults").addEventListener("click", event => {
   const button = event.target.closest("[data-public-claim]");
   if (!button) return;
-  const roll = prompt("Enter your college roll number to start a claim:");
-  if (!roll) return;
-  const evidence = prompt("Describe a private detail that helps prove ownership (at least 20 characters):");
-  if (!evidence) return;
+  selectedPublicFoundId = button.dataset.publicClaim;
+  $("#publicClaimError").textContent = "";
+  $("#publicClaimForm").reset();
+  $("#publicClaimDialog").showModal();
+});
+$("#publicClaimClose").addEventListener("click", () => $("#publicClaimDialog").close());
+$("#publicClaimCancel").addEventListener("click", () => $("#publicClaimDialog").close());
+$("#publicClaimForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!selectedPublicFoundId || claimSubmitting) return;
+  const roll = $("#publicClaimRoll").value.trim().toUpperCase();
+  const evidence = $("#publicClaimEvidence").value.trim();
+  const evidenceTypes = $('input[name="publicClaimEvidenceType"]:checked').map(input => input.value);
+  const errorNode = $("#publicClaimError");
+  errorNode.textContent = "";
+  if (evidence.length < 20) { errorNode.textContent = "Please provide at least 20 characters explaining how you can verify ownership."; return; }
+  if (!evidenceTypes.length) { errorNode.textContent = "Select at least one type of supporting evidence."; return; }
+  const button = $("#publicClaimSubmit");
+  claimSubmitting = true;
+  button.disabled = true;
   try {
-    const result = await publicApi("/api/public/found/"+encodeURIComponent(button.dataset.publicClaim)+"/claims",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({roll_number:roll,evidence,evidence_types:["distinctive_features","other"]})
+    const lostReportReference = $("#publicClaimLostReference").value.trim();
+    const result = await publicApi("/api/public/found/" + encodeURIComponent(selectedPublicFoundId) + "/claims", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({roll_number:roll,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
     $("#publicTrackReference").value = result.claim.reference;
     $("#publicTrackRoll").value = roll;
     $("#publicTrackSecret").value = result.tracking_secret;
     $("#publicTrackResult").textContent = result.message || "Save this tracking secret securely. It is shown once.";
+    $("#publicClaimDialog").close();
+    selectedPublicFoundId = null;
     showPublicDestination("track");
-  } catch(error) { showToast(error.message,true); }
+  } catch(error) { errorNode.textContent = error.message; }
+  finally { claimSubmitting = false; button.disabled = false; }
 });
 $("#publicReportForm").addEventListener("submit",async event => {
   event.preventDefault();
@@ -1982,22 +2004,92 @@ $("#publicReportForm").addEventListener("submit",async event => {
   } catch(error) { errorNode.textContent = error.message; }
   finally { button.disabled = false; }
 });
-$("#publicTrackForm").addEventListener("submit",async event => {
+let lastPublicTracking = null;
+async function refreshPublicMatches(reference, credentials, target) {
+  try {
+    const data = await publicApi("/api/public/reports/" + encodeURIComponent(reference) + "/matches", {headers:credentials});
+    const matches = data.matches || [];
+    target.innerHTML = '<h3>Possible matches</h3>' + (matches.length ? matches.map(match =>
+      '<article class="list-card"><strong>' + escapeHTML(match.title || "Possible item") + '</strong><p>' +
+      escapeHTML(match.public_ref || match.reference || "") + ' · ' + escapeHTML(match.location_area || match.location || "Campus") +
+      '</p><span class="status-pill">' + escapeHTML(match.score_label || match.match_label || "Suggested match") + '</span></article>'
+    ).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
+  } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
+}
+$("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
-  const ref = encodeURIComponent($("#publicTrackReference").value.trim());
-  const roll = $("#publicTrackRoll").value.trim();
+  const reference = $("#publicTrackReference").value.trim();
+  const roll = $("#publicTrackRoll").value.trim().toUpperCase();
   const secret = $("#publicTrackSecret").value.trim();
   const resultNode = $("#publicTrackResult");
   resultNode.textContent = "Checking private case access…";
+  const credentials = {"X-LostLink-Roll-Number":roll,"X-LostLink-Tracking-Secret":secret};
   try {
-    const data = await publicApi("/api/public/track/"+ref,{headers:{"X-LostLink-Roll-Number":roll,"X-LostLink-Tracking-Secret":secret}});
+    const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
+    lastPublicTracking = {reference,roll,secret,data};
     const record = data.case || data.claim || {};
     const item = data.case || data.item || {};
+    const isCase = Boolean(data.case);
     const events = (data.events || []).map(entry => '<article class="list-card"><strong>' + escapeHTML(entry.title) + '</strong><p>' + escapeHTML(entry.message) + '</p><small>' + escapeHTML(humanDateTime(entry.created_at)) + '</small></article>').join("");
-    resultNode.innerHTML = '<p><strong>Reference ' + escapeHTML(record.reference || $("#publicTrackReference").value) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '. ' + escapeHTML(record.title || item.title || "") + '</p>' +
-      (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : "") +
-      (events ? '<h3>Case updates</h3>' + events : '<p class="field-hint">No additional updates have been recorded yet.</p>');
-  } catch(error) { resultNode.textContent = error.message; }
+    const actions = [];
+    if (isCase && item.report_type === "lost" && item.status === "open") {
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-refresh-matches>Refresh matches</button>');
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-close-case>Close report</button>');
+    }
+    if (!isCase && record.status === "needs_more_evidence") {
+      actions.push('<button class="button button-liquid button-small" type="button" data-public-add-evidence>Submit requested evidence</button>');
+    }
+    resultNode.innerHTML = '<section class="track-summary"><p><strong>Reference ' + escapeHTML(record.reference || reference) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '</p><p>' + escapeHTML(record.title || item.title || "Claim") + '</p>' +
+      (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : '') +
+      '<div class="form-actions">' + actions.join("") + '</div></section>' +
+      (events ? '<h3>Case updates</h3>' + events : '<p class="field-hint">No additional updates have been recorded yet.</p>') +
+      (isCase && item.report_type === "lost" ? '<div id="publicTrackMatches" class="track-matches"></div>' : '');
+    if (isCase && item.report_type === "lost") await refreshPublicMatches(reference, credentials, $("#publicTrackMatches"));
+  } catch(error) { lastPublicTracking = null; resultNode.textContent = error.message; }
+});
+$("#publicTrackResult").addEventListener("click", async event => {
+  const state = lastPublicTracking;
+  if (!state) return;
+  const credentials = {"X-LostLink-Roll-Number":state.roll,"X-LostLink-Tracking-Secret":state.secret};
+  if (event.target.closest("[data-public-refresh-matches]")) {
+    await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
+  } else if (event.target.closest("[data-public-close-case]")) {
+    if (!confirm("Close this Lost report? It will no longer appear as an open report.")) return;
+    try {
+      await publicApi("/api/public/cases/" + encodeURIComponent(state.reference) + "/close", {
+        method:"POST", headers:{...credentials,"Content-Type":"application/json"},
+        body:JSON.stringify({reason:"no_longer_searching",note:null})
+      });
+      showToast("Your Lost report has been closed.",false);
+      $("#publicTrackForm").requestSubmit();
+    } catch(error) { showToast(error.message,true); }
+  } else if (event.target.closest("[data-public-add-evidence]")) {
+    $("#publicEvidenceError").textContent = "";
+    $("#publicEvidenceText").value = "";
+    $("#publicEvidenceDialog").showModal();
+  }
+});
+$("#publicEvidenceClose").addEventListener("click", () => $("#publicEvidenceDialog").close());
+$("#publicEvidenceCancel").addEventListener("click", () => $("#publicEvidenceDialog").close());
+$("#publicEvidenceForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!lastPublicTracking) return;
+  const evidence = $("#publicEvidenceText").value.trim();
+  if (evidence.length < 20) { $("#publicEvidenceError").textContent = "Please enter at least 20 characters."; return; }
+  const button = $("#publicEvidenceSubmit");
+  button.disabled = true;
+  try {
+    const state = lastPublicTracking;
+    const result = await publicApi("/api/public/claims/" + encodeURIComponent(state.reference) + "/evidence", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-LostLink-Roll-Number":state.roll,"X-LostLink-Tracking-Secret":state.secret},
+      body:JSON.stringify({evidence})
+    });
+    $("#publicEvidenceDialog").close();
+    showToast(result.message || "Additional evidence submitted.",false);
+    $("#publicTrackForm").requestSubmit();
+  } catch(error) { $("#publicEvidenceError").textContent = error.message; }
+  finally { button.disabled = false; }
 });
 
 async function start() {
