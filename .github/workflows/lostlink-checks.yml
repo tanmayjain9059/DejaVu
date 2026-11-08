@@ -98,6 +98,12 @@ jobs:
         run: >-
           python -m unittest discover -s tests -p test_workflow.py
           -k report_intake_match_claim_handover_and_rewards -v
+      - name: Reset disposable PostgreSQL schema before public workflow integration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - name: Run no-login public student workflow on PostgreSQL
+        env:
+          TEST_WITH_POSTGRES: "true"
+        run: python -m unittest discover -s tests -p test_public_workflow.py -v
       - name: Reset disposable PostgreSQL schema before concurrency regression
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
       - name: Run concurrent duplicate-handover regression on PostgreSQL
