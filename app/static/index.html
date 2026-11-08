@@ -70,6 +70,7 @@
 
           <div class="public-trust-row"><div><strong>01</strong><span>Report in minutes</span></div><div><strong>02</strong><span>Discover found items</span></div><div><strong>03</strong><span>Verified campus handover</span></div></div>
           <p class="public-footnote">A match is a helpful lead — ownership is confirmed through the campus office.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
           <p id="publicApiStatus" class="field-hint hidden" role="status"></p>
         </section>
 
@@ -78,6 +79,7 @@
           <p class="eyebrow">PUBLIC REPORT · LOST</p>
           <h1 class="public-title">Let's find<br><span>what's missing.</span></h1>
           <p class="public-lede">Submit a report using your college roll number. No student account or password is needed.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicReportForm" class="form-card form-stack liquid-glass-panel">
             <input id="publicReportType" type="hidden" value="lost">
             <label><span>College roll number · Required</span><input id="publicRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
@@ -101,12 +103,14 @@
           <p class="eyebrow">PUBLIC REPORT · FOUND</p>
           <h1 class="public-title">You found it.<br><span>Let's reunite it.</span></h1>
           <p class="public-lede">Tell us what you found. The campus office will verify your college ID when you hand in the item.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
           <div class="destination-card"><span class="destination-symbol">✦</span><div><strong>Physical hand-in required</strong><p>Found items become searchable only after staff receive, tag, and record them.</p></div></div>
         </section>
         <section id="publicBrowsePage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PUBLIC DISCOVERY</p><h1 class="public-title">Search <span>campus reports.</span></h1>
           <p class="public-lede">Search open Lost reports and office-received Found items by name, category, or visible description. Private details are never displayed.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicBrowseForm" class="form-stack"><input id="publicBrowseQuery" type="search" maxlength="100" placeholder="Search e.g. black calculator"><select id="publicBrowseCategory"><option value="">All categories</option></select><button class="button button-liquid" type="submit">Search items</button></form>
           <div id="publicBrowseResults" class="stack-list"></div><p id="publicBrowseEmpty" class="field-hint hidden">No public reports match that search yet.</p>
         </section>
