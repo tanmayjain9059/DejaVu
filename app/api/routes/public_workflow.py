@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
@@ -26,15 +26,17 @@ from app.core.config import (
     ALLOWED_EVIDENCE_TYPES,
     CATEGORY_LABELS,
     MATCHING_CANDIDATE_LIMIT,
+    MAX_UPLOAD_BYTES,
     SESSION_SECRET,
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
 from app.core.database import audit, connect_db, now_iso, table_columns
 from app.core.security import hash_password
+from app.core.images import canonicalise_image, image_fingerprint_matches
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
 from app.services.reports import read_report, serialise_report
-from app.services.object_storage import read_upload
+from app.services.object_storage import delete_upload, read_upload, save_upload
 
 router = APIRouter(prefix="/api/public", tags=["public-student-workflow"])
 ROLL_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{4,19}$")
@@ -364,6 +366,61 @@ async def submit_public_report(body: PublicReportBody, request: Request):
         "matches": matches,
     }
 
+
+
+@router.post("/reports/{reference}/image")
+async def upload_public_report_image(
+    reference: str,
+    request: Request,
+    file: UploadFile = File(...),
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    """Attach an optional private photo to a public report using its one-time credentials."""
+    roll = _roll(roll_number)
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
+    normalized, image_sha256, image_phash = canonicalise_image(raw)
+    new_key = None
+    old_key = None
+    try:
+        with connect_db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            _enforce_rate_limit(conn, request, "image", 5)
+            row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
+            if (
+                not row
+                or row["submission_channel"] != "public"
+                or row["roll_number"] != roll
+                or not _verify_token(row["tracking_hash"], tracking_secret)
+            ):
+                raise HTTPException(status_code=404, detail="Tracking access not found.")
+            if row["status"] not in {"open", "awaiting_intake"}:
+                raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
+            if image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(status_code=409, detail="This image duplicates or closely matches an image already in LostLink.")
+            new_key = uuid.uuid4().hex + ".jpg"
+            save_upload(new_key, normalized)
+            old_key = row["image_path"]
+            conn.execute(
+                "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
+                (new_key, image_sha256, image_phash, now_iso(), row["id"]),
+            )
+            audit(conn, int(row["created_by"]), "public_report_image_added", "report", row["id"])
+    except Exception:
+        if new_key:
+            try:
+                delete_upload(new_key)
+            except Exception:
+                pass
+        raise
+    if old_key and old_key != new_key:
+        try:
+            delete_upload(old_key)
+        except Exception:
+            pass
+    return {"reference": reference, "image_uploaded": True, "message": "Your photo was saved privately for office review and matching."}
 
 
 @router.get("/search")
