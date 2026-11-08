@@ -2878,3 +2878,24 @@ input:focus, select:focus, textarea:focus {
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
+
+/* Small-screen capsule: keep the complete navigation reachable without page overflow. */
+@media (max-width: 560px) {
+  .public-nav {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .public-nav::-webkit-scrollbar { display: none; }
+  .public-nav .public-nav-item {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+  }
+}
