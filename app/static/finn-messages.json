@@ -1,0 +1,61 @@
+{
+  "home": [
+    "Lost something? Finn's got you 👀",
+    "Let's find your stuff."
+  ],
+  "search_lost": [
+    "Describe it, I'll sniff it out.",
+    "Colour + place = faster match."
+  ],
+  "search_found": [
+    "Found something? Be a hero 🙌",
+    "Drop it here, help a stranger."
+  ],
+  "search_focused": [
+    "Try 'black wallet library'.",
+    "Keep it simple, I got it."
+  ],
+  "results": [
+    "Ooh, this could be it!",
+    "Check these out 👇"
+  ],
+  "no_results": [
+    "Nothing yet, still looking.",
+    "New stuff drops daily, check back."
+  ],
+  "item_detail": [
+    "Is this yours? Claim it!",
+    "Add proof to speed things up."
+  ],
+  "post_lost": [
+    "Clear photo helps a lot.",
+    "More details = better luck."
+  ],
+  "post_found": [
+    "Clear photo helps a lot.",
+    "Add where you found it."
+  ],
+  "claim_submitted": [
+    "Done! Fingers crossed 🤞",
+    "Sit tight, we'll ping you."
+  ],
+  "item_returned": [
+    "Reunited!! Love to see it 🎉"
+  ],
+  "notifications": [
+    "New match! Come look.",
+    "You're all caught up."
+  ],
+  "history": [
+    "Your finds so far. Legend.",
+    "Nothing here yet, go be useful 😌"
+  ],
+  "urgent": [
+    "Your item matters. Add clear details.",
+    "We'll help you verify it safely."
+  ],
+  "error": [
+    "Oops, something broke. Try again?",
+    "No signal, I'll wait with you."
+  ]
+}
