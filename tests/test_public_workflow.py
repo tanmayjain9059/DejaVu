@@ -112,6 +112,12 @@ class PublicWorkflowTests(unittest.TestCase):
             "evidence_types":["distinctive_features","date_location"],
         })
         self.assertEqual(claim.status_code,201,claim.text)
+        duplicate=self.client.post("/api/public/found/"+case["id"]+"/claims",json={
+            "roll_number":"25B81A66J9",
+            "evidence":"There is a small scratch on the lower-right corner that I can identify.",
+            "evidence_types":["distinctive_features","date_location"],
+        })
+        self.assertEqual(duplicate.status_code,409,duplicate.text)
         with main.connect_db() as conn:
             claim_row=conn.execute("SELECT id FROM public_claims WHERE public_ref=?",
                 (claim.json()["claim"]["reference"],)).fetchone()
