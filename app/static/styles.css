@@ -3069,3 +3069,43 @@ select:disabled {
   pointer-events: none !important;
   cursor: not-allowed;
 }
+
+
+/* Native picker compatibility: iOS Safari can fail to present a select menu
+   when any ancestor establishes a backdrop-filter/transform stacking context.
+   Keep native controls and their containing surfaces in the normal hit-test
+   and compositing path; preserve the visual treatment with opaque surfaces. */
+:where(.login-shell, .login-story, .public-landing-shell, .public-story,
+       .public-destination, .public-destination form, .app-shell,
+       .content-view, .form-layout, .form-card, .filter-panel,
+       .search-secondary-row, .dialog-card, .office-section):has(select) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+:where(.public-destination, .public-destination form, .form-card,
+       .filter-panel, .search-secondary-row):has(select) {
+  transform: none !important;
+  perspective: none !important;
+  contain: none !important;
+}
+select,
+select:enabled {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto !important;
+  -webkit-appearance: menulist !important;
+  appearance: auto !important;
+  position: relative;
+  z-index: 20 !important;
+  min-height: 44px;
+  touch-action: auto !important;
+  color: #332720 !important;
+  background-color: #fffdf9 !important;
+}
+label:has(select) {
+  position: relative;
+  z-index: 19;
+  pointer-events: auto !important;
+}
