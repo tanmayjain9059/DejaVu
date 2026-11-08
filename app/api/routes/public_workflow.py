@@ -12,7 +12,7 @@ import secrets
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, Field
 
 from app.core.runtime import (
@@ -82,6 +82,13 @@ def ensure_public_schema() -> None:
             ON public_claims(case_id, status);
         CREATE INDEX IF NOT EXISTS idx_public_claims_roll_created
             ON public_claims(roll_number, created_at DESC);
+        CREATE TABLE IF NOT EXISTS public_rate_limits (
+            id TEXT PRIMARY KEY,
+            ip_hash TEXT NOT NULL,
+            action TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_public_rate_limits_lookup ON public_rate_limits(ip_hash,action,created_at);
         CREATE TABLE IF NOT EXISTS public_case_events (
             id TEXT PRIMARY KEY,
             case_id TEXT NOT NULL,
@@ -96,6 +103,24 @@ def ensure_public_schema() -> None:
             "INSERT OR IGNORE INTO public_schema_migrations(version,name,applied_at) VALUES (1,?,?)",
             ("public_roll_attribution_and_tracking_tokens", now_iso()),
         )
+
+
+
+
+def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
+    """Bound anonymous write volume without persisting raw client IP addresses."""
+    from datetime import datetime, timedelta, timezone
+    address = request.client.host if request.client else "unknown"
+    ip_hash = hashlib.sha256(address.encode("utf-8")).hexdigest()
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
+    count = conn.execute(
+        "SELECT COUNT(*) AS n FROM public_rate_limits WHERE ip_hash=? AND action=? AND created_at>=?",
+        (ip_hash, action, cutoff),
+    ).fetchone()["n"]
+    if int(count) >= maximum:
+        raise HTTPException(status_code=429, detail="Too many submissions. Please try again later.")
+    conn.execute("INSERT INTO public_rate_limits(id,ip_hash,action,created_at) VALUES (?,?,?,?)",
+                 (uuid.uuid4().hex, ip_hash, action, now_iso()))
 
 
 def _roll(value: str) -> str:
@@ -187,7 +212,7 @@ class StaffHandoverBody(BaseModel):
 
 
 @router.post("/reports", status_code=201)
-def submit_public_report(body: PublicReportBody):
+def submit_public_report(body: PublicReportBody, request: Request):
     roll = _roll(body.roll_number)
     if body.category not in CATEGORY_LABELS:
         raise HTTPException(status_code=422, detail="Choose a valid item category.")
@@ -204,6 +229,8 @@ def submit_public_report(body: PublicReportBody):
     public_ref = _ref("LL")
     status = "open" if body.report_type == "lost" else "awaiting_intake"
     with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        _enforce_rate_limit(conn, request, "report", 10)
         conn.execute(
             """INSERT INTO public_cases
             (id,public_ref,report_type,roll_number,title,description,category,brand,primary_color,
@@ -244,7 +271,7 @@ def browse_public_found(category: str | None = None, q: str | None = None, limit
 
 @router.get("/track/{reference}")
 def track_one_case(reference: str, roll_number: str,
-                   tracking_secret: str = __import__("fastapi").Header(..., alias="X-LostLink-Tracking-Secret")):
+                   tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret")):
     """A bearer secret unlocks only its own case or claim, never all records for a roll number."""
     roll = _roll(roll_number)
     with connect_db() as conn:
@@ -265,7 +292,7 @@ def track_one_case(reference: str, roll_number: str,
 
 
 @router.post("/found/{case_id}/claims", status_code=201)
-def submit_public_claim(case_id: str, body: PublicClaimBody):
+def submit_public_claim(case_id: str, body: PublicClaimBody, request: Request):
     roll = _roll(body.roll_number)
     allowed = {"distinctive_features","date_location","physical_inspection","supporting_evidence",
                "owner_specific_detail","claimant_identity","authorised_record"}
@@ -276,6 +303,7 @@ def submit_public_claim(case_id: str, body: PublicClaimBody):
     claim_ref = _ref("CL")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        _enforce_rate_limit(conn, request, "claim", 20)
         case = conn.execute("SELECT * FROM public_cases WHERE id=?", (case_id,)).fetchone()
         if not case or case["report_type"] != "found" or case["status"] != "available":
             raise HTTPException(status_code=404, detail="Found item is not available for claims.")
