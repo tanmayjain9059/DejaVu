@@ -1947,6 +1947,7 @@ $("#publicClaimForm").addEventListener("submit", async event => {
 });
 $("#publicReportForm").addEventListener("submit",async event => {
   event.preventDefault();
+  const form = event.currentTarget;
   const type = $("#publicReportType").value;
   const body = {
     report_type:type,roll_number:$("#publicRollNumber").value.trim(),
@@ -2001,7 +2002,7 @@ $("#publicReportForm").addEventListener("submit",async event => {
     showPublicDestination("track");
     setFinnMessage("Case opened! Keep your reference and one-time secret safe.", true);
     showToast("Report submitted. Save the tracking secret shown here.",false);
-    event.currentTarget.reset();
+    form.reset();
   } catch(error) { errorNode.textContent = error.message; }
   finally { button.disabled = false; }
 });
