@@ -111,6 +111,19 @@ class FrontendContractTests(unittest.TestCase):
             self.assertIn(f'data-public-destination="{destination}"', self.html)
         self.assertIn('$("#publicNav").addEventListener("click"', self.js)
         self.assertIn("function setPublicNavActive(destination)", self.js)
+        self.assertIn('$("#publicNav [data-public-destination]").forEach', self.js)
+        self.assertNotIn('$("#publicNav [data-public-destination]").forEach', self.js)
+
+    def test_public_browse_cards_do_not_expand_full_descriptions(self):
+        self.assertIn('escapeHTML(item.title)', self.js)
+        self.assertIn('escapeHTML(item.location_area || item.location_block || "Campus location")', self.js)
+        self.assertNotIn("escapeHTML(item.description)", self.js)
+
+    def test_public_navigation_is_centered_and_glass_styled(self):
+        styles = (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)", styles)
+        self.assertIn(".public-topbar .public-nav { justify-self: center; }", styles)
+        self.assertIn("backdrop-filter: blur(18px)", styles)
 
     def test_obsolete_student_to_office_switch_is_not_rendered(self):
         # Public student accounts were intentionally removed. Office staff sign in
