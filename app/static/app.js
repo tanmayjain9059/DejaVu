@@ -1037,7 +1037,6 @@ async function submitReport(event) {
   try {
     const result = await api("/api/reports", { method: "POST", body });
     let successMessage = result.message;
-    finnEvent("claim_submitted");
     let photoFailed = false;
     if (image) {
       const fileBody = new FormData();
@@ -1911,10 +1910,7 @@ document.querySelectorAll("[data-public-report]").forEach(button => button.addEv
   setReportMode(button.dataset.publicReport);
 }));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
-const finnDock = $("#finnDock");
-const finnCharacter = $("#finnCharacter");
-const finnMessage = $("#mascotMessage");
-const finnLines = {
+let finnLines = {
   "home": [
     "Lost something? Finn's got you 👀",
     "Let's find your stuff."
@@ -2081,6 +2077,9 @@ function finnEvent(state) {
 }
 function initFinn() {
   if (!finnDock || !finnCharacter) return;
+  fetch("/static/finn-messages.json").then(response => response.ok ? response.json() : null)
+    .then(data => { if (data && typeof data === "object") finnLines = data; })
+    .catch(() => {});
   const touchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
   finnCharacter.addEventListener("pointerenter", () => {
     if (!touchDevice && !finnReducedMotion.matches) wakeFinn(finnMode());
