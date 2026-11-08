@@ -3109,3 +3109,40 @@ label:has(select) {
   z-index: 19;
   pointer-events: auto !important;
 }
+
+/* Native dropdown recovery: keep select controls above decorative glass layers.
+   Native OS pickers need a real hit target; pseudo-elements and glass surfaces
+   must never intercept pointer/touch input intended for a select. */
+select,
+select:enabled,
+select:focus {
+  position: relative !important;
+  z-index: 10000 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-appearance: menulist !important;
+  appearance: auto !important;
+  transform: none !important;
+  filter: none !important;
+}
+select option {
+  color: #332720;
+  background: #fffdf9;
+}
+label:has(> select),
+label:has(select) {
+  position: relative !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+.form-card:has(select)::before,
+.form-card:has(select)::after,
+.filter-panel:has(select)::before,
+.filter-panel:has(select)::after,
+.liquid-glass-panel:has(select)::before,
+.liquid-glass-panel:has(select)::after {
+  pointer-events: none !important;
+}
