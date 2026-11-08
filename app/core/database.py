@@ -695,27 +695,28 @@ def initialise_db() -> None:
         if not DEMO_MODE:
             return
 
+        # Demo student activity is attributed to a non-login internal principal.
+        # Public students never receive passwords or student sessions.
         conn.execute(
             """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
-               VALUES (?, ?, 'student', ?, ?)""",
-            ("student@lostlink.local", "Demo Student", hash_password("student123"), now_iso()),
+               VALUES (?, ?, 'student', 'disabled-no-login', ?)""",
+            ("public-demo-reporter@no-login.lostlink.invalid", "Public demo reporter", now_iso()),
         )
         conn.execute(
             """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
                VALUES (?, ?, 'office', ?, ?)""",
             ("office@lostlink.local", "Campus Office", hash_password("office123"), now_iso()),
         )
-        for email, display_name, password in (
-            ("student2@lostlink.local", "Aarav Mehta", "student2123"),
-            ("student3@lostlink.local", "Riya Sharma", "student3123"),
-            ("student4@lostlink.local", "Kabir Rao", "student4123"),
-        ):
-            conn.execute(
-                """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
-                   VALUES (?, ?, 'student', ?, ?)""",
-                (email, display_name, hash_password(password), now_iso()),
-            )
-        student_id = conn.execute("SELECT id FROM users WHERE email=?", ("student@lostlink.local",)).fetchone()["id"]
+        # Disable credentials on legacy demo student rows without deleting their
+        # historical report, claim, notification, or reward foreign-key targets.
+        conn.execute(
+            """UPDATE users SET password_hash='disabled-no-login'
+               WHERE role='student' AND email LIKE '%@lostlink.local'"""
+        )
+        student_id = conn.execute(
+            "SELECT id FROM users WHERE email=?",
+            ("public-demo-reporter@no-login.lostlink.invalid",),
+        ).fetchone()["id"]
         office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@lostlink.local",)).fetchone()["id"]
         if conn.execute("SELECT COUNT(*) AS n FROM reports").fetchone()["n"] > 0:
             return
