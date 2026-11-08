@@ -72,6 +72,29 @@ def main() -> int:
                 page.locator("#publicHomeContent").wait_for(state="visible")
                 audit(page, f"landing {width}x{height}")
 
+                page.locator("#publicNav [data-public-destination='browse']").click()
+                page.locator("#publicBrowsePage").wait_for(state="visible")
+                assert page.locator("#publicNav [aria-current='page']").get_attribute("data-public-destination") == "browse"
+                audit(page, f"public nav browse {width}x{height}")
+                return_home(page)
+
+                page.locator("#publicNav [data-public-destination='lost']").click()
+                page.locator("#publicLostPage").wait_for(state="visible")
+                assert page.locator("#publicReportType").input_value() == "lost"
+                audit(page, f"public nav lost {width}x{height}")
+                return_home(page)
+
+                page.locator("#publicNav [data-public-destination='found']").click()
+                page.locator("#publicLostPage").wait_for(state="visible")
+                assert page.locator("#publicReportType").input_value() == "found"
+                audit(page, f"public nav found {width}x{height}")
+                return_home(page)
+
+                page.locator("#publicNav [data-public-destination='track']").click()
+                page.locator("#publicTrackPage").wait_for(state="visible")
+                audit(page, f"public nav track {width}x{height}")
+                return_home(page)
+
                 page.locator('[data-public-report="lost"]').click()
                 page.locator("#publicLostPage").wait_for(state="visible")
                 audit(page, f"lost report {width}x{height}")
@@ -94,8 +117,9 @@ def main() -> int:
                 audit(page, f"public tracking {width}x{height}")
                 return_home(page)
 
-                page.locator("#publicOfficeButton").click()
+                page.locator("#publicNav [data-public-destination='office']").click()
                 page.locator("#officeLoginPanel").wait_for(state="visible")
+                assert page.locator("#publicNav [aria-current='page']").get_attribute("data-public-destination") == "office"
                 audit(page, f"office sign-in {width}x{height}")
                 page.locator("#loginEmail").fill("layout-audit@lostlink.test")
                 page.locator("#loginPassword").fill("layout-audit-password")
