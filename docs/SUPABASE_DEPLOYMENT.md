@@ -79,7 +79,7 @@ Deploy the API with the repository's Render configuration or the command:
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-The application applies additive schema migrations at startup. Back up the database before deploying to an existing environment and review migration output. Migration 10 adds roll attribution, tracking hashes, public claim references, rate-limit storage and internal non-login attribution identities. The public workflow also migrates records from the retired parallel public tables into canonical reports and claims without dropping those legacy tables.
+The application applies additive schema migrations at startup. Back up the database before deploying to an existing environment and review migration output. Migration 10 adds roll attribution, tracking hashes, public claim references, rate-limit storage and internal non-login attribution identities. Migration 11 adds an index for 24-hour retention of anonymous rate-limit records. The public workflow also migrates records from the retired parallel public tables into canonical reports and claims without dropping those legacy tables.
 
 ## 4. Configure Vercel
 
@@ -140,7 +140,7 @@ Expected response:
 {
   "status": "ready",
   "database": "postgresql",
-  "schema_version": 10,
+  "schema_version": 11,
   "canonical_tables": "ready",
   "storage": "s3"
 }
