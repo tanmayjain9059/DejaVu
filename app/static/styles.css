@@ -487,6 +487,70 @@ a {
   display: none !important;
 }
 
+/* Login Screen Hero Brand Logo (Enlarged with Smooth Subtle Animation) */
+.login-story .brand-header-logo,
+.brand-login-logo {
+  height: auto;
+  gap: 14px;
+  margin-bottom: 28px;
+  animation: logo-float-breathe 6s ease-in-out infinite alternate;
+}
+.login-story .brand-icon-mark,
+.brand-login-logo .brand-icon-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  box-shadow: 0 8px 24px -4px rgba(0, 162, 255, 0.42),
+              inset 0 1.5px 1.5px rgba(255, 255, 255, 0.85);
+  animation: logo-icon-pulse 4s ease-in-out infinite alternate;
+}
+.login-story .brand-icon-mark svg,
+.brand-login-logo .brand-icon-mark svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.login-story .brand-text,
+.brand-login-logo .brand-text {
+  font-size: clamp(26px, 3.4vw, 32px);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+.login-story .brand-header-logo:hover,
+.brand-login-logo:hover {
+  transform: translateY(-4px) scale(1.015);
+  opacity: 0.95;
+}
+.login-story .brand-header-logo:hover .brand-icon-mark,
+.brand-login-logo:hover .brand-icon-mark {
+  transform: scale(1.06) rotate(-2deg);
+  box-shadow: 0 12px 30px -4px rgba(0, 162, 255, 0.58),
+              inset 0 1.5px 1.5px #fff;
+}
+
+@keyframes logo-float-breathe {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes logo-icon-pulse {
+  0% {
+    box-shadow: 0 6px 18px -4px rgba(0, 162, 255, 0.35),
+                inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 10px 28px -2px rgba(0, 162, 255, 0.5),
+                inset 0 1.5px 1.5px rgba(255, 255, 255, 1);
+    transform: scale(1.03);
+  }
+}
+
 /* ==========================================================================
    TOP-RIGHT REDESIGNED LIQUID GLASS PROFILE BUTTON (DIRECT PROFILE ACCESS)
    ========================================================================== */
