@@ -104,5 +104,32 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("stopNotificationPolling();", self.js)
 
 
+    def test_obsolete_student_to_office_switch_is_not_rendered(self):
+        # Public student accounts were intentionally removed. Office staff sign in
+        # through the dedicated staff entry point, so this legacy control is invalid.
+        self.assertNotIn('id="viewSwitchBtn"', self.html)
+        self.assertNotIn('Switch to office', self.html)
+
+    def test_public_and_office_action_delegates_are_present(self):
+        # These controls are wired through delegated data attributes rather than
+        # individual ID listeners; keep their dispatcher contracts explicit.
+        for selector in (
+            '[data-public-report]',
+            '[data-public-home]',
+            '[data-report-kind]',
+            '[data-go]',
+            '[data-view]',
+            '[data-view-details]',
+            '[data-matches]',
+            '[data-add-evidence]',
+            '[data-decision]',
+            '[data-handover]',
+            '[data-storage-update]',
+            '[data-notification-read]',
+            '[data-certificate-download]',
+        ):
+            self.assertIn(selector, self.js, f"Missing delegated action handler: {selector}")
+
+
 if __name__ == "__main__":
     unittest.main()
