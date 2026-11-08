@@ -38,7 +38,7 @@ const escapeHTML = (value) => String(value == null ? "" : value).replace(/[&<>"'
 
 function explainError(data, fallback) {
   if (!data || !data.detail) return fallback || "Something went wrong.";
-  if (Array.isArray(data.detail)) return data.detail.map((x) => x.msg || "Invalid value").join(" ");
+  if (Array.isArray(data.detail)) return data.detail.map((x) => { const field = Array.isArray(x.loc) ? x.loc.filter(part => part !== "body").join(" → ") : ""; return (field ? field + ": " : "") + (x.msg || "Invalid value"); }).join(" ");
   return String(data.detail);
 }
 
@@ -1849,6 +1849,7 @@ async function loadPublicFound() {
     $("#publicBrowseResults").innerHTML = (data.reports || []).map(item =>
       '<article class="list-card"><div class="list-card-head"><div><span class="eyebrow">'+(item.report_type === "lost" ? "LOST REPORT" : "FOUND ITEM")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(item.report_type === "found" ? '<button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button>' : '')+'</article>'
     ).join("");
+    $("#publicBrowseEmpty").textContent = "No public reports match that search yet.";
     $("#publicBrowseEmpty").classList.toggle("hidden",(data.reports || []).length > 0);
   } catch(error) {
     $("#publicBrowseResults").innerHTML = "";
@@ -2009,11 +2010,14 @@ async function refreshPublicMatches(reference, credentials, target) {
   try {
     const data = await publicApi("/api/public/reports/" + encodeURIComponent(reference) + "/matches", {headers:credentials});
     const matches = data.matches || [];
-    target.innerHTML = '<h3>Possible matches</h3>' + (matches.length ? matches.map(match =>
-      '<article class="list-card"><strong>' + escapeHTML(match.title || "Possible item") + '</strong><p>' +
-      escapeHTML(match.public_ref || match.reference || "") + ' · ' + escapeHTML(match.location_area || match.location || "Campus") +
-      '</p><span class="status-pill">' + escapeHTML(match.score_label || match.match_label || "Suggested match") + '</span></article>'
-    ).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
+    target.innerHTML = '<h3>Possible matches</h3>' + (matches.length ? matches.map(match => {
+      const report = match.report || {};
+      const reasons = Array.isArray(match.reasons) ? match.reasons : [];
+      return '<article class="list-card"><strong>' + escapeHTML(report.title || "Possible item") + '</strong><p>' +
+        escapeHTML(report.public_ref || report.reference || "") + ' · ' + escapeHTML(report.location_area || report.location || "Campus") +
+        '</p><span class="status-pill">' + escapeHTML(match.strength || "Suggested match") + '</span>' +
+        (reasons.length ? '<p class="field-hint">' + escapeHTML(reasons.join(" · ")) + '</p>' : '') + '</article>';
+    }).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
   } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
 }
 $("#publicTrackForm").addEventListener("submit", async event => {
