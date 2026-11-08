@@ -439,19 +439,19 @@ async function loadConfig() {
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
-  $("#reportCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
+  ["#reportCategory", "#reportCategoryFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a category</option>' + categoryOptions; });
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
   const blocks = appConfig.locations.blocks || [];
   const blockOptions = blocks.map((block) =>
     '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
   ).join("");
-  $("#reportBlock").innerHTML = '<option value="">Choose a block or area</option>' + blockOptions;
+  ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
-  $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
+  ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
   if (appConfig.demo_mode) $("#demoAccess").classList.remove("hidden");
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-  $("#reportDate").value = localNow.toISOString().slice(0, 16);
+  ["#reportDate", "#reportDateFound"].forEach((selector) => { const node = $(selector); if (node) node.value = localNow.toISOString().slice(0, 16); });
 }
 
 function stopNotificationPolling() {
@@ -537,23 +537,28 @@ function navigate(view) {
   refreshNotificationBadge();
 }
 
+function activeReportForm() { return document.querySelector("#" + (activeReportKind === "found" ? "foundReportForm" : "lostReportForm")); }
+let activeReportKind = "lost";
+function reportField(id, form = activeReportForm()) { if (!form) return null; return form.querySelector("#" + id + (form.id === "foundReportForm" ? "Found" : "")); }
 function setReportMode(type) {
   if (!["lost", "found"].includes(type)) return;
-  const form = $("#reportForm");
   const chooser = $("#reportTypeChooser");
+  const form = document.querySelector(type === "found" ? "#foundReportForm" : "#lostReportForm");
+  const previousForm = activeReportForm();
+  const previousKind = activeReportKind;
+  activeReportKind = type;
+  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((item) => { if (item !== form) item.classList.add("hidden"); });
   if (!form || !chooser) {
     console.error("LostLink report form markup is unavailable.");
     showToast("The report form could not be loaded. Refresh the page and try again.", true);
     return;
   }
-  const wasOpen = !form.classList.contains("hidden");
-  if (wasOpen && $("#reportType")?.value && $("#reportType").value !== type) {
-    form.reset();
-    if ($("#reportError")) $("#reportError").textContent = "";
-    if ($("#imageLabel")) $("#imageLabel").textContent = "Choose a photo";
+  const wasOpen = previousForm && !previousForm.classList.contains("hidden");
+  if (wasOpen && previousKind !== type) {
+    previousForm.reset();
     showToast("Switched report type. The previous draft was cleared to avoid mixing Lost and Found details.", false);
   }
-  $("#reportType").value = type;
+  reportField("reportType", form).value = type;
   chooser.classList.add("hidden");
   form.classList.remove("hidden");
   const lost = type === "lost";
@@ -566,61 +571,63 @@ function setReportMode(type) {
   if (lost) {
     $("#reportModeTitle").textContent = "Report a lost item";
     $("#reportModeDescription").textContent = "Help us retrace where you last had it. Add the details that could help another student recognise it.";
-    $("#reportFormStepTitle").textContent = "What went missing?";
-    $("#reportFormStepHint").textContent = "Describe the item and the last moment you remember having it.";
-    $("#reportItemNameLabel").textContent = "What item did you lose?";
-    $("#reportDescriptionLabel").textContent = "Describe the item you lost";
-    $("#reportDescription").placeholder = "What does it look like? Include its type, size, material, condition and any visible details that could help you recognise it.";
-    $("#reportDescriptionHelp").textContent = "Keep one or two unique ownership clues private. You can share those later in a claim so the office can verify they match.";
-    $("#reportFeaturesLabel").textContent = "Visible details you remember";
-    $("#reportFeatures").placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
-    $("#reportDateLabel").textContent = "When did you last see it?";
-    $("#reportDateHelp").textContent = "Enter the last time you remember having the item, not when you noticed it was missing. An estimate is fine.";
-    $("#reportLocationHeading").textContent = "Where did you last have it?";
-    $("#reportLocationHelp").textContent = "Choose the last place you remember seeing or using the item.";
-    $("#reportBlockLabel").textContent = "Last seen block / building";
-    $("#reportAreaLabel").textContent = "Last seen nearby place";
-    $("#reportArea").placeholder = "e.g. Library reading room, canteen counter, bus bay";
-    $("#reportTitle").placeholder = "e.g. Black backpack I lost";
-    $("#reportSubmitLabel").textContent = "Submit lost report";
+    reportField("reportFormStepTitle", form).textContent = "What went missing?";
+    reportField("reportFormStepHint", form).textContent = "Describe the item and the last moment you remember having it.";
+    reportField("reportItemNameLabel", form).textContent = "What item did you lose?";
+    reportField("reportDescriptionLabel", form).textContent = "Describe the item you lost";
+    reportField("reportDescription", form).placeholder = "What does it look like? Include its type, size, material, condition and any visible details that could help you recognise it.";
+    reportField("reportDescriptionHelp", form).textContent = "Keep one or two unique ownership clues private. You can share those later in a claim so the office can verify they match.";
+    reportField("reportFeaturesLabel", form).textContent = "Visible details you remember";
+    reportField("reportFeatures", form).placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
+    reportField("reportDateLabel", form).textContent = "When did you last see it?";
+    reportField("reportDateHelp", form).textContent = "Enter the last time you remember having the item, not when you noticed it was missing. An estimate is fine.";
+    reportField("reportLocationHeading", form).textContent = "Where did you last have it?";
+    reportField("reportLocationHelp", form).textContent = "Choose the last place you remember seeing or using the item.";
+    reportField("reportBlockLabel", form).textContent = "Last seen block / building";
+    reportField("reportAreaLabel", form).textContent = "Last seen nearby place";
+    reportField("reportArea", form).placeholder = "e.g. Library reading room, canteen counter, bus bay";
+    reportField("reportTitle", form).placeholder = "e.g. Black backpack I lost";
+    reportField("reportSubmitLabel", form).textContent = "Submit lost report";
   } else {
     $("#reportModeTitle").textContent = "Report a found item";
     $("#reportModeDescription").textContent = "Help return an item to its owner. Tell us what you found and exactly where it was discovered.";
-    $("#reportFormStepTitle").textContent = "What did you find?";
-    $("#reportFormStepHint").textContent = "Record the item's visible condition and discovery location.";
-    $("#reportItemNameLabel").textContent = "What item did you find?";
-    $("#reportDescriptionLabel").textContent = "Describe the item you found";
-    $("#reportDescription").placeholder = "Describe the item as you found it: type, size, material, condition and visible identifying details. Do not guess who owns it.";
-    $("#reportDescriptionHelp").textContent = "Only include details a student could safely use to recognise the item. Do not publish names, ID numbers, contents, serial numbers or hidden marks.";
-    $("#reportFeaturesLabel").textContent = "Visible condition and features";
-    $("#reportFeatures").placeholder = "Scratches, stickers, damage, colour, brand, contents visible from outside…";
-    $("#reportDateLabel").textContent = "When did you find it?";
-    $("#reportDateHelp").textContent = "Enter when you discovered the item. Office intake time is recorded separately.";
-    $("#reportLocationHeading").textContent = "Where did you find it?";
-    $("#reportLocationHelp").textContent = "Choose the actual discovery place, not where you later hand it in or where staff store it.";
-    $("#reportBlockLabel").textContent = "Found at block / building";
-    $("#reportAreaLabel").textContent = "Found near / specific spot";
-    $("#reportArea").placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
-    $("#reportTitle").placeholder = "e.g. Silver water bottle I found";
-    $("#reportSubmitLabel").textContent = "Submit found report";
+    reportField("reportFormStepTitle", form).textContent = "What did you find?";
+    reportField("reportFormStepHint", form).textContent = "Record the item's visible condition and discovery location.";
+    reportField("reportItemNameLabel", form).textContent = "What item did you find?";
+    reportField("reportDescriptionLabel", form).textContent = "Describe the item you found";
+    reportField("reportDescription", form).placeholder = "Describe the item as you found it: type, size, material, condition and visible identifying details. Do not guess who owns it.";
+    reportField("reportDescriptionHelp", form).textContent = "Only include details a student could safely use to recognise the item. Do not publish names, ID numbers, contents, serial numbers or hidden marks.";
+    reportField("reportFeaturesLabel", form).textContent = "Visible condition and features";
+    reportField("reportFeatures", form).placeholder = "Scratches, stickers, damage, colour, brand, contents visible from outside…";
+    reportField("reportDateLabel", form).textContent = "When did you find it?";
+    reportField("reportDateHelp", form).textContent = "Enter when you discovered the item. Office intake time is recorded separately.";
+    reportField("reportLocationHeading", form).textContent = "Where did you find it?";
+    reportField("reportLocationHelp", form).textContent = "Choose the actual discovery place, not where you later hand it in or where staff store it.";
+    reportField("reportBlockLabel", form).textContent = "Found at block / building";
+    reportField("reportAreaLabel", form).textContent = "Found near / specific spot";
+    reportField("reportArea", form).placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
+    reportField("reportTitle", form).placeholder = "e.g. Silver water bottle I found";
+    reportField("reportSubmitLabel", form).textContent = "Submit found report";
   }
-  if (!$("#reportDate").value) {
+  if (!reportField("reportDate", form).value) {
     const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-    $("#reportDate").value = localNow.toISOString().slice(0, 16);
+    reportField("reportDate", form).value = localNow.toISOString().slice(0, 16);
   }
 }
 
 function resetReportMode() {
-  const form = $("#reportForm");
+  const form = activeReportForm();
+  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((item) => { item.reset(); item.classList.add("hidden"); });
+  activeReportKind = "lost";
   const chooser = $("#reportTypeChooser");
   if (!form || !chooser) {
     console.warn("Skipped report reset because the report form is not mounted.");
     return;
   }
-  form.reset();
-  form.classList.add("hidden");
+  if (form) form.reset();
   chooser.classList.remove("hidden");
-  if ($("#reportType")) $("#reportType").value = "";
+  if (reportField("reportType", form)) reportField("reportType", form).value = "lost";
+  if ($("#reportTypeFound")) $("#reportTypeFound").value = "found";
   if ($("#reportError")) $("#reportError").textContent = "";
   if ($("#imageLabel")) $("#imageLabel").textContent = "Choose a photo";
   $("#lostReportGuidance")?.classList.add("hidden");
@@ -772,15 +779,17 @@ function resetSearch() {
   loadBrowse();
 }
 
-async function suggestReportCategory() {
-  const button = $("#suggestCategoryButton");
-  const output = $("#categorySuggestion");
+async function suggestReportCategory(event) {
+  const form = event?.currentTarget?.closest("form") || activeReportForm();
+  if (!form) return;
+  const button = form.querySelector(form.id === "foundReportForm" ? "#suggestCategoryButtonFound" : "#suggestCategoryButton");
+  const output = reportField("categorySuggestion", form);
   const payload = {
-    title: $("#reportTitle").value.trim(),
-    description: $("#reportDescription").value.trim(),
-    brand: $("#reportBrand").value.trim() || null,
-    primary_color: $("#reportColor").value.trim() || null,
-    visible_features: $("#reportFeatures").value.trim() || null
+    title: reportField("reportTitle", form).value.trim(),
+    description: reportField("reportDescription", form).value.trim(),
+    brand: reportField("reportBrand", form).value.trim() || null,
+    primary_color: reportField("reportColor", form).value.trim() || null,
+    visible_features: reportField("reportFeatures", form).value.trim() || null
   };
   if ((payload.title + " " + payload.description).trim().length < 4) {
     output.textContent = "Add an item name and a short description before requesting a suggestion.";
@@ -811,35 +820,36 @@ async function suggestReportCategory() {
 async function submitReport(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const errorNode = $("#reportError");
+  activeReportKind = form.id === "foundReportForm" ? "found" : "lost";
+  const errorNode = reportField("reportError", form);
   if (!form || !errorNode) {
     showToast("The report form is unavailable. Refresh the page and try again.", true);
     return;
   }
   errorNode.textContent = "";
-  const reportType = $("#reportType").value;
+  const reportType = reportField("reportType", form).value;
   if (!reportType) {
     errorNode.textContent = "Choose whether you lost or found the item first.";
     return;
   }
   const body = {
     report_type: reportType,
-    title: $("#reportTitle").value.trim(),
-    category: $("#reportCategory").value,
-    description: $("#reportDescription").value.trim(),
-    brand: $("#reportBrand").value.trim() || null,
-    primary_color: $("#reportColor").value.trim() || null,
-    visible_features: $("#reportFeatures").value.trim() || null,
-    occurred_at: $("#reportDate").value || null,
-    location_block: $("#reportBlock").value || null,
-    location_floor: $("#reportFloor").value || null,
-    location_room: $("#reportRoom").value.trim() || null,
-    location_area: $("#reportArea").value.trim() || null
+    title: reportField("reportTitle", form).value.trim(),
+    category: reportField("reportCategory", form).value,
+    description: reportField("reportDescription", form).value.trim(),
+    brand: reportField("reportBrand", form).value.trim() || null,
+    primary_color: reportField("reportColor", form).value.trim() || null,
+    visible_features: reportField("reportFeatures", form).value.trim() || null,
+    occurred_at: reportField("reportDate", form).value || null,
+    location_block: reportField("reportBlock", form).value || null,
+    location_floor: reportField("reportFloor", form).value || null,
+    location_room: reportField("reportRoom", form).value.trim() || null,
+    location_area: reportField("reportArea", form).value.trim() || null
   };
-  const image = $("#reportImage").files[0];
+  const image = reportField("reportImage", form).files[0];
   if (!body.location_block && !body.location_area) {
     errorNode.textContent = "Choose a campus block/building or enter a nearby area.";
-    $("#reportArea").focus();
+    reportField("reportArea", form).focus();
     return;
   }
   if (reportSubmitting) return;
@@ -1811,7 +1821,7 @@ document.addEventListener("click", (event) => {
   if (go) navigate(go.dataset.go);
   const useCategory = event.target.closest("[data-use-category]");
   if (useCategory) {
-    $("#reportCategory").value = useCategory.dataset.useCategory;
+    reportField("reportCategory", form).value = useCategory.dataset.useCategory;
     $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
   }
   const reportKind = event.target.closest("[data-report-kind]");
@@ -1858,14 +1868,17 @@ $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
-const reportFormElement = $("#reportForm");
-if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);
-$("#suggestCategoryButton")?.addEventListener("click", suggestReportCategory);
-$("#backToReportTypes")?.addEventListener("click", resetReportMode);
-$("#reportImage")?.addEventListener("change", () => {
-  const file = $("#reportImage").files[0];
-  if ($("#imageLabel")) $("#imageLabel").textContent = file ? file.name : "Choose a photo";
+document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
+  form.addEventListener("submit", submitReport);
+  form.querySelector(form.id === "foundReportForm" ? "#suggestCategoryButtonFound" : "#suggestCategoryButton")?.addEventListener("click", suggestReportCategory);
+  const imageInput = form.querySelector(form.id === "foundReportForm" ? "#reportImageFound" : "#reportImage");
+  imageInput?.addEventListener("change", () => {
+    const file = imageInput.files[0];
+    const label = form.querySelector(form.id === "foundReportForm" ? "#imageLabelFound" : "#imageLabel");
+    if (label) label.textContent = file ? file.name : "Choose a photo";
+  });
 });
+$("#backToReportTypes")?.addEventListener("click", resetReportMode);
 $("#cancelReport")?.addEventListener("click", () => { resetReportMode(); navigate("browse"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
