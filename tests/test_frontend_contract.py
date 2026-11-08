@@ -113,7 +113,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('class="public-topbar"', self.html)
         for destination in ("home", "browse", "lost", "found", "track", "office"):
             self.assertIn(f'data-public-destination="{destination}"', self.html)
-        self.assertIn('$("#publicNav").addEventListener("click"', self.js)
+        self.assertIn('document.addEventListener("click", event => {\n  const button = event.target.closest("[data-public-destination]");', self.js)
         self.assertIn("function setPublicNavActive(destination)", self.js)
         self.assertIn('nav.querySelectorAll("[data-public-destination]").forEach', self.js)
         self.assertNotIn('$("#publicNav [data-public-destination]").forEach', self.js)
