@@ -208,7 +208,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
     def test_public_lost_report_uses_existing_ai_match_route(self):
         found = self.create_public_report("found")
         self.office_login()
-        accepted = self.intake(found.json()["case"]["reference"])
+        accepted = self.intake(found.json()["case"]["id"])
         self.assertEqual(accepted.status_code,200,accepted.text)
         lost = self.create_public_report("lost",roll="25B81A66J9",title="Black calculator")
         self.assertEqual(lost.status_code,201,lost.text)
