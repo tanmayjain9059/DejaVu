@@ -386,6 +386,20 @@ def submit_public_claim(case_id: str, body: PublicClaimBody, request: Request):
             "message": "Save this claim tracking secret now. It is shown once."}
 
 
+@router.get("/office/roll/{roll_number}/cases")
+def public_office_roll_cases(roll_number: str, user: dict[str, Any] = Depends(authenticated_user)):
+    require_office(user)
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        cases = conn.execute("SELECT * FROM public_cases WHERE roll_number=? ORDER BY created_at DESC",
+                             (roll,)).fetchall()
+        claims = conn.execute("SELECT * FROM public_claims WHERE roll_number=? ORDER BY created_at DESC",
+                              (roll,)).fetchall()
+    return {"roll_number": roll, "cases": [_private_case(row) for row in cases],
+            "claims": [{"reference": row["public_ref"], "case_id": row["case_id"],
+                        "status": row["status"], "created_at": row["created_at"]} for row in claims]}
+
+
 @router.get("/office/cases/{case_id}")
 def public_office_case_detail(case_id: str, user: dict[str, Any] = Depends(authenticated_user)):
     require_office(user)
