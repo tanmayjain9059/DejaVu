@@ -242,22 +242,26 @@ def browse_public_found(category: str | None = None, q: str | None = None, limit
     return {"reports": [_public_case(row) for row in rows]}
 
 
-@router.get("/track")
-def track_cases(roll_number: str, tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret")):
+@router.get("/track/{reference}")
+def track_one_case(reference: str, roll_number: str,
+                   tracking_secret: str = __import__("fastapi").Header(..., alias="X-LostLink-Tracking-Secret")):
+    """A bearer secret unlocks only its own case or claim, never all records for a roll number."""
     roll = _roll(roll_number)
     with connect_db() as conn:
-        seed = conn.execute(
-            "SELECT roll_number FROM public_cases WHERE tracking_hash=? UNION ALL "
-            "SELECT roll_number FROM public_claims WHERE tracking_hash=? LIMIT 1",
-            (_hash(tracking_secret),_hash(tracking_secret)),
-        ).fetchone()
-        if not seed or seed["roll_number"] != roll:
-            raise HTTPException(status_code=404, detail="Tracking access not found.")
-        cases = conn.execute("SELECT * FROM public_cases WHERE roll_number=? ORDER BY created_at DESC", (roll,)).fetchall()
-        claims = conn.execute("SELECT * FROM public_claims WHERE roll_number=? ORDER BY created_at DESC", (roll,)).fetchall()
-    return {"cases": [_private_case(row) for row in cases],
-            "claims": [{"reference": r["public_ref"],"case_reference": r["case_id"],
-                        "status": r["status"],"created_at": r["created_at"]} for r in claims]}
+        case = conn.execute("SELECT * FROM public_cases WHERE public_ref=?", (reference,)).fetchone()
+        if case and case["roll_number"] == roll and _verify_token(case["tracking_hash"], tracking_secret):
+            linked_claims = conn.execute(
+                "SELECT public_ref,status,created_at FROM public_claims WHERE case_id=? AND roll_number=? ORDER BY created_at",
+                (case["id"], roll),
+            ).fetchall()
+            return {"case": _private_case(case), "claims": [dict(c) for c in linked_claims]}
+        claim = conn.execute("SELECT * FROM public_claims WHERE public_ref=?", (reference,)).fetchone()
+        if claim and claim["roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret):
+            parent = conn.execute("SELECT * FROM public_cases WHERE id=?", (claim["case_id"],)).fetchone()
+            return {"claim": {"reference": claim["public_ref"], "status": claim["status"],
+                              "evidence": claim["evidence"], "created_at": claim["created_at"]},
+                    "item": _public_case(parent)}
+    raise HTTPException(status_code=404, detail="Tracking access not found.")
 
 
 @router.post("/found/{case_id}/claims", status_code=201)
