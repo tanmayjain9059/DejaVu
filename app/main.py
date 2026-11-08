@@ -137,7 +137,7 @@ if FRONTEND_ORIGINS:
         allow_origins=FRONTEND_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-LostLink-Tracking-Secret"],
+        allow_headers=["Authorization", "Content-Type", "X-LostLink-Tracking-Secret", "X-LostLink-Roll-Number"],
         max_age=600,
     )
 @app.get("/health/live", include_in_schema=False)
