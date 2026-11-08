@@ -2,6 +2,9 @@
 import os
 import tempfile
 import unittest
+from io import BytesIO
+
+from PIL import Image
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,6 +18,7 @@ if not TEST_WITH_POSTGRES:
     app_database.DATABASE_URL = ""
 import app.main as main
 from app.api.routes import public_workflow as public_routes
+from app.services import object_storage
 
 
 class PublicWorkflowIntegrationTests(unittest.TestCase):
@@ -26,7 +30,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             with app_database.connect_db() as conn:
                 conn.execute("DROP SCHEMA public CASCADE")
                 conn.execute("CREATE SCHEMA public")
-        modules = (main, app_config, app_database, public_routes)
+        modules = (main, app_config, app_database, public_routes, object_storage)
         for module in modules:
             for name, value in {
                 "DATA_DIR": root,
@@ -113,6 +117,31 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(row["submission_channel"],"public")
             self.assertEqual(row["roll_number"],"25B81A66J8")
             self.assertFalse(main.table_columns(conn,"public_cases"))
+
+    def test_public_report_photo_requires_case_secret_and_is_stored_privately(self):
+        created = self.create_public_report("lost", title="Photo test wallet").json()
+        reference = created["case"]["reference"]
+        image = BytesIO()
+        Image.new("RGB", (64, 64), (120, 80, 40)).save(image, format="PNG")
+        upload = image.getvalue()
+        denied = self.client.post(
+            "/api/public/reports/" + reference + "/image",
+            headers={"X-LostLink-Roll-Number": "25B81A66J8", "X-LostLink-Tracking-Secret": "wrong-secret"},
+            files={"file": ("wallet.png", upload, "image/png")},
+        )
+        self.assertEqual(denied.status_code, 404)
+        accepted = self.client.post(
+            "/api/public/reports/" + reference + "/image",
+            headers={"X-LostLink-Roll-Number": "25B81A66J8", "X-LostLink-Tracking-Secret": created["tracking_secret"]},
+            files={"file": ("wallet.png", upload, "image/png")},
+        )
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        with main.connect_db() as conn:
+            row = conn.execute("SELECT image_path,image_sha256,image_phash FROM reports WHERE public_ref=?", (reference,)).fetchone()
+        self.assertTrue(row["image_path"])
+        self.assertTrue(row["image_sha256"])
+        self.assertTrue(row["image_phash"])
+        self.assertTrue(object_storage.read_upload(row["image_path"]))
 
     def test_public_search_returns_open_lost_and_available_found_without_private_fields(self):
         lost = self.create_public_report("lost",title="Blue calculator")
