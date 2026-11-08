@@ -1940,10 +1940,10 @@ async function loadPublicFound() {
 
 function openPublicSignIn(mode = "student") {
   const office = mode === "office";
-  $("#loginPanelKicker").textContent = "STUDENT ACCESS";
-  $("#loginPanelTitle").textContent = "Student sign in";
-  $("#loginPanelCopy").textContent = "Sign in to manage your reports, follow possible matches and track your claims.";
-  $("#loginSubmitButton").dataset.expectedRole = "student";
+  $("#loginPanelKicker").textContent = office ? "OFFICE STAFF ACCESS" : "STUDENT ACCESS";
+  $("#loginPanelTitle").textContent = office ? "Office staff sign in" : "Student sign in";
+  $("#loginPanelCopy").textContent = office ? "Authorised campus staff only." : "Student accounts are not used for public LostLink reporting.";
+  $("#loginSubmitButton").dataset.expectedRole = office ? "office" : "student";
   $("#demoAccess").dataset.loginMode = office ? "office" : "student";
   $("[data-demo-role]").forEach((button) => {
     button.classList.toggle("hidden", button.dataset.demoRole !== (office ? "office" : "student"));
@@ -1955,6 +1955,7 @@ function openPublicSignIn(mode = "student") {
 }
 $("#publicBrowseButton").addEventListener("click", () => showPublicDestination("browse"));
 $("#publicTrackButton").addEventListener("click", () => showPublicDestination("track"));
+$("#publicOfficeButton").addEventListener("click", () => openPublicSignIn("office"));
 $("#closeOfficeAccess").addEventListener("click", () => {
   $("#officeLoginPanel").classList.add("hidden");
   $("#loginError").textContent = "";
@@ -2243,7 +2244,7 @@ $("#loginForm").addEventListener("submit", async (event) => {
       method: "POST",
       body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
     });
-    const expectedRole = "student";
+    const expectedRole = $("#loginSubmitButton").dataset.expectedRole || "office";
     if (result.user.role !== expectedRole) {
       await api("/api/logout", { method: "POST" }).catch(() => {});
       throw new Error(expectedRole === "office"
