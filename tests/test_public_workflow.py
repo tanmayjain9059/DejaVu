@@ -104,6 +104,24 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(row["roll_number"],"25B81A66J8")
             self.assertFalse(main.table_columns(conn,"public_cases"))
 
+    def test_public_search_returns_open_lost_and_available_found_without_private_fields(self):
+        lost = self.create_public_report("lost",title="Blue calculator")
+        found = self.create_public_report("found",title="Black calculator")
+        self.office_login()
+        report_id = found.json()["case"]["id"]
+        self.assertEqual(self.intake(report_id).status_code,200)
+        self.logout()
+        response = self.client.get("/api/public/search?q=calculator")
+        self.assertEqual(response.status_code,200,response.text)
+        reports = response.json()["reports"]
+        self.assertEqual({row["report_type"] for row in reports},{"lost","found"})
+        for row in reports:
+            self.assertNotIn("roll_number",row)
+            self.assertNotIn("tag_id",row)
+            self.assertNotIn("storage_location",row)
+        self.assertEqual(self.client.get("/api/public/search?report_type=lost").json()["reports"][0]["report_type"],"lost")
+        self.assertEqual(self.client.get("/api/public/search?report_type=found").json()["reports"][0]["report_type"],"found")
+
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
         second = self.create_public_report(roll="25B81A66J8",title="Red notebook").json()
