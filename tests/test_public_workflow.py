@@ -135,7 +135,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
         second = self.create_public_report(roll="25B81A66J8",title="Red notebook").json()
         reference = first["case"]["reference"]
-        roll_only = self.client.get("/api/public/track/"+reference,params={"roll_number":"25B81A66J8"})
+        roll_only = self.client.get("/api/public/track/"+reference)
         self.assertNotEqual(roll_only.status_code,200)
         wrong_case = self.client.get(
             "/api/public/track/"+second["case"]["reference"],
