@@ -1,140 +1,124 @@
-# Supabase Auth + PostgreSQL + Vercel/Render deployment
+# Supabase + Vercel + Render deployment runbook
 
-This is the intended deployment architecture for LostLink:
+## Target architecture
 
-- **Vercel** serves the static web client from `app/static`.
-- **Render** runs the FastAPI API as a persistent container-capable Python web service.
-- **Supabase PostgreSQL** is the system of record for application data.
-- **Supabase Auth** owns passwords, email verification, sessions and access tokens.
-- **Supabase Storage** holds report photos and private claim evidence in a private bucket.
-- The FastAPI service remains the policy enforcement point for roles, claims, office review, matching and all database writes.
+- **Frontend:** Vercel static build.
+- **API:** FastAPI service on Render.
+- **Database:** Supabase PostgreSQL.
+- **Authentication:** Supabase Auth for authorised campus office staff only.
+- **Uploads:** private Supabase Storage through its S3-compatible endpoint.
+- **Students:** no account, password, Google login, OTP, or Supabase identity is required.
 
-The browser receives only the Supabase project URL and publishable/anon key. It never receives the database password, S3 credentials or Supabase service-role key.
+The public student workflow is deliberately separate from office authentication. A college roll number is stored as private attribution and used for physical office verification; it is never an authentication credential. Each report and claim receives a separate high-entropy tracking secret. Only its SHA-256 digest is stored.
 
-## 1. Supabase project
+## 1. Create Supabase resources
 
-Create a Supabase project and configure:
+1. Create the Supabase project in the intended production region.
+2. Copy the project URL and anon/public key for the office sign-in client.
+3. Copy the PostgreSQL connection string from the Supabase database settings. Prefer the provider's pooler connection when required by the Render service.
+4. Create a private Storage bucket for report photos and claim evidence. Keep public access disabled.
+5. Configure the S3-compatible Storage endpoint and access keys. Do not expose the secret access key to Vercel or the browser.
 
-1. PostgreSQL database in a region close to the backend service.
-2. Authentication > Providers > Email enabled.
-3. Email confirmation enabled and minimum password length set to at least 8 characters.
-4. Authentication > URL Configuration: set the Site URL to the Vercel production URL and add the production and preview callback URLs you actually use.
-5. Storage bucket named `lostlink-private`; leave **Public bucket** disabled.
-6. Storage > S3 access keys: create a dedicated access key for the backend. Store its access key ID and secret only in Render.
+The backend connects to PostgreSQL directly through `DATABASE_URL`. Supabase Data API privileges remain locked down by the repository's migration. The browser must not query `reports`, `claims`, roll-attribution tables, or private storage directly.
 
-Use the project URL and publishable/anon key in the backend configuration. Do not use a service-role key in the frontend or this application configuration.
+## 2. Configure office-only Supabase Auth
 
-### PostgreSQL connection
+Set these Render environment variables:
 
-Use the Supabase **Session pooler** connection string for the persistent Render API. Use the host, username, port and database exactly as displayed in Supabase Connect. URL-encode special characters in the password. Set `sslmode=require`.
+```env
+AUTH_PROVIDER=supabase
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_REQUIRE_CONFIRMED_EMAIL=true
+OFFICE_USER_EMAILS=authorised.office@college.edu,another.office@college.edu
+ALLOWED_EMAIL_DOMAINS=college.edu
+```
 
-The application has ordered schema migrations that add `users.supabase_user_id` and harden the public Data API with RLS plus privilege revocation. The FastAPI service must connect using the trusted `postgres` database role through the Supabase session pooler; the browser never queries the application tables directly. On first boot it creates the schema and applies migrations. Back up the database before first production boot and verify the migration output in service logs.
+Important rules:
 
-## 2. Supabase Auth and roles
+- `OFFICE_USER_EMAILS` is the exact email allowlist. A matching domain alone does not grant office access.
+- `ALLOWED_EMAIL_DOMAINS` is only a secondary domain restriction. It does not replace the exact office allowlist.
+- Create/invite office identities through the Supabase project administration process. Do not expose student signup in the app.
+- The frontend uses `signInWithPassword` only for the office login panel.
+- The backend checks the exact office allowlist before provisioning or accepting a Supabase identity.
+- `GET /api/me` returns an office profile only. Existing student Supabase sessions are rejected and signed out by the frontend.
+- Public student report, browse, claim and tracking requests do not send a Supabase bearer token or session cookie.
 
-Set these backend variables:
+## 3. Configure the Render API
 
-- `AUTH_PROVIDER=supabase`
-- `SUPABASE_URL=https://<project-ref>.supabase.co`
-- `SUPABASE_ANON_KEY=<publishable-or-anon-key>`
-- `SUPABASE_REQUIRE_CONFIRMED_EMAIL=true`
-- `ALLOWED_EMAIL_DOMAINS=<comma-separated institution-approved domains>`
-- `OFFICE_USER_EMAILS=<comma-separated exact office email addresses>`
+Required or production-recommended variables:
 
-The browser signs in or signs up with Supabase Auth. It sends the access token to FastAPI as a Bearer token. FastAPI validates it against Supabase Auth's `/auth/v1/user` endpoint before resolving the LostLink profile.
+```env
+DATABASE_URL=postgresql://...
+AUTH_PROVIDER=supabase
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_REQUIRE_CONFIRMED_EMAIL=true
+OFFICE_USER_EMAILS=authorised.office@college.edu
+ALLOWED_EMAIL_DOMAINS=college.edu
+SESSION_SECRET=GENERATE_A_UNIQUE_RANDOM_SECRET_AT_LEAST_32_CHARACTERS
+SESSION_HTTPS_ONLY=true
+HTTPS_ONLY=true
+REQUIRE_REQUEST_ORIGIN=true
+ALLOWED_HOSTS=your-api.onrender.com
+FRONTEND_ORIGINS=https://your-app.vercel.app
+UPLOAD_STORAGE_BACKEND=s3
+S3_ENDPOINT_URL=https://YOUR_PROJECT.supabase.co/storage/v1/s3
+S3_BUCKET=lostlink-private
+S3_PREFIX=lostlink-private
+S3_REGION=YOUR_STORAGE_REGION
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+```
 
-A newly verified identity is accepted only when its email domain is in `ALLOWED_EMAIL_DOMAINS`, then provisioned as a **student** by default. The only office-role assignment is an exact email match in the server-side `OFFICE_USER_EMAILS` allowlist. Never accept a role from browser metadata, signup forms, or a user-editable profile field. Create office identities through the Supabase Dashboard invitation flow, add their exact verified email addresses to `OFFICE_USER_EMAILS`, and redeploy the API. A staff member must confirm the invited email before the API provisions the office profile. Remove an address from the allowlist to downgrade it to student on the next authenticated API request.
+Use the exact Storage endpoint, region and credentials supplied by Supabase. Keep the bucket private. The application stores opaque upload keys, not public object URLs.
 
-For institutional onboarding, configure Supabase email delivery, allowed email domains, abuse protection and rate limits. The current implementation does not perform a college SIS/roll-number verification.
+Deploy the API with the repository's Render configuration or the command:
 
-## 3. Private Supabase Storage
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
 
-Configure:
+The application applies additive schema migrations at startup. Back up the database before deploying to an existing environment and review migration output. Migration 10 adds roll attribution, tracking hashes, public claim references, rate-limit storage and internal non-login attribution identities. The public workflow also migrates records from the retired parallel public tables into canonical reports and claims without dropping those legacy tables.
 
-- `UPLOAD_STORAGE_BACKEND=s3`
-- `S3_BUCKET=lostlink-private`
-- `S3_ENDPOINT_URL=https://<project-ref>.storage.supabase.co/storage/v1/s3`
-- `S3_REGION=<region shown by Supabase Storage S3 settings>`
-- `S3_ACCESS_KEY_ID=<dedicated backend key>`
-- `S3_SECRET_ACCESS_KEY=<dedicated backend secret>`
-- `S3_PREFIX=lostlink`
+## 4. Configure Vercel
 
-The storage adapter uses SigV4 and path-style addressing. Use the dedicated `.storage.supabase.co` hostname and copy the exact region from Supabase's S3 settings. Supabase S3 access keys bypass Storage RLS and have broad bucket access, so they are server-only secrets. Objects are stored under opaque keys; the database stores keys, not public URLs. Reads remain behind the authenticated FastAPI routes. Never make this bucket public.
+Set the Vercel environment variable:
 
-## 4. Deploy the API on Render
+```env
+BACKEND_ORIGIN=https://your-api.onrender.com
+```
 
-1. Import this repository into Render. After the infrastructure and end-to-end pagination PRs are reviewed and merged, deploy the `main` branch. For staging before merge, select the reviewed PR branch explicitly; do not deploy the old `codex/supabase-final-infrastructure` branch because it may have diverged from `main`.
-2. Use the included `render.yaml` blueprint.
-3. Set the required secret values when Render prompts:
-   - `DATABASE_URL` (Supabase session-pooler URL)
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `ALLOWED_EMAIL_DOMAINS`
-   - `OFFICE_USER_EMAILS`
-   - `FRONTEND_ORIGINS` (the exact Vercel origin, no trailing slash)
-   - `S3_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
-4. Confirm the service health check `/health/ready` returns HTTP 200.
-5. Copy the HTTPS API origin, for example `https://lostlink-api.onrender.com`.
+The build emits `deployment-config.js` with the API origin and public Supabase client configuration. The Supabase anon key is not a service-role key. The browser must never receive the Supabase service-role key, database password, S3 secret access key or session secret.
 
-The starter instance is a deployment baseline, not a capacity guarantee. Measure concurrency, memory, matching latency and database pool usage with representative campus traffic before a public launch.
+Deploy the static frontend. Copy its exact production origin into Render's `FRONTEND_ORIGINS`. Include preview origins only when they are deliberately approved.
 
-## 5. Deploy the frontend on Vercel
+## 5. Cross-origin and token handling
 
-1. Import the same repository into Vercel.
-2. Set the project root to the repository root.
-3. Set the production branch to `main` after the reviewed infrastructure changes have been merged.
-4. Add build environment variable `BACKEND_ORIGIN=https://<your-render-api-origin>`.
-5. Keep the build command and output directory from `vercel.json`: `python3 scripts/build_vercel_frontend.py` and `dist`. The build script copies the static frontend into `dist` and generates `deployment-config.js` with the public API origin.
-6. Deploy. The build creates `deployment-config.js` with the public API origin; it contains no credentials.
+- Public browser requests use `credentials: "omit"`.
+- Office API requests use the Supabase access token.
+- CORS allows `Authorization`, `Content-Type` and `X-LostLink-Tracking-Secret`.
+- State-changing requests from the configured Vercel origin are accepted by the origin middleware; unconfigured origins remain blocked.
+- Never send a tracking secret in a URL or persist it in analytics. Use the `X-LostLink-Tracking-Secret` header for tracking and evidence updates.
+- Roll number + reference + tracking secret must all match. Roll number alone never authorises access.
 
-Set the exact Vercel production origin in Render's `FRONTEND_ORIGINS`. If you use preview deployments, add only the specific preview origins you intend to trust. Do not use a broad wildcard for production.
+## 6. Deployment verification
 
-## 6. Required environment on the API
+Before launch, verify:
 
-| Variable | Required value |
-|---|---|
-| `AUTH_PROVIDER` | `supabase` |
-| `DEMO_MODE` | `false` |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Publishable/anon key |
-| `SUPABASE_REQUIRE_CONFIRMED_EMAIL` | `true` |
-| `ALLOWED_EMAIL_DOMAINS` | Institution-approved email domains; required |
-| `OFFICE_USER_EMAILS` | Exact office emails |
-| `DATABASE_URL` | Supabase PostgreSQL session-pooler URL |
-| `DATABASE_POOL_MAX_SIZE` | Start at 3; tune from measured connections |
-| `UPLOAD_STORAGE_BACKEND` | `s3` |
-| `S3_BUCKET` | `lostlink-private` |
-| `S3_ENDPOINT_URL` | Supabase S3 endpoint |
-| `S3_REGION` | Region shown in Supabase |
-| `S3_ACCESS_KEY_ID` | Backend-only credential |
-| `S3_SECRET_ACCESS_KEY` | Backend-only credential |
-| `FRONTEND_ORIGINS` | Exact Vercel origin |
-| `ALLOWED_HOSTS` | Exact Render API hostname |
-| `SESSION_SECRET` | Unique random value (still required by current app middleware) |
-| `SESSION_HTTPS_ONLY` | `true` |
-| `REQUIRE_REQUEST_ORIGIN` | `true` |
+1. Unauthenticated users can submit Lost and Found reports.
+2. Student login/signup does not exist in the public UI and student identities are rejected by both local and Supabase auth.
+3. A Lost report enters the canonical reports table and uses the existing matching pipeline.
+4. A Found report remains hidden from public search until office staff confirm physical receipt, matching roll number and Tag ID.
+5. Public claims appear in the canonical office claims queue.
+6. Claim approval requires office review, physical identity verification and the required category-level checks.
+7. Physical handover requires claimant ID verification and the matching Tag ID.
+8. A tracking secret for one report or claim cannot open another record, even for the same roll number.
+9. Public serializers do not expose roll numbers, Tag IDs, private storage locations, private evidence or internal notes.
+10. Public requests work from the exact Vercel origin and fail from an unapproved origin.
+11. Private uploads are not publicly readable and backup/restore has been tested.
+12. SQLite and PostgreSQL integration tests pass.
 
-Do not set `DEMO_MODE=true` in a deployed environment. The frontend does not silently fall back to the mock application when a configured remote API is unavailable.
+## 7. Remaining launch gates
 
-## 7. Release verification checklist
-
-Before accepting real campus data, verify all of the following in staging:
-
-- [ ] Fresh Supabase database migration completes from empty schema.
-- [ ] Existing database upgrade path is tested against a restored copy.
-- [ ] Email signup, confirmation, sign-in, token refresh and sign-out work.
-- [ ] Unverified identities are rejected by FastAPI.
-- [ ] Ordinary signups are students; only allowlisted verified emails receive office role.
-- [ ] A student cannot promote their own role through user metadata or API input.
-- [ ] Student A cannot read Student B's private claim evidence.
-- [ ] Office-only routes reject student tokens.
-- [ ] Report images upload to the private bucket and remain viewable through authenticated routes.
-- [ ] Claim evidence uploads, watermarks and authenticated retrieval work.
-- [ ] Image deletion and database/object consistency are tested.
-- [ ] Cross-origin browser requests work only from configured Vercel origins.
-- [ ] API host allowlist and HTTPS cookies/security headers are correct.
-- [ ] Backups and a database-plus-object-storage restore drill are complete.
-- [ ] Rate limits, email delivery, monitoring and alert ownership are configured.
-- [ ] Load tests measure concurrent API requests, database connections, image throughput and AI inference latency.
-
-This configuration is an implementation baseline. It is not a claim that the external Supabase, Render or Vercel projects have been created or validated; those require the project owner's provider accounts and credentials.
+The public workflow is a backend/frontend integration baseline, not yet a complete production launch. Public image and evidence-image upload are pending; existing private image routes remain authenticated. Add CAPTCHA/bot controls, validate roll-number syntax with CVR, agree the in-person verification process, establish retention and deletion policies, tune rate limits, monitor abuse, and complete a security review before college-wide launch.
