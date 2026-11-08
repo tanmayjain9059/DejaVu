@@ -428,33 +428,58 @@ function categoryLabel(value) {
 
 async function loadConfig() {
   appConfig = await api("/api/config");
-  if (appConfig.auth_mode === "supabase") {
-    if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
-    supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-    $("#demoAccess").classList.add("hidden");
-    const modeNote = $("#officeAccessModeNote");
-    modeNote.textContent = "Live campus deployment: demo credentials are disabled. Sign in with an authorised office account provisioned in Supabase.";
-    modeNote.classList.remove("hidden");
-  } else if (appConfig.demo_mode) {
-    $("#officeAccessModeNote").classList.add("hidden");
-  }
-  const categoryOptions = appConfig.categories.map((category) =>
+
+  // Public reporting and browsing must not depend on the staff-authentication
+  // provider. Populate every public and office selector as soon as public
+  // configuration is available, before attempting to initialise Supabase.
+  const categories = Array.isArray(appConfig.categories) ? appConfig.categories : [];
+  const categoryOptions = categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
   $("#reportCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
   $("#publicCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
   $("#publicBrowseCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
-  const blocks = appConfig.locations.blocks || [];
+
+  const locations = appConfig.locations || {};
+  const blocks = Array.isArray(locations.blocks) ? locations.blocks : [];
   const blockOptions = blocks.map((block) =>
     '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
   ).join("");
   $("#reportBlock").innerHTML = '<option value="">Choose a block or area</option>' + blockOptions;
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
   $("#publicBlock").innerHTML = '<option value="">Choose block</option>' + blockOptions;
-  $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
+  $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (Array.isArray(locations.floors) ? locations.floors : [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
-  if (appConfig.demo_mode) $("#demoAccess").classList.remove("hidden");
+
+  if (appConfig.demo_mode) {
+    $("#demoAccess").classList.remove("hidden");
+    $("#officeAccessModeNote").classList.add("hidden");
+  }
+
+  // Supabase is required only for authorised office sign-in. If its browser
+  // SDK/configuration is unavailable, keep public Lost/Found/Browse/Track usable.
+  if (appConfig.auth_mode === "supabase") {
+    $("#demoAccess").classList.add("hidden");
+    const modeNote = $("#officeAccessModeNote");
+    try {
+      if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) {
+        throw new Error("Supabase Auth client configuration is missing.");
+      }
+      supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+      modeNote.textContent = "Live campus deployment: demo credentials are disabled. Sign in with an authorised office account provisioned in Supabase.";
+      modeNote.classList.remove("hidden");
+    } catch (error) {
+      supabaseClient = null;
+      modeNote.textContent = "Office sign-in is unavailable: " + error.message;
+      modeNote.classList.remove("hidden");
+    }
+  } else {
+    $("#officeAccessModeNote").classList.add("hidden");
+  }
+
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
   $("#reportDate").value = localNow.toISOString().slice(0, 16);
 }
@@ -1958,6 +1983,10 @@ async function start() {
     return;
   }
   if (appConfig && appConfig.auth_mode === "supabase") {
+    if (!supabaseClient) {
+      showPublicHome();
+      return;
+    }
     try {
       const { data } = await supabaseClient.auth.getSession();
       supabaseAccessToken = data && data.session ? data.session.access_token : null;
@@ -1967,7 +1996,7 @@ async function start() {
       enterApp(profile.user);
     } catch (error) {
       supabaseAccessToken = null;
-      await supabaseClient.auth.signOut().catch(() => {});
+      await supabaseClient?.auth.signOut().catch(() => {});
       showPublicHome();
       $("#publicApiStatus").textContent = error.message;
       $("#publicApiStatus").classList.remove("hidden");
