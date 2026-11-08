@@ -12,7 +12,12 @@ AUDIT = r"""
 () => {
   const width = document.documentElement.clientWidth;
   const scrollWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
-  const overflow = scrollWidth > width + 1 ? { width, scrollWidth } : null;
+  const overflow = scrollWidth > width + 1 ? {
+    width, scrollWidth,
+    offenders: [...document.querySelectorAll('body *')].map(el => ({el, rect:el.getBoundingClientRect(), style:getComputedStyle(el)}))
+      .filter(x => x.style.display !== 'none' && x.style.visibility !== 'hidden' && x.rect.width > 1 && x.rect.right > width + 1)
+      .slice(0, 12).map(x => ({tag:x.el.tagName,id:x.el.id,cls:typeof x.el.className === 'string' ? x.el.className.slice(0,90) : '',x:x.rect.x,right:x.rect.right,width:x.rect.width,scrollWidth:x.el.scrollWidth}))
+  } : null;
   const selector = 'button, a[href], input:not([type="hidden"]), select, textarea';
   const nodes = [...document.querySelectorAll(selector)].filter((el) => {
     const style = getComputedStyle(el);
