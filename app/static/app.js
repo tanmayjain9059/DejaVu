@@ -1990,12 +1990,8 @@ const finnMessage = $("#mascotMessage");
 const finnReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const finnUrgentTerms = /wallet|phone|mobile|id card|identity|keys|passport|laptop/i;
 function finnPick(key) {
-  const lines = finnLines[key] || finnLines.home;
-  const last = finnIndex[key];
-  let index = Math.floor(Math.random() * lines.length);
-  if (lines.length > 1 && index === last) index = (index + 1) % lines.length;
-  finnIndex[key] = index;
-  return lines[index];
+  const lines = finnLines[key] || finnLines.home || [];
+  return lines[0] || "Need a hand? I'm right here.";
 }
 function finnMode() {
   if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "search_lost";
@@ -2005,84 +2001,58 @@ function finnMode() {
     const view = active?.dataset.view || "start";
     if (view === "browse") return "results";
     if (view === "report") return $("#reportType")?.value === "found" ? "post_found" : "post_lost";
-    if (view === "my-reports" || view === "my-claims" || view === "activity") return "history";
+    if (view === "activity") return "activity";
+    if (view === "my-reports") return "my_reports";
+    if (view === "my-claims") return "my_claims";
     if (view === "notifications") return "notifications";
-    return view === "office" ? "history" : "home";
+    return view === "office" ? "office" : "home";
   }
   return "home";
 }
-function finnBubble(key, force = false) {
-  if (!finnDock || !finnMessage || finnTipsHidden) return;
-  const now = Date.now();
-  if (!force && now - finnLastBubbleAt < 15000) return;
-  const line = finnPick(key);
-  finnMessage.textContent = line;
+function finnBubble(key) {
+  if (!finnDock || !finnMessage || finnTipsHidden || finnDock.dataset.pageMessageShown === finnVisitKey) return;
+  finnMessage.textContent = finnPick(key);
   finnDock.dataset.messageState = key;
-  finnDock.classList.remove("is-awake", "has-tip");
-  void finnDock.offsetWidth;
   finnDock.classList.add("is-awake", "has-tip");
-  finnLastBubbleAt = now;
-  clearTimeout(finnHideTimer);
-  finnHideTimer = setTimeout(() => finnDock.classList.remove("has-tip"), 3800);
+  finnDock.dataset.pageMessageShown = finnVisitKey;
 }
-function wakeFinn(mode = finnMode(), tapped = false) {
+function wakeFinn() {
   if (!finnDock) return;
   finnDock.classList.remove("is-awake");
   void finnDock.offsetWidth;
   finnDock.classList.add("is-awake");
-  if (tapped) {
-    finnDock.classList.add("is-tapped");
-    setTimeout(() => finnDock.classList.remove("is-tapped"), 420);
-    finnBubble(mode === "help" ? finnMode() : mode, true);
-  }
 }
 function placeFinnForView(view) {
   if (!finnDock) return;
   const targets = {
-    home: "#publicActionPanel",
-    lost: "#publicLostPage",
-    found: "#publicFoundPage",
-    start: "#startView .start-hero",
-    browse: "#browseView .section-heading",
-    report: "#reportView #reportForm",
-    "my-reports": "#myReportsView .section-heading",
-    "my-claims": "#myClaimsView .section-heading",
-    notifications: "#notificationsView .section-heading",
-    activity: "#activityView .section-heading",
-    office: "#officeView .section-heading"
+    home: "#publicActionPanel", lost: "#publicLostPage", found: "#publicFoundPage",
+    start: "#startView .start-hero", browse: "#browseView .section-heading",
+    report: "#reportView .report-intro", "my-reports": "#myReportsView .section-heading",
+    "my-claims": "#myClaimsView .section-heading", notifications: "#notificationsView .section-heading",
+    activity: "#activityView .activity-finn-anchor", office: "#officeView .section-heading"
   };
   let host = document.querySelector(targets[view] || targets.home);
-  if (!host || host.closest(".hidden")) {
-    host = document.querySelector(view === "report" ? "#reportView" : targets.home);
-  }
+  if (!host || host.closest(".hidden")) host = document.querySelector(targets.home);
   if (!host) return;
   if (finnDock.parentElement !== host) host.appendChild(finnDock);
   host.classList.add("finn-perch-host");
-  const updateLayout = () => {
-    const width = host.getBoundingClientRect().width;
-    host.dataset.finnLayout = width < 390 ? "small" : width < 560 ? "mobile" : "desktop";
-  };
-  updateLayout();
+  finnVisitKey = view;
+  delete finnDock.dataset.pageMessageShown;
+  finnDock.classList.remove("has-tip");
+  clearTimeout(finnAutoTimer);
+  if (finnAnchorObserver) finnAnchorObserver.disconnect();
   if (typeof ResizeObserver !== "undefined") {
-    if (finnAnchorObserver) finnAnchorObserver.disconnect();
-    finnAnchorObserver = new ResizeObserver(updateLayout);
+    finnAnchorObserver = new ResizeObserver(() => {
+      const width = host.getBoundingClientRect().width;
+      host.dataset.finnLayout = width < 390 ? "small" : width < 560 ? "mobile" : "desktop";
+    });
     finnAnchorObserver.observe(host);
   }
-  clearTimeout(finnAutoTimer);
-  clearTimeout(finnRepeatTimer);
-  finnBubbleCount = 0;
-  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 1700 + Math.random() * 1100);
-  const scheduleWake = () => {
-    finnRepeatTimer = setTimeout(() => {
-      if (document.visibilityState === "visible" && !finnReducedMotion.matches) wakeFinn(finnMode());
-      scheduleWake();
-    }, 8000 + Math.random() * 4000);
-  };
-  scheduleWake();
+  const width = host.getBoundingClientRect().width;
+  host.dataset.finnLayout = width < 390 ? "small" : width < 560 ? "mobile" : "desktop";
+  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 900);
 }
-function finnEvent(state) {
-  finnBubble(state, true);
-}
+function finnEvent() { /* Page guidance stays stable; events do not replace it. */ }
 function initFinn() {
   if (!finnDock || !finnCharacter) return;
   fetch("/static/finn-messages.json").then(response => response.ok ? response.json() : null)
@@ -2090,14 +2060,10 @@ function initFinn() {
     .catch(() => {});
   const touchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
   finnCharacter.addEventListener("pointerenter", () => {
-    if (!touchDevice && !finnReducedMotion.matches) wakeFinn(finnMode());
+    if (!touchDevice && !finnReducedMotion.matches) wakeFinn();
   });
-  finnCharacter.addEventListener("focus", () => wakeFinn(finnMode()));
-  finnCharacter.addEventListener("click", () => {
-    finnDock.classList.add("is-tapped");
-    setTimeout(() => finnDock.classList.remove("is-tapped"), 420);
-    wakeFinn(finnMode(), true);
-  });
+  finnCharacter.addEventListener("focus", () => wakeFinn());
+  finnCharacter.addEventListener("click", () => wakeFinn());
   const toggle = $("#finnTipsToggle");
   if (toggle) toggle.addEventListener("click", () => {
     finnTipsHidden = !finnTipsHidden;
