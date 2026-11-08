@@ -204,5 +204,11 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('document.querySelectorAll("#publicReportForm, #publicFoundReportForm").forEach((form) => {', self.js)
         self.assertIn('const field = (id) => publicReportField(form, id);', self.js)
 
+    def test_public_found_navigation_shows_only_its_own_page(self):
+        self.assertIn('["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"]', self.js)
+        self.assertIn('type === "found" ? "publicFoundPage" : "publicLostPage"', self.js)
+        self.assertIn('reportPage.querySelector("#publicDescriptionFound")', self.js)
+        self.assertIn('form.id === "publicFoundReportForm"', self.js)
+
 if __name__ == "__main__":
     unittest.main()
