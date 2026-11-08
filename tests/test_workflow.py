@@ -8,6 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from app.core import config as app_config
 from app.core import database as app_database
@@ -66,6 +67,21 @@ class LostLinkWorkflowTests(unittest.TestCase):
         main.app.dependency_overrides.clear()
         self.client = TestClient(main.app)
 
+        async def test_only_student_override(request: Request):
+            email = request.headers.get("x-test-student")
+            if email:
+                with main.connect_db() as conn:
+                    row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+                if not row:
+                    raise AssertionError("Test-only student identity was not provisioned.")
+                return {"id": row["id"], "email": row["email"],
+                        "display_name": row["display_name"], "role": row["role"]}
+            return await authenticated_user(request)
+
+        # All clients share the app; the request header selects a test-only
+        # legacy identity while office requests still use real session auth.
+        main.app.dependency_overrides[authenticated_user] = test_only_student_override
+
     def tearDown(self):
         main.app.dependency_overrides.clear()
         self.client.close()
@@ -84,23 +100,14 @@ class LostLinkWorkflowTests(unittest.TestCase):
         # override. Production login endpoints reject student identities; the
         # public roll-number workflow is covered separately end to end.
         if email in {"finder@example.test", "claimant@example.test"}:
-            with main.connect_db() as conn:
-                row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-            self.assertIsNotNone(row)
-            payload = {"id": row["id"], "email": row["email"],
-                       "display_name": row["display_name"], "role": row["role"]}
-
-            async def test_student_identity():
-                return payload
-
-            self.client.app.dependency_overrides[authenticated_user] = test_student_identity
+            self.client.headers["X-Test-Student"] = email
             return
-        self.client.app.dependency_overrides.pop(authenticated_user, None)
+        self.client.headers.pop("X-Test-Student", None)
         response = self.client.post("/api/login", json={"email": email, "password": password})
         self.assertEqual(response.status_code, 200, response.text)
 
     def logout(self):
-        self.client.app.dependency_overrides.pop(authenticated_user, None)
+        self.client.headers.pop("X-Test-Student", None)
         response = self.client.post("/api/logout")
         self.assertEqual(response.status_code, 200, response.text)
 
