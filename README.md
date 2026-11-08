@@ -34,13 +34,13 @@ LostLink is a web application for managing campus lost property from initial rep
 
 **The central rule is that a match is a lead, not proof of ownership.** A found item becomes visible for student discovery only after authorised staff confirm physical receipt and record custody. Claim approval and physical handover are separate steps; the application requires the exact physical LostLink Tag ID and identity/handover confirmations before recording a return.
 
-> **Public student workflow decision:** the target model uses mandatory roll-number attribution without student login. The backend is still being migrated; see [Public workflow and sequence diagrams](docs/PUBLIC_WORKFLOW_AND_SEQUENCE.md) for the target contract and implementation gaps. Roll number is not authentication.
+> **Public student workflow:** students submit reports and claims without accounts or passwords, using mandatory roll-number attribution. The first public backend routes are implemented on this branch; the frontend and remaining production integrations are not complete. Roll number is not authentication. See [Public workflow and sequence diagrams](docs/PUBLIC_WORKFLOW_AND_SEQUENCE.md) and the [Public Student Backend API contract](docs/PUBLIC_STUDENT_BACKEND.md).
 
 > **Project status:** working standalone prototype. It uses SQLite and local image files. It has not yet been validated for production-scale load or connected to an institutional identity provider.
 
 ## Contents
 
-- [Public student workflow and sequence diagrams](docs/PUBLIC_WORKFLOW_AND_SEQUENCE.md)
+- [Public student workflow and sequence diagrams](docs/PUBLIC_WORKFLOW_AND_SEQUENCE.md)\n- [Public Student Backend API contract](docs/PUBLIC_STUDENT_BACKEND.md)
 
 - [Problem and goals](#problem-and-goals)
 - [Features](#features)
