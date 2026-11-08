@@ -31,7 +31,8 @@ from app.core.config import (
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
-from app.core.database import audit, connect_db, now_iso, table_columns
+from app.core.database import audit, connect_db, now_iso, table_columns, lock_public_image_upload
+from app.core.client_ip import get_client_ip
 from app.core.security import hash_password
 from app.core.images import canonicalise_image, image_fingerprint_matches
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
@@ -94,7 +95,7 @@ def _public_actor_for_roll(conn, roll_number: str) -> int:
 
 def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
     """Rate-limit anonymous writes while storing only a one-way IP digest."""
-    address = request.client.host if request.client else "unknown"
+    address = get_client_ip(request)
     hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")
     ip_hash = hmac.new(hash_key, address.encode("utf-8"), hashlib.sha256).hexdigest()
     retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
@@ -393,8 +394,9 @@ def _persist_public_report_image(reference: str, case_id: str, actor_id: int, ra
     saved = False
     try:
         with connect_db() as conn:
-            # Deliberately do not use BEGIN IMMEDIATE: image work must not hold
-            # the Postgres compatibility layer's global advisory write lock.
+            # Serialize image deduplication and this report's replacement without
+            # taking the application's global PostgreSQL write lock.
+            lock_public_image_upload(conn, case_id)
             duplicate = image_fingerprint_matches(conn, image_sha256, image_phash)
             if duplicate:
                 raise HTTPException(status_code=409, detail="This photo cannot be attached. Please choose another image.")
@@ -411,50 +413,6 @@ def _persist_public_report_image(reference: str, case_id: str, actor_id: int, ra
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
                 (new_key, image_sha256, image_phash, now_iso(), case_id),
             )
-            audit(conn, actor_id, "public_report_image_added", "report", case_id)
-    except Exception:
-        if saved:
-            try:
-                delete_upload(new_key)
-            except Exception:
-                logging.exception("Could not clean up failed public report image %s", new_key)
-        raise
-    if old_key and old_key != new_key:
-        try:
-            delete_upload(old_key)
-        except Exception:
-            logging.exception("Could not remove replaced public report image %s", old_key)
-
-
-def _verify_public_image_access(reference: str, roll: str, tracking_secret: str, request: Request) -> dict[str, Any]:
-    """Authenticate the case and consume its upload quota before image processing."""
-    with connect_db() as conn:
-        row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
-        if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
-            raise HTTPException(status_code=404, detail="Tracking access not found.")
-        if row["status"] not in {"open", "awaiting_intake"}:
-            raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
-        _enforce_rate_limit(conn, request, "image", 5)
-        return {"id": row["id"], "created_by": int(row["created_by"])}
-
-
-def _persist_public_report_image(reference: str, case_id: str, actor_id: int, raw: bytes) -> None:
-    """Run synchronous image, database and storage work outside the event loop."""
-    normalized, image_sha256, image_phash = canonicalise_image(raw)
-    new_key = uuid.uuid4().hex + ".jpg"
-    old_key = None
-    saved = False
-    try:
-        with connect_db() as conn:
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(status_code=409, detail="This photo cannot be attached. Please choose another image.")
-            row = conn.execute("SELECT image_path,status FROM reports WHERE id=? AND public_ref=? AND submission_channel='public'", (case_id, reference)).fetchone()
-            if not row or row["status"] not in {"open", "awaiting_intake"}:
-                raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
-            old_key = row["image_path"]
-            save_upload(new_key, normalized)
-            saved = True
-            conn.execute("UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?", (new_key, image_sha256, image_phash, now_iso(), case_id))
             audit(conn, actor_id, "public_report_image_added", "report", case_id)
     except Exception:
         if saved:

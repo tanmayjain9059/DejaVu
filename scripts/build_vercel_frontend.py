@@ -29,4 +29,7 @@ if DIST.exists():
 shutil.copytree(STATIC, DIST / "static")
 shutil.copy2(STATIC / "index.html", DIST / "index.html")
 shutil.copy2(STATIC / "deployment-config.js", DIST / "deployment-config.js")
+headers_file = STATIC / "_headers"
+if headers_file.is_file():
+    shutil.copy2(headers_file, DIST / "_headers")
 print("Prepared Vercel static frontend for " + origin)
