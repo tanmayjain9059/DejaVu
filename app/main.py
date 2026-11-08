@@ -171,6 +171,7 @@ def health_ready():
         # strings, credentials, request headers, or exception messages.
         import logging
         error_code = ""
+        error_detail = ""
         http_status = ""
         response = getattr(exc, "response", None)
         if isinstance(response, dict):
@@ -178,14 +179,19 @@ def health_ready():
             metadata = response.get("ResponseMetadata", {})
             if isinstance(error, dict):
                 error_code = str(error.get("Code", ""))[:80]
+                # Provider error text distinguishes invalid credentials, signature
+                # mismatch, missing bucket and denied bucket-level permissions.
+                # Keep it short and strip control characters; never log headers or keys.
+                error_detail = " ".join(str(error.get("Message", "")).split())[:180]
             if isinstance(metadata, dict):
                 http_status = str(metadata.get("HTTPStatusCode", ""))[:8]
         logging.getLogger(__name__).error(
-            "Readiness check failed at %s (%s, code=%s, http_status=%s)",
+            "Readiness check failed at %s (%s, code=%s, http_status=%s, detail=%s)",
             readiness_stage,
             type(exc).__name__,
             error_code or "unavailable",
             http_status or "unavailable",
+            error_detail or "unavailable",
         )
         return JSONResponse(
             status_code=503,
