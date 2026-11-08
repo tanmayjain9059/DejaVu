@@ -432,9 +432,10 @@ Run these commands from the repository root.
        py -3.11 -m venv .venv
        .\.venv\Scripts\Activate.ps1
        python -m pip install --upgrade pip
+       cd DejaVu
        python -m pip install -r requirements.txt
 
-2. Create the local environment file if it does not already exist.
+3. Create the local environment file if it does not already exist.
 
        if (-not (Test-Path .env)) {
            Copy-Item .env.example .env
@@ -442,13 +443,13 @@ Run these commands from the repository root.
 
    If you already have a local <code>.env</code>, keep it rather than overwriting it.
 
-3. Generate a unique session secret.
+4. Generate a unique session secret.
 
        python -c "import secrets; print(secrets.token_urlsafe(48))"
 
    Open <code>.env</code> with Notepad, replace the placeholder on the <code>SESSION_SECRET=</code> line with the generated value, save the file and close the editor. Do not commit the local <code>.env</code> file.
 
-4. Start the single-server local demo.
+5. Start the single-server local demo.
 
        .\scripts\run-demo.ps1
 
