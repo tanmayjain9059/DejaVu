@@ -9,6 +9,7 @@ and reward services can be reused without exposing a student sign-in surface.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import secrets
 import uuid
@@ -117,48 +118,6 @@ def _tracking_events(conn, user_id: int, entity_type: str, entity_id: str) -> li
         (user_id, entity_type, entity_id),
     ).fetchall()
     return [dict(row) for row in rows]
-
-
-def _rank_public_matches(lost_report_id: str) -> list[dict[str, Any]]:
-    """Use the same bounded AI ranking engine as authenticated report matching."""
-    from app.matching import matching_engine
-
-    with connect_db() as conn:
-        lost_row = conn.execute("SELECT * FROM reports WHERE id=?", (lost_report_id,)).fetchone()
-        if not lost_row or lost_row["report_type"] != "lost" or lost_row["status"] != "open":
-            return []
-        candidates = conn.execute(
-            """SELECT * FROM reports WHERE report_type='found' AND status='available'
-               ORDER BY created_at DESC,id DESC LIMIT ?""",
-            (MATCHING_CANDIDATE_LIMIT,),
-        ).fetchall()
-    lost = dict(lost_row)
-    if lost.get("image_path"):
-        from app.core.images import read_upload
-        lost["image_key"] = lost["image_path"]
-        lost["image_loader"] = read_upload
-        lost["image_path"] = str(UPLOAD_DIR / lost["image_path"])
-    candidate_data = []
-    for row in candidates:
-        candidate = dict(row)
-        if candidate.get("image_path"):
-            from app.core.images import read_upload
-            candidate["image_key"] = candidate["image_path"]
-            candidate["image_loader"] = read_upload
-            candidate["image_path"] = str(UPLOAD_DIR / candidate["image_path"])
-        candidate_data.append(candidate)
-    ranked = run_in_threadpool  # Keep this helper synchronous for route/test portability.
-    # The model call itself is bounded to the configured candidate limit.
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-        if loop.is_running():
-            # Called from async endpoints; execute the model ranking in the worker pool.
-            ranked_results = loop.run_until_complete if False else None
-    except RuntimeError:
-        ranked_results = None
-    # matching_engine.rank is CPU/model work; the async endpoint uses the wrapper below.
-    return []
 
 
 async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]]:
@@ -295,7 +254,7 @@ def ensure_public_schema() -> None:
 
 
 @router.post("/reports", status_code=201)
-def submit_public_report(body: PublicReportBody, request: Request):
+async def submit_public_report(body: PublicReportBody, request: Request):
     roll = _roll(body.roll_number)
     if body.category not in CATEGORY_LABELS:
         raise HTTPException(status_code=422, detail="Choose a valid item category.")
@@ -341,13 +300,7 @@ def submit_public_report(body: PublicReportBody, request: Request):
             notify_user(conn,actor_id,"public-report:"+report_id,"Lost report received",
                         "Your Lost report is open. Track it with the private reference and one-time secret.",
                         "report",report_id)
-    matches = awaitable_matches = []
-    if body.report_type == "lost":
-        import asyncio
-        try:
-            matches = asyncio.run(_rank_public_matches_async(report_id))
-        except RuntimeError:
-            matches = []
+    matches = await _rank_public_matches_async(report_id) if body.report_type == "lost" else []
     return {
         "case": {"id": report_id, "reference": public_ref, "status": status},
         "tracking_secret": token,
