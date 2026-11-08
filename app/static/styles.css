@@ -749,3 +749,47 @@ input:focus,select:focus,textarea:focus { border-color:#8aa5ff; box-shadow:inset
 .pagination-controls .button {
   min-width: 150px;
 }
+
+/* Lost and Found reports have distinct guidance and task-specific prompts. */
+.report-kind-guidance {
+  padding: 20px 22px;
+  margin: 4px 0 8px;
+  border: 1px solid var(--line, rgba(70, 90, 120, .16));
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(238,244,250,.78));
+}
+.report-kind-guidance h3 {
+  margin: 8px 0 7px;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+.report-kind-guidance p {
+  margin: 0;
+  color: var(--muted, #64748b);
+  line-height: 1.65;
+}
+.report-kind-guidance ul {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding-left: 19px;
+  color: var(--muted, #64748b);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.report-guidance-kicker {
+  color: var(--accent, #4775a8);
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.found-report-guidance {
+  background: linear-gradient(135deg, rgba(242,249,245,.96), rgba(232,243,237,.82));
+}
+.found-report-guidance .report-guidance-kicker {
+  color: #347456;
+}
+@media (max-width: 700px) {
+  .report-kind-guidance { padding: 16px; border-radius: 14px; }
+}
+
