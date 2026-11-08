@@ -460,9 +460,11 @@ def _migration_add_public_roll_attribution(conn) -> None:
         ("claimant_roll_number", "TEXT"),
         ("tracking_hash", "TEXT"),
         ("submission_channel", "TEXT NOT NULL DEFAULT 'account'"),
+        ("public_ref", "TEXT"),
     ):
         if column not in table_columns(conn, "claims"):
             conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_public_ref ON claims(public_ref) WHERE public_ref IS NOT NULL")
     conn.execute(
         """CREATE TABLE IF NOT EXISTS public_roll_identities (
             roll_number TEXT PRIMARY KEY,
