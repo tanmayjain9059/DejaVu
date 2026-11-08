@@ -1943,3 +1943,48 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   background:rgba(36,25,19,.28); backdrop-filter:blur(3px);
 }
 #officeLoginPanel { z-index:1000 !important; }
+
+
+/* LostLink refinement: stable Finn perch, page-specific copy, and calm report surfaces. */
+.finn-perch-host { position:relative !important; isolation:isolate; min-width:0; }
+#finnDock { position:absolute !important; inset:0 0 auto auto !important; width:116px !important; height:104px !important; margin:0 !important; z-index:8 !important; pointer-events:none !important; transform:none !important; }
+#finnDock .finn-character { position:absolute !important; top:-22px !important; right:0 !important; bottom:auto !important; width:112px !important; height:102px !important; padding:0 !important; pointer-events:auto !important; }
+#finnDock .finn-mascot { display:block !important; width:100% !important; height:100% !important; }
+#finnDock .mascot-note { position:absolute !important; top:-12px !important; right:94px !important; width:180px !important; max-width:min(180px,calc(100vw - 132px)) !important; min-width:0 !important; overflow-wrap:anywhere !important; white-space:normal !important; line-height:1.4 !important; opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
+#finnDock.has-tip .mascot-note { opacity:1 !important; visibility:visible !important; }
+#finnDock.tips-disabled .mascot-note { display:none !important; }
+#publicActionPanel.finn-perch-host { padding-top:22px; }
+#reportView .report-intro.finn-perch-host { padding-right:120px; min-height:110px; }
+#activityView.activity-finn-anchor { position:relative; }
+#activityView.activity-finn-anchor > .section-heading { padding-right:120px; min-height:112px; }
+#activityView #finnDock { top:0 !important; right:0 !important; }
+#reportForm.form-card { background:#fffdf9 !important; box-shadow:none !important; border:1px solid rgba(90,79,78,.2) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+#reportForm.form-card::before, #reportForm.form-card::after { box-shadow:none !important; }
+.report-context-card { position:static !important; min-width:0 !important; width:100%; box-sizing:border-box; padding:22px; border:1px solid rgba(90,79,78,.22) !important; border-radius:18px; background:#f8f3eb !important; box-shadow:none !important; overflow:hidden; overflow-wrap:anywhere; }
+.report-context-card * { min-width:0; max-width:100%; box-sizing:border-box; overflow-wrap:anywhere; }
+.report-context-card p, .report-context-card li, .report-context-card span, .report-context-card strong { white-space:normal; overflow-wrap:anywhere; word-break:normal; }
+.report-context-card .guidance-rule { display:flex; align-items:flex-start; gap:9px; width:100% !important; margin:12px 0 0 !important; padding-top:12px; border-top:1px solid rgba(90,79,78,.15); }
+.form-layout { grid-template-columns:minmax(0,1.65fr) minmax(250px,.75fr) !important; align-items:start; }
+#loginView { display:block !important; }
+#loginView .public-landing-shell { min-width:0; }
+#officeLoginPanel { position:fixed !important; inset:50% auto auto 50% !important; transform:translate(-50%,-50%) !important; z-index:1002 !important; width:min(460px,calc(100vw - 32px)) !important; max-height:calc(100dvh - 32px) !important; overflow:auto !important; margin:0 !important; }
+#loginView:has(#officeLoginPanel:not(.hidden))::after { content:""; position:fixed; inset:0; z-index:1001; background:rgba(36,25,19,.28); backdrop-filter:blur(3px); pointer-events:auto; }
+@media(max-width:900px) {
+  .form-layout { grid-template-columns:minmax(0,1fr) !important; }
+  .report-context-card { order:2; }
+}
+@media(max-width:760px) {
+  #finnDock { width:88px !important; height:78px !important; }
+  #finnDock .finn-character { width:86px !important; height:78px !important; top:-16px !important; }
+  #finnDock .mascot-note { right:70px !important; top:-8px !important; width:148px !important; max-width:calc(100vw - 112px) !important; font-size:.72rem !important; }
+  #reportView .report-intro.finn-perch-host { padding-right:88px; min-height:96px; }
+  #activityView.activity-finn-anchor > .section-heading { padding-right:88px; min-height:92px; }
+}
+@media(max-width:420px) {
+  #finnDock { width:72px !important; height:66px !important; }
+  #finnDock .finn-character { width:70px !important; height:64px !important; top:-12px !important; }
+  #finnDock .mascot-note { right:58px !important; width:132px !important; max-width:calc(100vw - 98px) !important; font-size:.68rem !important; }
+  #reportView .report-intro.finn-perch-host { padding-right:72px; }
+  #activityView.activity-finn-anchor > .section-heading { padding-right:72px; }
+}
+@media(prefers-reduced-motion:reduce) { #finnDock *,#finnDock *::before { animation:none !important; transition:none !important; } }
