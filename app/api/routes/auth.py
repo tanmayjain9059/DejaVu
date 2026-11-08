@@ -40,7 +40,7 @@ def login(body: LoginBody, request: Request):
         locked_for = login_lockout_remaining(conn, subjects)
         if not locked_for:
             row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-            if not row or not verify_password(body.password, row["password_hash"]):
+            if not row or row["role"] != "office" or not verify_password(body.password, row["password_hash"]):
                 record_failed_login(conn, subjects)
                 invalid_credentials = True
             else:
@@ -53,7 +53,7 @@ def login(body: LoginBody, request: Request):
             headers={"Retry-After": str(locked_for)},
         )
     if invalid_credentials or user is None:
-        raise HTTPException(status_code=401, detail="Email or password is incorrect.")
+        raise HTTPException(status_code=401, detail="Office sign-in failed. Student accounts do not sign in to LostLink.")
     request.session.clear()
     request.session["user_id"] = user["id"]
     return {"user": user}
