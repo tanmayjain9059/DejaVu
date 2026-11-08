@@ -197,16 +197,20 @@
   <!-- ==================== MAIN APP VIEW ==================== -->
   <main id="appView" class="app-shell hidden">
     <header class="app-header">
-      <a class="brand-lockup compact" id="homeBrandLink" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost & found</small></span></a>
-      <div class="header-right">
-        <span id="roleChip" class="role-chip">Student</span>
-        <div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Alex Chen</span></div>
-        <button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button>
-        <button id="finnTipsToggle" class="button button-quiet button-small" type="button" aria-pressed="false">Hide Finn’s tips</button>
-        <button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button>
-      </div>
-    </header>
-
+<a class="brand-lockup compact" id="homeBrandLink" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost &amp; found</small></span></a>
+<div class="header-center"><nav id="studentNav" class="nimbus-nav" data-tone="light" aria-label="LostLink navigation">
+<span class="nimbus-glass" aria-hidden="true"></span>
+<button class="nimbus-item tab-button" type="button" data-view="browse"><span class="nv-ico">⌕</span><span class="nimbus-label">Browse</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="report"><span class="nv-ico">＋</span><span class="nimbus-label">Report</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="my-reports"><span class="nv-ico">▤</span><span class="nimbus-label">My reports</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="my-claims"><span class="nv-ico">◇</span><span class="nimbus-label">Claims</span><span id="claimNavCount" class="nav-count hidden">0</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button>
+<button id="activityNavButton" class="nimbus-item tab-button" type="button" data-view="activity"><span class="nv-ico">✧</span><span class="nimbus-label">Activity</span></button>
+<button id="officeNavButton" class="nimbus-item tab-button office-tab hidden" type="button" data-view="office"><span class="nv-ico">▦</span><span class="nimbus-label">Office</span></button>
+</nav></div>
+<div class="header-right"><span id="roleChip" class="role-chip">Student</span><div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Campus user</span></div>
+<button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button><button id="finnTipsToggle" class="button button-quiet button-small" type="button" aria-pressed="false">Hide Finn’s tips</button><button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button></div>
+</header>
     <section class="welcome-row">
       <div>
         <p class="eyebrow">CAMPUS PROPERTY, MADE EASIER</p>
@@ -216,16 +220,7 @@
       <div class="welcome-mark" aria-hidden="true"><span>LL</span><i>↗</i></div>
     </section>
 
-    <nav id="studentNav" class="tab-nav" aria-label="LostLink sections">
-      <button class="tab-button" type="button" data-view="start">Home</button>
-      <button class="tab-button active" type="button" data-view="browse"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.5 4.5"></path></svg> Browse items</button>
-      <button class="tab-button" type="button" data-view="report"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg> New report</button>
-      <button class="tab-button" type="button" data-view="my-reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.8h7l4 4V20H7z"></path><path d="M14 4v4h4M10 13h5M10 16.5h5"></path></svg> My reports</button>
-      <button class="tab-button" type="button" data-view="my-claims"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg> My claims <span id="claimNavCount" class="nav-count hidden">0</span></button>
-      <button class="tab-button" type="button" data-view="notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg> Notifications <span id="notificationNavCount" class="nav-count hidden">0</span></button>
-      <button id="activityNavButton" class="tab-button" type="button" data-view="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path></svg> Activity & certificates</button>
-      <button id="officeNavButton" class="tab-button office-tab hidden" type="button" data-view="office"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> Office console</button>
-    </nav>
+    
 
     <section id="notice" class="notice hidden" role="status"></section>
     <div id="appModeNote" class="app-mode-note hidden" role="status">Offline preview: changes stay in this browser session and are not saved to the campus database.</div>
