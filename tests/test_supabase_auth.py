@@ -182,7 +182,7 @@ def test_supabase_identity_migration_is_registered_and_idempotent():
     columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)").fetchall()}
     assert "supabase_user_id" in columns
     versions = [version for version, _, _ in SCHEMA_MIGRATIONS]
-    assert versions[-3:] == [8, 9, 10]
+    assert versions[-4:] == [8, 9, 10, 11]
     _migration_lock_down_supabase_data_api(connection)
     connection.execute("INSERT INTO users(email, supabase_user_id) VALUES (?, ?)", ("one@example.edu", "auth-1"))
     with pytest.raises(sqlite3.IntegrityError):
