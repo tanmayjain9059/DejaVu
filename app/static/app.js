@@ -1896,7 +1896,26 @@ function showPublicDestination(type) {
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.add("hidden");
-  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden", id !== (type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "lost" ? "publicLostPage" : "publicFoundPage")));
+  const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : "publicLostPage";
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden", id !== destination));
+  if (type === "found" || type === "lost") {
+    $("#publicReportType").value = type;
+    const title = $("#publicLostPage .public-title");
+    const eyebrow = $("#publicLostPage .eyebrow");
+    const lede = $("#publicLostPage .public-lede");
+    const submit = $("#publicReportForm button[type=submit]");
+    if (type === "found") {
+      eyebrow.textContent = "PUBLIC REPORT · FOUND";
+      title.innerHTML = 'You found it.<br><span>Let’s reunite it.</span>';
+      lede.textContent = "Tell us what you found. The campus office will verify your college ID when you hand in the item.";
+      submit.textContent = "Submit found report ↗";
+    } else {
+      eyebrow.textContent = "PUBLIC REPORT · LOST";
+      title.innerHTML = 'Let’s find<br><span>what’s missing.</span>';
+      lede.textContent = "Submit a report using your college roll number. No student account or password is needed.";
+      submit.textContent = "Submit lost report ↗";
+    }
+  }
   if (type === "browse") loadPublicFound();
   placeFinnForView(type);
 }
