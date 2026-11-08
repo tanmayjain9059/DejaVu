@@ -463,7 +463,7 @@ def track_one_case(
 def close_public_case(
     reference: str,
     body: PublicCloseBody,
-    roll_number: str,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
