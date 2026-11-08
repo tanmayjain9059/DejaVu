@@ -2656,3 +2656,7 @@ body:has(.public-finn-slot #finnDock) .public-finn-slot #finnDock {
   .nimbus-item { min-height:38px; height:38px; padding:0 10px; gap:5px; }
   .nimbus-label { font-size:10px; }
 }
+
+
+/* Keep the public login shell truly non-interactive after office sign-in. */
+#loginView.hidden { display:none !important; }
