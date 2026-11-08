@@ -1882,3 +1882,43 @@ input:focus, select:focus, textarea:focus { border-color: #b4813f; box-shadow: 0
   font-size:.76rem;
   line-height:1.55;
 }
+
+/* Finn system v2 — one preserved mascot, anchored with reserved layout space. */
+#finnDock { z-index:4 !important; pointer-events:none !important; }
+#finnDock .finn-character { pointer-events:auto !important; touch-action:manipulation; }
+#finnDock .mascot-note {
+  opacity:0 !important; visibility:hidden !important;
+  transform:translateY(7px) scale(.97);
+  transition:opacity .24s ease,transform .24s ease,visibility .24s ease;
+  max-width:min(184px,calc(100vw - 150px));
+  font-size:14px !important; line-height:1.4 !important;
+}
+#finnDock.has-tip .mascot-note {
+  opacity:1 !important; visibility:visible !important; transform:translateY(0) scale(1);
+}
+#finnDock.tips-disabled .mascot-note { display:none !important; }
+#finnDock.is-awake .finn-mascot { animation:finnPeek .48s cubic-bezier(.2,.85,.25,1) both; }
+#finnDock.is-tapped .finn-character { animation:finnSquish .42s cubic-bezier(.2,.8,.25,1); }
+@keyframes finnSquish { 0%,100%{transform:scale(1)} 35%{transform:scale(1.06,.91)} 65%{transform:translateY(-5px) scale(.97,1.04)} }
+.finn-anchor { isolation:isolate; }
+.finn-anchor[data-finn-layout="wide"] { padding-right:286px !important; min-height:132px !important; }
+.finn-anchor[data-finn-layout="compact"] { padding-right:205px !important; min-height:112px !important; }
+.finn-anchor[data-finn-layout="stacked"] { padding-top:100px !important; min-height:0 !important; }
+.finn-anchor[data-finn-layout="stacked"] #finnDock { top:0 !important; right:0 !important; left:auto !important; }
+@media(max-width:760px) {
+  #finnDock { width:112px !important; height:96px !important; }
+  #finnDock .finn-character { width:106px !important; height:94px !important; }
+  #finnDock .mascot-note { right:76px !important; top:0 !important; width: min(154px, calc(100vw - 150px)) !important; font-size:14px !important; }
+  .finn-anchor[data-finn-layout="wide"],.finn-anchor[data-finn-layout="compact"] { padding-right:116px !important; min-height:96px !important; }
+  .finn-anchor[data-finn-layout="stacked"] { padding-top:84px !important; }
+}
+@media(max-width:420px) {
+  #finnDock { width:92px !important; height:80px !important; }
+  #finnDock .finn-character { width:90px !important; height:78px !important; }
+  #finnDock .mascot-note { right:64px !important; width: min(146px, calc(100vw - 140px)) !important; }
+  .finn-anchor[data-finn-layout="wide"],.finn-anchor[data-finn-layout="compact"] { padding-right:96px !important; min-height:82px !important; }
+  .finn-anchor[data-finn-layout="stacked"] { padding-top:76px !important; }
+}
+@media(prefers-reduced-motion:reduce) {
+  #finnDock *,#finnDock *::before { animation:none !important; transition:none !important; }
+}
