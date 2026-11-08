@@ -2289,3 +2289,8 @@ html,body { max-width:100%; overflow-x:clip; }
   .matches-panel .section-heading { align-items:flex-start !important; }
   .matches-panel .section-heading h2 { font-size:clamp(1.8rem,8vw,2.7rem) !important; }
 }
+
+
+/* Accessibility and touch-target baseline for tab controls and form fields. */
+.tab-button { min-height: 44px; }
+input, select, textarea { font-size: 16px; }
