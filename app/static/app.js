@@ -448,7 +448,7 @@ async function loadConfig() {
   ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
   ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
-    .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
+    .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join(""); });
   if (appConfig.demo_mode) $("#demoAccess").classList.remove("hidden");
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
   ["#reportDate", "#reportDateFound"].forEach((selector) => { const node = $(selector); if (node) node.value = localNow.toISOString().slice(0, 16); });
@@ -562,8 +562,6 @@ function setReportMode(type) {
   chooser.classList.add("hidden");
   form.classList.remove("hidden");
   const lost = type === "lost";
-  $("#lostReportGuidance")?.classList.toggle("hidden", !lost);
-  $("#foundReportGuidance")?.classList.toggle("hidden", lost);
   $$("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
@@ -616,26 +614,25 @@ function setReportMode(type) {
 }
 
 function resetReportMode() {
-  const form = activeReportForm();
-  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((item) => { item.reset(); item.classList.add("hidden"); });
+  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
+    form.reset();
+    form.classList.add("hidden");
+  });
   activeReportKind = "lost";
+  const lostType = document.querySelector("#reportType");
+  const foundType = document.querySelector("#reportTypeFound");
+  if (lostType) lostType.value = "lost";
+  if (foundType) foundType.value = "found";
   const chooser = $("#reportTypeChooser");
-  if (!form || !chooser) {
-    console.warn("Skipped report reset because the report form is not mounted.");
-    return;
-  }
-  if (form) form.reset();
-  chooser.classList.remove("hidden");
-  if (reportField("reportType", form)) reportField("reportType", form).value = "lost";
-  if ($("#reportTypeFound")) $("#reportTypeFound").value = "found";
-  if ($("#reportError")) $("#reportError").textContent = "";
-  if ($("#imageLabel")) $("#imageLabel").textContent = "Choose a photo";
-  $("#lostReportGuidance")?.classList.add("hidden");
-  $("#foundReportGuidance")?.classList.add("hidden");
+  if (chooser) chooser.classList.remove("hidden");
+  $("#reportError").textContent = "";
+  $("#reportErrorFound").textContent = "";
+  $("#imageLabel").textContent = "Choose a photo";
+  $("#imageLabelFound").textContent = "Choose a photo";
+  $("#categorySuggestion").textContent = "AI suggestion is optional. You choose the final category.";
+  $("#categorySuggestionFound").textContent = "AI suggestion is optional. You choose the final category.";
   $("#reportModeTitle").textContent = "Choose your report type";
   $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
-  $("#reportFormStepTitle").textContent = "Report details";
-  $("#reportFormStepHint").textContent = "Add the item and context.";
   $$("[data-report-kind]").forEach((button) => {
     button.classList.remove("selected");
     button.setAttribute("aria-pressed", "false");
@@ -1821,8 +1818,11 @@ document.addEventListener("click", (event) => {
   if (go) navigate(go.dataset.go);
   const useCategory = event.target.closest("[data-use-category]");
   if (useCategory) {
-    reportField("reportCategory", form).value = useCategory.dataset.useCategory;
-    $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
+    const form = useCategory.closest("form");
+    const category = form ? form.querySelector(form.id === "foundReportForm" ? "#reportCategoryFound" : "#reportCategory") : null;
+    const output = form ? form.querySelector(form.id === "foundReportForm" ? "#categorySuggestionFound" : "#categorySuggestion") : null;
+    if (category) category.value = useCategory.dataset.useCategory;
+    if (output) output.textContent = "Category selected. Review it before submitting.";
   }
   const reportKind = event.target.closest("[data-report-kind]");
   if (reportKind) setReportMode(reportKind.dataset.reportKind);
@@ -1871,6 +1871,8 @@ $("#clearFilters").addEventListener("click", resetSearch);
 document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
   form.addEventListener("submit", submitReport);
   form.querySelector(form.id === "foundReportForm" ? "#suggestCategoryButtonFound" : "#suggestCategoryButton")?.addEventListener("click", suggestReportCategory);
+  form.querySelector(form.id === "foundReportForm" ? "#backToReportTypesFound" : "#backToReportTypes")?.addEventListener("click", resetReportMode);
+  form.querySelector(form.id === "foundReportForm" ? "#cancelReportFound" : "#cancelReport")?.addEventListener("click", () => { resetReportMode(); navigate("browse"); });
   const imageInput = form.querySelector(form.id === "foundReportForm" ? "#reportImageFound" : "#reportImage");
   imageInput?.addEventListener("change", () => {
     const file = imageInput.files[0];
@@ -1878,8 +1880,6 @@ document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) =>
     if (label) label.textContent = file ? file.name : "Choose a photo";
   });
 });
-$("#backToReportTypes")?.addEventListener("click", resetReportMode);
-$("#cancelReport")?.addEventListener("click", () => { resetReportMode(); navigate("browse"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
   $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
