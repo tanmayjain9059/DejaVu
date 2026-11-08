@@ -512,8 +512,8 @@
               <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategory" name="category" required></select>
               <div class="category-ai-control">
-                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button>
-                <small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small>
+                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with Finn</button>
+                <small id="categorySuggestion" class="field-hint" role="status"></small>
               </div>
             </div>
           </div>
@@ -614,14 +614,7 @@
           </div>
         </form>
 
-        <aside class="side-guidance glass-card">
-          <div class="guidance-icon">✳</div>
-          <h3>Helpful details make better matches.</h3>
-          <p class="muted">Describe what is visible, when and where it was last seen, and safe characteristics.</p>
-          <div class="guidance-rule"><span>✓</span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
-        </aside>
+        <aside class="side-guidance finn-guidance" aria-label="Finn reporting helper"><h3>Finn is on the case.</h3><p id="finnCategoryHeading">Choose a category and I’ll help you describe it.</p></aside></aside>
       </div>
     </section>
 
@@ -801,12 +794,7 @@
       </div>
     </section>
 
-    <!-- App Footer -->
-    <footer class="app-footer">
-      <span>LostLink · Campus Property Assistance Protocol</span>
-      <span>AI suggestions are discovery aids, not proof of ownership. Handover requires office verification.</span>
-    </footer>
-  </main>
+</main>
 
   <!-- ==================== DIALOGS & MODALS ==================== -->
   <dialog id="closeReportDialog" class="dialog-card liquid-glass-panel">
