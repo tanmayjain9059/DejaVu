@@ -2085,3 +2085,126 @@ button:disabled { opacity:.55; cursor:not-allowed; transform:none !important; }
 /* Keep Finn copy inline with the helper panel; no floating speech bubbles elsewhere. */
 #finnDock .mascot-note { display:none !important; }
 #reportView .finn-guidance #finnDock .mascot-note { display:none !important; }
+
+
+/* ---------- Mobile-first layout correction (LostLink) ---------- */
+@media (max-width: 700px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+  .login-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+    min-height: 100svh;
+    padding: 0;
+    gap: 0;
+  }
+  .login-story.public-landing-shell {
+    width: 100%;
+    min-width: 0;
+    min-height: 100svh;
+    padding: 24px 18px 28px;
+    display: flex;
+    flex-direction: column;
+  }
+  .public-story, .public-story .story-copy, .public-home-content,
+  .public-destination, .story-footer { width: 100%; min-width: 0; }
+  .public-title {
+    max-width: 100%;
+    font-size: clamp(2.05rem, 9vw, 3.1rem);
+    line-height: 1.04;
+    overflow-wrap: anywhere;
+    letter-spacing: -.055em;
+  }
+  .public-lede { max-width: 100%; font-size: 1rem; line-height: 1.55; }
+  .public-action-panel { margin: 24px 0 16px; padding: 16px; border-radius: 22px; }
+  .public-action-heading { align-items: flex-start; flex-wrap: wrap; }
+  .public-actions { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .public-action-card { width: 100%; min-width: 0; min-height: 84px; padding: 14px; }
+  .public-action-copy { flex: 1 1 auto; }
+  .public-action-copy strong { font-size: 1rem; }
+  .public-action-copy small { white-space: normal; overflow-wrap: anywhere; font-size: .8rem; }
+  .public-trust-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .public-trust-row div { grid-template-columns: 34px minmax(0,1fr); align-items: center; padding: 8px 10px; }
+  .public-preview-note, .public-footnote { line-height: 1.5; overflow-wrap: anywhere; }
+  .public-story-footer { gap: 12px; flex-wrap: wrap; }
+  .destination-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+  .destination-card > div { min-width: 0; }
+  .destination-card p, .destination-status { overflow-wrap: anywhere; line-height: 1.55; }
+
+  .app-shell { width: 100%; max-width: 100%; min-width: 0; padding: 10px 12px calc(28px + env(safe-area-inset-bottom)); }
+  .app-header {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 10px;
+    padding: 4px 0 12px;
+  }
+  .header-left, .header-right { min-width: 0; }
+  .header-center {
+    grid-column: 1 / -1;
+    order: 3;
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+    justify-content: stretch;
+  }
+  #studentNav.nimbus-nav {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 0;
+    padding: 4px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  #studentNav .nimbus-item {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    height: 54px;
+    padding: 5px 1px;
+    gap: 3px;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 13px;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: normal;
+    text-align: center;
+  }
+  #studentNav .nv-ico { display: flex; flex: 0 0 auto; }
+  #studentNav .nv-ico svg { width: 17px; height: 17px; }
+  #studentNav .nimbus-label {
+    display: block;
+    max-width: 100%;
+    font-size: 9px;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  #studentNav .nav-count { position: absolute; top: 1px; right: 2px; min-width: 13px; height: 13px; padding: 0 3px; font-size: 8px; }
+  .profile-liquid-pill { max-width: 46vw; min-width: 0; }
+  .profile-pill-name { max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-role-chip { display: none; }
+  .header-left .brand-liquid-pill { max-width: 44vw; }
+  .app-shell * { min-width: 0; }
+  .app-shell h1, .app-shell h2, .app-shell h3,
+  .app-shell p, .app-shell label, .app-shell .muted {
+    overflow-wrap: anywhere;
+  }
+  .form-layout, .two-columns, .start-options-grid,
+  .activity-overview, .activity-summary-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .start-hero { padding: 12px 2px 0; }
+  .start-title { font-size: clamp(1.8rem, 8vw, 2.4rem); line-height: 1.1; }
+  .start-glass-card { min-width: 0; padding: 22px 18px; }
+  .button, .button-full { max-width: 100%; }
+}
+@media (max-width: 370px) {
+  .app-shell { padding-left: 8px; padding-right: 8px; }
+  #studentNav .nimbus-item { height: 50px; }
+  #studentNav .nimbus-label { font-size: 8px; }
+  .brand-text { font-size: 14px; }
+  .profile-liquid-pill { padding-left: 7px; padding-right: 7px; }
+}
