@@ -68,7 +68,12 @@ async def lifespan(application: FastAPI):
         close_database_pool()
 
 
-app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="LostLink", version="0.1.0", lifespan=lifespan,
+    docs_url=None if AUTH_PROVIDER == "supabase" else "/docs",
+    redoc_url=None if AUTH_PROVIDER == "supabase" else "/redoc",
+    openapi_url=None if AUTH_PROVIDER == "supabase" else "/openapi.json",
+)
 
 
 def _apply_security_headers(response, private_api=False):
