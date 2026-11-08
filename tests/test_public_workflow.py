@@ -88,6 +88,15 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "sensitivity_level":1,
         })
 
+    def test_readiness_reports_database_backend_and_canonical_schema(self):
+        response = self.client.get("/health/ready")
+        self.assertEqual(response.status_code,200,response.text)
+        payload = response.json()
+        self.assertEqual(payload["status"],"ready")
+        self.assertEqual(payload["database"],"postgresql" if TEST_WITH_POSTGRES else "sqlite")
+        self.assertEqual(payload["canonical_tables"],"ready")
+        self.assertGreaterEqual(payload["schema_version"],10)
+
     def test_students_cannot_sign_in_but_can_submit_public_reports(self):
         denied = self.client.post("/api/login",json={
             "email":"student@test.invalid","password":"student-password"
