@@ -194,6 +194,7 @@ def submit_public_report(body: PublicReportBody):
             raise HTTPException(status_code=422, detail="Use a valid ISO date and time.")
     token = _issue_token()
     case_id, timestamp = uuid.uuid4().hex, now_iso()
+    public_ref = _ref("LL")
     status = "open" if body.report_type == "lost" else "awaiting_intake"
     with connect_db() as conn:
         conn.execute(
@@ -202,7 +203,7 @@ def submit_public_report(body: PublicReportBody):
              visible_features,occurred_at,location_block,location_floor,location_room,location_area,
              status,tracking_hash,created_at,updated_at)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (case_id,_ref("LL"),body.report_type,roll,body.title.strip(),body.description.strip(),
+            (case_id,public_ref,body.report_type,roll,body.title.strip(),body.description.strip(),
              body.category,body.brand,body.primary_color,body.visible_features,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
              status,_hash(token),timestamp,timestamp),
@@ -212,8 +213,7 @@ def submit_public_report(body: PublicReportBody):
                VALUES (?,?,?,?,?)""",
             (uuid.uuid4().hex,case_id,"report_submitted",'{"channel":"public"}',timestamp),
         )
-    return {"case": {"reference": conn.execute("SELECT public_ref FROM public_cases WHERE id=?", (case_id,)).fetchone()["public_ref"],
-                     "status": status},
+    return {"case": {"reference": public_ref, "status": status},
             "tracking_secret": token,
             "message": "Save this tracking secret now. It is shown once and cannot be recovered. Roll number alone never grants access."}
 
@@ -262,6 +262,7 @@ def submit_public_claim(case_id: str, body: PublicClaimBody):
         raise HTTPException(status_code=422, detail="Unknown evidence type.")
     token = _issue_token()
     claim_id, timestamp = uuid.uuid4().hex, now_iso()
+    claim_ref = _ref("CL")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         case = conn.execute("SELECT * FROM public_cases WHERE id=?", (case_id,)).fetchone()
@@ -274,7 +275,7 @@ def submit_public_claim(case_id: str, body: PublicClaimBody):
         conn.execute(
             """INSERT INTO public_claims(id,public_ref,case_id,roll_number,evidence,evidence_types,
                status,tracking_hash,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (claim_id,_ref("CL"),case_id,roll,body.evidence.strip(),__import__("json").dumps(body.evidence_types),
+            (claim_id,claim_ref,case_id,roll,body.evidence.strip(),__import__("json").dumps(body.evidence_types),
              status,_hash(token),timestamp,timestamp),
         )
         if active:
@@ -282,7 +283,7 @@ def submit_public_claim(case_id: str, body: PublicClaimBody):
         conn.execute("UPDATE public_cases SET status='claim_hold',updated_at=? WHERE id=?", (timestamp,case_id))
         conn.execute("INSERT INTO public_case_events(id,case_id,claim_id,event_type,created_at) VALUES (?,?,?,?,?)",
                      (uuid.uuid4().hex,case_id,claim_id,"claim_submitted",timestamp))
-    return {"claim": {"reference": _ref("CL") if False else None, "status": status},
+    return {"claim": {"reference": claim_ref, "status": status},
             "tracking_secret": token,
             "message": "Save this claim tracking secret now. It is shown once."}
 
