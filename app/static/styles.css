@@ -49,7 +49,7 @@
   --gw-panel-shadow: rgba(0, 40, 90, 0.16);
 
   /* Derived Glass Tile Variables */
-  --gw-tile-bg: color-mix(in srgb, #FFFFFF calc(var(--gw-opacity) * 100%), transparent);
+  --gw-tile-bg: rgba(255, 255, 255, 0.78);
   --gw-tile-blur: calc(var(--gw-blur) * 1px);
   --gw-tile-sat: var(--gw-saturation);
   --gw-tile-border: rgba(255, 255, 255, var(--gw-edge));
@@ -460,7 +460,7 @@ a {
   font-size: 15.5px;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #0B132B;
+  color: #0B132B !important;
 }
 .brand-accent {
   color: #0284C7;
@@ -669,7 +669,7 @@ a {
   font-size: clamp(24px, 3.2vw, 32px);
   font-weight: 800;
   letter-spacing: -0.04em;
-  color: #0B132B;
+  color: #0B132B !important;
   line-height: 1.15;
   position: relative;
   z-index: 2;
@@ -743,7 +743,7 @@ a {
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1.12;
-  color: #0B132B;
+  color: #0B132B !important;
   margin: 0 0 12px;
   position: relative;
   z-index: 2;

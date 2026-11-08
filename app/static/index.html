@@ -100,7 +100,7 @@
         </label>
         <button class="button button-liquid button-full" type="submit">
           <span>Sign in</span>
-          <span class="button-arrow" aria-hidden="true">↗</span>
+          <span class="button-arrow" aria-hidden="true">&rarr;</span>
         </button>
         <p id="loginError" class="form-error" role="alert"></p>
       </form>
@@ -120,7 +120,7 @@
               <strong>Student 1 · Demo</strong>
               <small>student@lostlink.local</small>
             </div>
-            <span class="arrow">→</span>
+            <span class="arrow">&rarr;</span>
           </button>
           <button class="demo-account glass-pill" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
             <span class="avatar avatar-student">A</span>
@@ -128,7 +128,7 @@
               <strong>Student 2 · Aarav</strong>
               <small>student2@lostlink.local</small>
             </div>
-            <span class="arrow">→</span>
+            <span class="arrow">&rarr;</span>
           </button>
           <button class="demo-account glass-pill" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
             <span class="avatar avatar-student">R</span>
@@ -136,7 +136,7 @@
               <strong>Student 3 · Riya</strong>
               <small>student3@lostlink.local</small>
             </div>
-            <span class="arrow">→</span>
+            <span class="arrow">&rarr;</span>
           </button>
           <button id="fillOffice" class="demo-account glass-pill demo-office" type="button">
             <span class="avatar avatar-office">O</span>
@@ -144,7 +144,7 @@
               <strong>Campus Office Staff</strong>
               <small>office@lostlink.local</small>
             </div>
-            <span class="arrow">→</span>
+            <span class="arrow">&rarr;</span>
           </button>
         </div>
         <p class="demo-credentials">Demo mode enabled. Click any account above to sign in instantly.</p>
@@ -322,7 +322,7 @@
     <section id="startView" class="content-view start-view">
       <div class="start-hero">
         <div class="start-badge">
-          <span class="sparkle-icon">✦</span>
+          <span class="sparkle-icon">+</span>
           <span>CAMPUS WORKFLOW</span>
         </div>
         <h1 class="start-title">What would you like to do?</h1>
@@ -348,7 +348,7 @@
           <div class="start-card-action">
             <button class="button button-liquid button-full" type="button" data-report-kind="lost">
               <span>Start lost report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
+              <span class="btn-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
         </div>
@@ -369,7 +369,7 @@
           <div class="start-card-action">
             <button class="button button-liquid button-full button-found-action" type="button" data-report-kind="found">
               <span>Start found report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
+              <span class="btn-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
         </div>
@@ -378,7 +378,7 @@
       <!-- Quiet, non-cluttering secondary discovery link -->
       <div class="start-browse-prompt">
         <span>Looking for items currently held in office custody?</span>
-        <button class="link-btn" type="button" data-go="browse">Browse office inventory ↗</button>
+        <button class="link-btn" type="button" data-go="browse">Browse office inventory &rarr;</button>
       </div>
     </section>
 
@@ -396,8 +396,10 @@
       <form id="searchForm" class="filter-panel glass-card">
         <div class="search-main-row">
           <label class="search-field">
-            <span class="search-icon">⌕</span>
-            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. “backpack”)...">
+            <span class="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. &ldquo;backpack&rdquo;)...">
           </label>
           <button class="button button-liquid" type="submit">Search</button>
           <button id="clearFilters" class="button button-quiet" type="button">Reset</button>
@@ -426,7 +428,9 @@
       <div id="browseResults" class="item-grid"></div>
       <div class="pagination-controls"><button id="browseLoadMore" class="button button-quiet button-small hidden" type="button">Load more items</button></div>
       <div id="browseEmpty" class="empty-state hidden">
-        <span class="empty-icon">⌕</span>
+        <span class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
         <h3>No items found</h3>
         <p>Try a broader keyword or reset filters. Sensitive items have restricted public details.</p>
       </div>
@@ -440,21 +444,25 @@
           <h2 id="reportModeTitle">Choose your report type</h2>
           <p id="reportModeDescription" class="muted">Lost and Found have separate guided paths so each report starts with the right context.</p>
         </div>
-        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">← Back to options</button>
+        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">&larr; Back to options</button>
       </div>
 
       <div id="reportTypeChooser" class="report-type-chooser">
         <button class="report-type-card glass-card" type="button" data-report-kind="lost">
-          <span class="report-type-icon">⌕</span>
+          <span class="report-type-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <strong>I lost something</strong>
           <small>Tell us what went missing, when you last saw it and where to search.</small>
-          <span class="report-type-action">Start lost report ↗</span>
+          <span class="report-type-action">Start lost report &rarr;</span>
         </button>
         <button class="report-type-card glass-card" type="button" data-report-kind="found">
-          <span class="report-type-icon">✦</span>
+          <span class="report-type-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </span>
           <strong>I found something</strong>
           <small>Record the item and where it was found. Office staff must receive it before it is searchable.</small>
-          <span class="report-type-action">Start found report ↗</span>
+          <span class="report-type-action">Start found report &rarr;</span>
         </button>
       </div>
 
@@ -561,10 +569,12 @@
           </div>
 
           <label class="upload-box glass-card" for="reportImage">
-            <span class="upload-symbol">↑</span>
+            <span class="upload-symbol">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
             <span>
               <strong id="imageLabel">Choose a photo</strong>
-              <small>JPG, PNG or WebP · up to 5 MB</small>
+              <small>JPG, PNG or WebP &middot; up to 5 MB</small>
             </span>
             <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
           </label>
@@ -574,7 +584,7 @@
           <div class="form-actions">
             <button id="reportSubmitButton" class="button button-liquid" type="submit">
               <span id="reportSubmitLabel">Submit lost report</span>
-              <span aria-hidden="true">↗</span>
+              <span aria-hidden="true">&rarr;</span>
             </button>
             <button id="backToReportTypes" class="button button-quiet" type="button">Change type</button>
             <button id="cancelReport" class="button button-quiet" type="button">Cancel</button>
@@ -582,12 +592,14 @@
         </form>
 
         <aside class="side-guidance glass-card">
-          <div class="guidance-icon">✳</div>
+          <div class="guidance-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </div>
           <h3>Helpful details make better matches.</h3>
           <p class="muted">Describe what is visible, when and where it was last seen, and safe characteristics.</p>
-          <div class="guidance-rule"><span>✓</span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
         </aside>
       </div>
     </section>
@@ -600,12 +612,15 @@
           <h2>My reports</h2>
           <p class="muted">Check submitted reports and review AI candidate matches for your lost items.</p>
         </div>
-        <button class="button button-liquid" type="button" data-go="report">＋ New report</button>
+        <button class="button button-liquid" type="button" data-go="report">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>New report</span>
+        </button>
       </div>
       <div id="myReportsList" class="stack-list"></div>
       <div class="pagination-controls"><button id="myReportsLoadMore" class="button button-quiet button-small hidden" type="button">Load more reports</button></div>
       <div id="myReportsEmpty" class="empty-state hidden">
-        <span class="empty-icon">▤</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
         <h3>No reports yet</h3>
         <p>Your lost and found reports will appear here.</p>
       </div>
@@ -634,7 +649,7 @@
       <div id="myClaimsList" class="stack-list"></div>
       <div class="pagination-controls"><button id="myClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
       <div id="myClaimsEmpty" class="empty-state hidden">
-        <span class="empty-icon">◷</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
         <h3>No claims submitted</h3>
         <p>When you submit a claim for an office-held item, its review status appears here.</p>
       </div>
@@ -652,7 +667,7 @@
       </div>
       <div id="notificationsList" class="stack-list"></div>
       <div id="notificationsEmpty" class="empty-state hidden">
-        <span class="empty-icon">♧</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
         <h3>All caught up</h3>
         <p>New match suggestions and review updates will appear here.</p>
       </div>
@@ -781,7 +796,7 @@
             <span class="bento-unit">verified points</span>
           </div>
           <p id="profileMilestoneTier" class="bento-label">Verified Finder tier</p>
-          <span class="bento-link">View activity &amp; certificates →</span>
+          <span class="bento-link">View activity &amp; certificates &rarr;</span>
         </div>
 
         <div class="profile-bento-card" data-go="my-reports">
@@ -796,7 +811,7 @@
             <span class="bento-unit">reports filed</span>
           </div>
           <p class="bento-label">Lost &amp; found submissions</p>
-          <span class="bento-link">Manage my reports →</span>
+          <span class="bento-link">Manage my reports &rarr;</span>
         </div>
 
         <div class="profile-bento-card" data-go="my-claims">
@@ -811,7 +826,7 @@
             <span class="bento-unit">claims recorded</span>
           </div>
           <p class="bento-label">Ownership verification status</p>
-          <span class="bento-link">Check claims →</span>
+          <span class="bento-link">Check claims &rarr;</span>
         </div>
 
         <div class="profile-bento-card" data-go="notifications">
@@ -826,7 +841,7 @@
             <span class="bento-unit">active alerts</span>
           </div>
           <p class="bento-label">Match notifications enabled</p>
-          <span class="bento-link">Configure alerts →</span>
+          <span class="bento-link">Configure alerts &rarr;</span>
         </div>
       </div>
 
@@ -1151,10 +1166,12 @@
         <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> Other verifiable evidence</label>
       </fieldset>
       <label class="upload-box glass-card" for="claimEvidenceImage">
-        <span class="upload-symbol">＋</span>
+        <span class="upload-symbol">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </span>
         <span>
           <strong id="claimEvidenceImageLabel">Attach one supporting photo (optional)</strong>
-          <small>JPG, PNG or WebP · up to 5 MB</small>
+          <small>JPG, PNG or WebP &middot; up to 5 MB</small>
         </span>
         <input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp">
       </label>
