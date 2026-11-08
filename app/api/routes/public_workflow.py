@@ -359,6 +359,32 @@ async def submit_public_report(body: PublicReportBody, request: Request):
     }
 
 
+
+@router.get("/search")
+def search_public_reports(category: str | None = None, q: str | None = None, report_type: str = "all", limit: int = 50):
+    """Public discovery across open Lost reports and office-received Found inventory."""
+    limit = max(1, min(limit, 100))
+    if report_type not in {"all", "lost", "found"}:
+        raise HTTPException(status_code=422, detail="report_type must be all, lost, or found.")
+    clauses = []
+    params: list[Any] = []
+    if report_type in {"all", "lost"}:
+        clauses.append("(report_type='lost' AND status='open')")
+    if report_type in {"all", "found"}:
+        clauses.append("(report_type='found' AND status='available')")
+    where = "(" + " OR ".join(clauses) + ")"
+    if category and category in CATEGORY_LABELS:
+        where += " AND category=?"
+        params.append(category)
+    if q and q.strip():
+        term = "%" + q.strip().lower() + "%"
+        where += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
+        params.extend([term,term,term,term])
+    with connect_db() as conn:
+        rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
+    return {"reports": [_public_report(row) for row in rows]}
+
+
 @router.get("/found")
 def browse_public_found(category: str | None = None, q: str | None = None, limit: int = 50):
     limit = max(1, min(limit, 100))
