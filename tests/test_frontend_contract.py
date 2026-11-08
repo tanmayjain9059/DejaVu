@@ -103,5 +103,23 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("stopNotificationPolling();", self.js)
 
 
+    def test_lost_and_found_reports_have_distinct_student_guidance(self):
+        self.assertIn('id="lostReportGuidance"', self.html)
+        self.assertIn('id="foundReportGuidance"', self.html)
+        self.assertIn("LOST ITEM · HELP US RETRACE IT", self.html)
+        self.assertIn("FOUND ITEM · HELP RETURN IT SAFELY", self.html)
+        self.assertIn("last time you remember having the item", self.js)
+        self.assertIn("actual discovery place", self.js)
+        self.assertIn("Keep one or two unique ownership clues private", self.js)
+
+    def test_report_reset_is_safe_when_form_is_not_mounted(self):
+        self.assertIn('const form = $("#reportForm");', self.js)
+        self.assertIn('if (!form || !chooser)', self.js)
+        self.assertIn('form.reset();', self.js)
+        self.assertIn('const form = event.currentTarget;', self.js)
+        self.assertIn('if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);', self.js)
+
+
+
 if __name__ == "__main__":
     unittest.main()
