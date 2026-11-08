@@ -1730,6 +1730,7 @@ function showPublicHome() {
   setFinnMessage("Welcome back to campus, detective. What are we looking for today?", false);
   currentUser = null;
   $("#loginView").classList.remove("hidden");
+  $("#loginView").classList.remove("office-access-open");
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.remove("hidden");
@@ -1793,6 +1794,7 @@ async function loadPublicFound() {
   }
 }
 function openPublicOfficeSignIn() {
+  $("#loginView").classList.add("office-access-open");
   $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
   $("#loginPanelTitle").textContent = "Office staff sign in";
   $("#loginPanelCopy").textContent = "Authorised campus staff only. Student accounts are not available.";
