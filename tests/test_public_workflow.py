@@ -139,14 +139,12 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertNotEqual(roll_only.status_code,200)
         wrong_case = self.client.get(
             "/api/public/track/"+second["case"]["reference"],
-            params={"roll_number":"25B81A66J8"},
-            headers={"X-LostLink-Tracking-Secret":first["tracking_secret"]},
+            headers={"X-LostLink-Roll-Number":"25B81A66J8","X-LostLink-Tracking-Secret":first["tracking_secret"]},
         )
         self.assertEqual(wrong_case.status_code,404)
         allowed = self.client.get(
             "/api/public/track/"+reference,
-            params={"roll_number":"25B81A66J8"},
-            headers={"X-LostLink-Tracking-Secret":first["tracking_secret"]},
+            headers={"X-LostLink-Roll-Number":"25B81A66J8","X-LostLink-Tracking-Secret":first["tracking_secret"]},
         )
         self.assertEqual(allowed.status_code,200,allowed.text)
         self.assertNotIn("roll_number",allowed.json()["case"])
@@ -241,8 +239,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(lost.status_code,201,lost.text)
         response = self.client.get(
             "/api/public/reports/"+lost.json()["case"]["reference"]+"/matches",
-            params={"roll_number":"25B81A66J9"},
-            headers={"X-LostLink-Tracking-Secret":lost.json()["tracking_secret"]},
+            headers={"X-LostLink-Roll-Number":"25B81A66J9","X-LostLink-Tracking-Secret":lost.json()["tracking_secret"]},
         )
         self.assertEqual(response.status_code,200,response.text)
         self.assertIn("matches",response.json())
