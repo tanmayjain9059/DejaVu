@@ -2380,3 +2380,14 @@ button:focus-visible,a:focus-visible { outline:3px solid rgba(168,94,50,.45); ou
   #finnDock .finn-character { width:54px !important; height:50px !important; }
   #finnDock .mascot-note { right:48px !important; top:-20px !important; width:132px !important; max-width:calc(100vw - 68px) !important; }
 }
+
+
+/* On the smallest landing viewport, place Finn beside the brand rather than over an action. */
+@media (max-width: 340px) {
+  body:has(#publicHomeContent:not(.hidden)) #finnDock {
+    top:12px !important; bottom:auto !important; right:8px !important;
+  }
+  body:has(#publicHomeContent:not(.hidden)) #finnDock .mascot-note {
+    top:54px !important; right:48px !important;
+  }
+}
