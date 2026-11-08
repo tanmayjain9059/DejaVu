@@ -106,6 +106,9 @@ def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, windo
 
 def _public_report(row) -> dict[str, Any]:
     item = serialise_report(row, internal=False)
+    # Public image access is deliberately withheld until the private-storage,
+    # per-case signed-access flow is enabled for anonymous tracking tokens.
+    item["image_url"] = None
     item["reference"] = item["public_ref"]
     return item
 
