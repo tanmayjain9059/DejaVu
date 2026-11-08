@@ -2434,3 +2434,10 @@ button:focus-visible,a:focus-visible { outline:3px solid rgba(168,94,50,.45); ou
   .public-finn-slot #finnDock { width:64px !important; height:58px !important; }
   .public-finn-slot #finnDock .mascot-note { right:52px !important; top:-8px !important; width:132px !important; }
 }
+
+
+/* Reserved Finn slots override the legacy fixed-dock positioning rules. */
+body:has(.public-finn-slot #finnDock) .public-finn-slot #finnDock {
+  position:relative !important; inset:auto !important; top:auto !important; right:auto !important;
+  bottom:auto !important; left:auto !important; transform:none !important;
+}
