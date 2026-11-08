@@ -210,6 +210,7 @@ class StaffClaimDecisionBody(BaseModel):
     action: Literal["approve", "reject", "request_more_evidence", "mark_disputed"]
     note: str | None = Field(default=None, max_length=800)
     identity_verified_in_person: bool = False
+    verified_roll_number: str | None = Field(default=None, min_length=5, max_length=20)
     verification_checks: list[str] = Field(default_factory=list, max_length=6)
 
 
@@ -484,6 +485,9 @@ def decide_public_claim(claim_id: str, body: StaffClaimDecisionBody, user: dict[
         if body.action=="approve":
             if not body.identity_verified_in_person:
                 raise HTTPException(status_code=422,detail="Office staff must confirm identity in person before approval.")
+            verified_roll = _roll(body.verified_roll_number or "")
+            if not secrets.compare_digest(claim["roll_number"], verified_roll):
+                raise HTTPException(status_code=422, detail="The physical college ID roll number does not match this claim.")
             allowed_checks={"distinctive_features","date_location","physical_inspection",
                             "supporting_evidence","owner_specific_detail","authorised_record"}
             checked=set(body.verification_checks)
