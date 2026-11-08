@@ -102,7 +102,63 @@ Deploy the static frontend. Copy its exact production origin into Render's `FRON
 - Never send a tracking secret in a URL or persist it in analytics. Use the `X-LostLink-Tracking-Secret` header for tracking and evidence updates.
 - Roll number + reference + tracking secret must all match. Roll number alone never authorises access.
 
-## 6. Deployment verification
+## 6. Verify that Vercel submissions reach Supabase PostgreSQL
+
+### A. Configure the API service (Render)
+
+The static Vercel frontend does **not** write to PostgreSQL directly. The FastAPI service on Render owns the database connection. In Render → LostLink API → Environment, set:
+
+- `DATABASE_URL`: Supabase → Project Settings → Database → Connection string → URI. Use the Supabase **Session pooler** URI if Render's outbound IPv4/network setup requires it; use the correct database password and keep the full URI private.
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY`: the project URL and publishable/anon key used by the office authentication client. These are not a substitute for `DATABASE_URL`.
+- `FRONTEND_ORIGINS`: the exact deployed Vercel origin, e.g. `https://your-project.vercel.app` (no trailing slash).
+- The other required variables in `render.yaml`, including office allowlist and private Storage credentials.
+
+Do not paste `DATABASE_URL`, database password, service-role key or Storage secret into Vercel frontend variables or browser code.
+
+### B. Configure Vercel
+
+In Vercel → Project → Settings → Environment Variables, add:
+
+```env
+BACKEND_ORIGIN=https://lostlink-api.onrender.com
+```
+
+Replace the value with the actual Render API origin. Apply it to the environment you are testing (Preview and/or Production), save, then redeploy. The build now fails if this variable is absent or malformed instead of publishing a frontend that can never reach the API.
+
+### C. Confirm the backend is using PostgreSQL
+
+Open this URL in a browser:
+
+```text
+https://lostlink-api.onrender.com/health/ready
+```
+
+Expected response:
+
+```json
+{
+  "status": "ready",
+  "database": "postgresql",
+  "schema_version": 10,
+  "canonical_tables": "ready"
+}
+```
+
+The exact schema version may increase with later migrations. If it says `sqlite`, the API is **not** connected to your Supabase PostgreSQL database, even if Vercel itself is linked to Supabase. If it returns 503, inspect the Render deployment logs and its `DATABASE_URL` configuration. The endpoint intentionally does not return credentials, hostnames or database names.
+
+### D. Create one real test record from the deployed Vercel site
+
+1. Open the Vercel deployment URL.
+2. Submit a clearly identifiable test Lost report, e.g. title `SUPABASE WRITE TEST 2026-11-08`, with a valid test roll number, category, description and campus location.
+3. Wait for the success response. Copy the generated public reference. The one-time tracking secret is shown once; keep it private.
+4. In Supabase Dashboard → Table Editor → `public.reports`, sort by `created_at` descending and locate the test title/reference.
+5. Confirm `submission_channel = public`, `report_type = lost`, `status = open`, and the expected title/category. Confirm a matching attribution row exists in `public.public_roll_identities` (do not expose that table to the browser).
+6. In the app, open Track and verify the same report with its reference, roll number and tracking secret.
+7. Delete the test report only after completing the verification, using the database/admin process appropriate to the environment. Do not delete records through ad-hoc SQL if dependent audit, notification or reward rows exist.
+
+A successful API response alone proves that the API accepted the write; finding the same reference in Supabase Table Editor proves the record persisted in the intended project. The `/health/ready` response proves the API's configured database driver and schema, not that the Vercel environment points to the right API; check the test reference in the intended Supabase project as the final confirmation.
+
+## 7. Deployment verification
 
 Before launch, verify:
 
@@ -119,6 +175,6 @@ Before launch, verify:
 11. Private uploads are not publicly readable and backup/restore has been tested.
 12. SQLite and PostgreSQL integration tests pass.
 
-## 7. Remaining launch gates
+## 8. Remaining launch gates
 
 The public workflow is a backend/frontend integration baseline, not yet a complete production launch. Public image and evidence-image upload are pending; existing private image routes remain authenticated. Add CAPTCHA/bot controls, validate roll-number syntax with CVR, agree the in-person verification process, establish retention and deletion policies, tune rate limits, monitor abuse, and complete a security review before college-wide launch.
