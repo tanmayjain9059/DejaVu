@@ -116,7 +116,7 @@ class FrontendContractTests(unittest.TestCase):
 
     def test_public_browse_cards_do_not_expand_full_descriptions(self):
         start = self.js.index("async function loadPublicFound()")
-        end = self.js.index("\\nfunction openPublicOfficeSignIn()", start)
+        end = self.js.index("\nfunction openPublicOfficeSignIn()", start)
         browse_renderer = self.js[start:end]
         self.assertIn('escapeHTML(item.title)', browse_renderer)
         self.assertIn('escapeHTML(item.location_area || item.location_block || "Campus location")', browse_renderer)
