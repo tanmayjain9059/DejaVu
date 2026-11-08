@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 
 from app.core import config as app_config
 from app.core import database as app_database
+from app.api.dependencies import authenticated_user
+from app.api.routes import public_workflow as public_workflow_routes
 
 # By default, workflow tests isolate themselves in temporary SQLite files.
 # The PostgreSQL CI job explicitly opts in with TEST_WITH_POSTGRES=true and points
@@ -61,9 +63,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
                 ("office@example.test", "Campus Office", "office", main.hash_password("office-password"), main.now_iso()),
             )
+        main.app.dependency_overrides.clear()
         self.client = TestClient(main.app)
 
     def tearDown(self):
+        main.app.dependency_overrides.clear()
         self.client.close()
         for (module_name, value) in self.old_module_settings.items():
             module, name = module_name
@@ -76,10 +80,27 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 module.DEMO_MODE = enabled
 
     def login(self, email, password):
+        # Legacy authenticated-student route tests use a test-only dependency
+        # override. Production login endpoints reject student identities; the
+        # public roll-number workflow is covered separately end to end.
+        if email in {"finder@example.test", "claimant@example.test"}:
+            with main.connect_db() as conn:
+                row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+            self.assertIsNotNone(row)
+            payload = {"id": row["id"], "email": row["email"],
+                       "display_name": row["display_name"], "role": row["role"]}
+
+            async def test_student_identity(request):
+                return payload
+
+            self.client.app.dependency_overrides[authenticated_user] = test_student_identity
+            return
+        self.client.app.dependency_overrides.pop(authenticated_user, None)
         response = self.client.post("/api/login", json={"email": email, "password": password})
         self.assertEqual(response.status_code, 200, response.text)
 
     def logout(self):
+        self.client.app.dependency_overrides.pop(authenticated_user, None)
         response = self.client.post("/api/logout")
         self.assertEqual(response.status_code, 200, response.text)
 
@@ -798,18 +819,22 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(accepted.status_code, 200, accepted.text)
         self.assertEqual(accepted.json()["claim"]["status"], "approved_for_collection")
 
-    def test_demo_mode_creates_independent_student_logins(self):
+    def test_demo_mode_exposes_only_office_login(self):
         self.set_demo_mode(True)
         main.initialise_db()
         for email, password in (
+            ("student@lostlink.local", "student123"),
             ("student2@lostlink.local", "student2123"),
             ("student3@lostlink.local", "student3123"),
             ("student4@lostlink.local", "student4123"),
         ):
             response = self.client.post("/api/login", json={"email": email, "password": password})
-            self.assertEqual(response.status_code, 200, response.text)
-            self.assertEqual(response.json()["user"]["role"], "student")
-            self.client.post("/api/logout")
+            self.assertEqual(response.status_code, 401, response.text)
+        office = self.client.post("/api/login", json={
+            "email": "office@lostlink.local", "password": "office123"
+        })
+        self.assertEqual(office.status_code, 200, office.text)
+        self.assertEqual(office.json()["user"]["role"], "office")
         self.set_demo_mode(False)
 
 
