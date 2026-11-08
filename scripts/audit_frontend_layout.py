@@ -92,6 +92,16 @@ def main() -> int:
                 page.locator("#publicOfficeButton").click()
                 page.locator("#officeLoginPanel").wait_for(state="visible")
                 audit(page, f"office sign-in {width}x{height}")
+                page.locator("#loginEmail").fill("layout-audit@lostlink.test")
+                page.locator("#loginPassword").fill("layout-audit-password")
+                page.locator("#loginForm button[type=submit]").click()
+                page.locator("#appView").wait_for(state="visible")
+                page.locator("#officeView").wait_for(state="visible")
+                audit(page, f"office dashboard {width}x{height}")
+                for view, view_id in [("notifications", "notificationsView"), ("browse", "browseView"), ("start", "startView"), ("office", "officeView")]:
+                    page.locator(f'button[data-view="{view}"]:visible').first.click()
+                    page.locator("#" + view_id).wait_for(state="visible")
+                    audit(page, f"office {view} {width}x{height}")
                 page.close()
             print("Responsive browser layout audit passed at 320, 375, 768 and 1440 CSS pixels.")
             return 0
