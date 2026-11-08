@@ -562,7 +562,37 @@ function setReportMode(type) {
   chooser.classList.add("hidden");
   form.classList.remove("hidden");
   const lost = type === "lost";
-  $$("[data-report-kind]").forEach((button) => {
+  const categoryButton = form.querySelector(lost ? "#suggestCategoryButton" : "#suggestCategoryButtonFound");
+  const categoryStatus = reportField("categorySuggestion", form);
+  if (categoryButton) categoryButton.textContent = lost ? "Suggest category with AI" : "Suggest found-item category with AI";
+  if (categoryStatus) categoryStatus.textContent = lost
+    ? "AI can suggest a category from the details you remember. You choose the final category."
+    : "AI can classify the item you discovered from its observable details. Review the suggestion before selecting it.";
+  const guidanceTitle = $(".side-guidance h3");
+  const guidanceCopy = $(".side-guidance > p");
+  const guidanceRules = $(".side-guidance .guidance-rule");
+  if (guidanceTitle) guidanceTitle.textContent = lost ? "Help us retrace your steps." : "Help us return this item safely.";
+  if (guidanceCopy) guidanceCopy.textContent = lost
+    ? "Think about the last place you used or saw the item. Accurate time and location estimates help narrow possible matches."
+    : "Record the exact discovery spot and describe only what is safe to share. The item becomes searchable only after office staff confirm physical intake.";
+  const ruleContent = lost ? [
+    ["Rebuild the timeline", "Tell us when you last remember having it; an honest estimate is better than a guess."],
+    ["Keep proof private", "Save one or two distinctive ownership clues for the private claim review."],
+    ["Narrow the search", "Add the block, floor, room or nearby place where you last had it."]
+  ] : [
+    ["Describe what you saw", "Record the item's visible condition without publishing names, IDs or private contents."],
+    ["Pinpoint discovery", "Use the place where you found it, not where you later hand it in."],
+    ["Complete the handover", "Take the item to the campus office. Staff confirm receipt and assign its LostLink Tag ID."]
+  ];
+  guidanceRules.forEach((rule, index) => {
+    const entry = ruleContent[index];
+    if (!entry) return;
+    const strong = rule.querySelector("strong");
+    const small = rule.querySelector("small");
+    if (strong) strong.textContent = entry[0];
+    if (small) small.textContent = entry[1];
+  });
+  $("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
   });
@@ -594,11 +624,11 @@ function setReportMode(type) {
     reportField("reportItemNameLabel", form).textContent = "What item did you find?";
     reportField("reportDescriptionLabel", form).textContent = "Describe the item you found";
     reportField("reportDescription", form).placeholder = "Describe the item as you found it: type, size, material, condition and visible identifying details. Do not guess who owns it.";
-    reportField("reportDescriptionHelp", form).textContent = "Only include details a student could safely use to recognise the item. Do not publish names, ID numbers, contents, serial numbers or hidden marks.";
+    reportField("reportDescriptionHelp", form).textContent = "Share only safe, observable details. Do not include names, student IDs, serial numbers, contents or hidden identifying marks.";
     reportField("reportFeaturesLabel", form).textContent = "Visible condition and features";
     reportField("reportFeatures", form).placeholder = "Scratches, stickers, damage, colour, brand, contents visible from outside…";
     reportField("reportDateLabel", form).textContent = "When did you find it?";
-    reportField("reportDateHelp", form).textContent = "Enter when you discovered the item. Office intake time is recorded separately.";
+    reportField("reportDateHelp", form).textContent = "Enter when you discovered the item. If you are unsure, use your best estimate; office intake time is recorded separately.";
     reportField("reportLocationHeading", form).textContent = "Where did you find it?";
     reportField("reportLocationHelp", form).textContent = "Choose the actual discovery place, not where you later hand it in or where staff store it.";
     reportField("reportBlockLabel", form).textContent = "Found at block / building";
