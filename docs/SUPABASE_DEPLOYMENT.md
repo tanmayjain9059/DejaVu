@@ -61,7 +61,7 @@ SESSION_HTTPS_ONLY=true
 HTTPS_ONLY=true
 REQUIRE_REQUEST_ORIGIN=true
 ALLOWED_HOSTS=your-api.onrender.com
-FRONTEND_ORIGINS=https://your-app.vercel.app
+FRONTEND_ORIGINS=https://deja-vu-eta.vercel.app
 UPLOAD_STORAGE_BACKEND=s3
 S3_ENDPOINT_URL=https://YOUR_PROJECT.supabase.co/storage/v1/s3
 S3_BUCKET=lostlink-private
@@ -110,7 +110,7 @@ The static Vercel frontend does **not** write to PostgreSQL directly. The FastAP
 
 - `DATABASE_URL`: Supabase → Project Settings → Database → Connection string → URI. Use the Supabase **Session pooler** URI if Render's outbound IPv4/network setup requires it; use the correct database password and keep the full URI private.
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY`: the project URL and publishable/anon key used by the office authentication client. These are not a substitute for `DATABASE_URL`.
-- `FRONTEND_ORIGINS`: the exact deployed Vercel origin, e.g. `https://your-project.vercel.app` (no trailing slash).
+- `FRONTEND_ORIGINS`: the exact deployed Vercel origin, e.g. `https://deja-vu-eta.vercel.app` (no trailing slash).
 - The other required variables in `render.yaml`, including office allowlist and private Storage credentials.
 
 Do not paste `DATABASE_URL`, database password, service-role key or Storage secret into Vercel frontend variables or browser code.
