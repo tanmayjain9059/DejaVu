@@ -1349,7 +1349,7 @@ input::placeholder, textarea::placeholder {
 .public-kicker,.public-case-id { font-size:.68rem; font-weight:800; letter-spacing:.14em; color:#705F52; }
 .public-case-id { font-family:"JetBrains Mono",monospace; letter-spacing:.04em; opacity:.7; }
 .public-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-.public-action-card { position:relative; display:flex; align-items:center; gap:13px; min-height:108px; padding:18px; border:1px solid rgba(255,255,255,.9); border-radius:20px; text-align:left; color:#18263b; background:rgba(255,255,255,.75); box-shadow:0 8px 22px rgba(28,53,79,.07); transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
+.public-action-card { position:relative; display:flex; align-items:center; gap:13px; min-height:108px; padding:18px; border:1px solid rgba(255,255,255,.9); border-radius:20px; text-align:left; color:#3E342E; background:rgba(255,255,255,.75); box-shadow:0 8px 22px rgba(28,53,79,.07); transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
 .public-action-card:hover { transform:translateY(-3px); box-shadow:0 14px 28px rgba(28,53,79,.12); border-color:rgba(190,105,57,.42); }
 .public-action-icon { display:grid; place-items:center; flex:0 0 48px; width:48px; height:48px; border-radius:15px; color:#a84f25; background:#f9e7d9; font-size:1.7rem; }
 .found-action .public-action-icon { color:#76512d; background:#f5ecd9; }
@@ -1370,7 +1370,7 @@ input::placeholder, textarea::placeholder {
 .public-trust-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0 8px; }
 .public-trust-row div { display:grid; gap:3px; padding:12px 13px; border-left:2px solid rgba(184,91,43,.42); }
 .public-trust-row strong { color:#a9542c; font:700 .72rem "JetBrains Mono",monospace; }
-.public-trust-row span { color:#59677a; font-size:.76rem; line-height:1.35; }
+.public-trust-row span { color:#806E60; font-size:.76rem; line-height:1.35; }
 .public-footnote { margin:12px 0 0; color:#8B7B6B; font-size:.72rem; }
 .public-story-footer { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .office-access-link,.office-panel-back,.public-back { border:0; background:transparent; color:#705F52; font-size:.78rem; font-weight:700; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
