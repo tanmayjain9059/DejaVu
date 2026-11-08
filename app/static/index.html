@@ -1,1130 +1,1130 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#dcebf5">
-  <meta name="description" content="LostLink campus lost and found reporting and claim verification. Apple-grade liquid glass interface.">
-  <title>LostLink · Campus Lost &amp; Found</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-  <!-- 21st.dev Aurora Background by @manuarora700 -->
-  <div class="aurora-background-container" aria-hidden="true">
-    <div class="aurora-layer-base"></div>
-    <div class="aurora-layer"></div>
-  </div>
-  <!-- Ambient Liquid Glass Orbs (soft water glow matching 21st.dev navbar palette) -->
-  <div class="ambient-mesh" aria-hidden="true">
-    <div class="liquid-orb orb-1"></div>
-    <div class="liquid-orb orb-2"></div>
-    <div class="liquid-orb orb-3"></div>
-  </div>
-
-  <!-- SVG Refraction Filter for 21st.dev Liquid Glass Navbar -->
-  <svg width="0" height="0" style="position: absolute; pointer-events: none;" aria-hidden="true">
-    <filter id="nimbus-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.02" numOctaves="2" seed="7" result="noise" />
-      <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
-      <feDisplacementMap in="SourceGraphic" in2="soft" scale="60" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </svg>
-
-  <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
-  <main id="loginView" class="login-shell">
-    <section class="login-story">
-      <!-- Sleek Liquid Glass Logo & Brand -->
-      <div class="brand-liquid-pill">
-        <span class="nimbus-glass" aria-hidden="true"></span>
-        <span class="liquid-logo-bubble">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
-          </svg>
-        </span>
-        <span class="brand-text">LostLink</span>
-        <span class="brand-live-dot" title="Active Campus System"></span>
-      </div>
-
-      <div class="story-copy">
-        <p class="eyebrow"><span class="pulse-dot"></span> Verified Campus Custody</p>
-        <h1>Lost something?<br><span>Start here.</span></h1>
-        <p class="lede">A calm, verified campus lost and found workflow. Report an item, search registered custody, and track claims privately.</p>
-        
-        <div class="story-points">
-          <div class="glass-point">
-            <span class="point-icon">01</span>
-            <div><strong>Report clearly</strong><small>Add useful visible details without exposing private proof.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">02</span>
-            <div><strong>Find likely matches</strong><small>AI-assisted discovery helps surface office-held items.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">03</span>
-            <div><strong>Verify before release</strong><small>Physical inspection and verified tag check before handover.</small></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="story-footer">
-        <span>LostLink · Campus Property Assistance Protocol</span>
-      </div>
-    </section>
-
-    <section class="login-panel liquid-glass-panel">
-      <div class="panel-specular-light" aria-hidden="true"></div>
-      <div class="panel-kicker">
-        <span class="status-dot"></span>
-        <span>CAMPUS ACCESS</span>
-      </div>
-      <h2>Welcome back</h2>
-      <p class="muted">Sign in to report, search, or review a claim.</p>
-
-      <form id="loginForm" class="form-stack">
-        <label>
-          <span>Email address</span>
-          <div class="input-glass-wrap">
-            <input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu">
-          </div>
-        </label>
-        <label>
-          <span>Password</span>
-          <div class="input-glass-wrap">
-            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
-          </div>
-        </label>
-        <button class="button button-liquid button-full" type="submit">
-          <span>Sign in</span>
-          <span class="button-arrow" aria-hidden="true">↗</span>
-        </button>
-        <p id="loginError" class="form-error" role="alert"></p>
-      </form>
-
-      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
-
-      <div id="demoAccess" class="demo-access hidden">
-        <div class="divider-label">
-          <span></span>
-          <small>QUICK DEMO ACCOUNTS</small>
-          <span></span>
-        </div>
-        <div class="demo-accounts-grid">
-          <button id="fillStudent" class="demo-account glass-pill" type="button">
-            <span class="avatar avatar-student">S</span>
-            <div class="demo-info">
-              <strong>Student 1 · Demo</strong>
-              <small>student@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
-            <span class="avatar avatar-student">A</span>
-            <div class="demo-info">
-              <strong>Student 2 · Aarav</strong>
-              <small>student2@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
-            <span class="avatar avatar-student">R</span>
-            <div class="demo-info">
-              <strong>Student 3 · Riya</strong>
-              <small>student3@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-          <button id="fillOffice" class="demo-account glass-pill demo-office" type="button">
-            <span class="avatar avatar-office">O</span>
-            <div class="demo-info">
-              <strong>Campus Office Staff</strong>
-              <small>office@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-        </div>
-        <p class="demo-credentials">Demo mode enabled. Click any account above to sign in instantly.</p>
-      </div>
-
-      <div class="privacy-note">
-        <span class="lock-icon">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-        </span>
-        <div>
-          <strong>Private by design</strong>
-          <small>Claim evidence and verification details are accessible only to the claimant and authorised staff.</small>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ==================== MAIN APP VIEW ==================== -->
-  <main id="appView" class="app-shell hidden">
-    <!-- Uncluttered Top Navigation Bar -->
-    <header class="app-header">
-      <!-- Redesigned Top-Left Liquid Glass Logo (NO ugly subtitle) -->
-      <div class="header-left">
-        <a class="brand-liquid-pill" href="#" id="homeBrandLink" aria-label="LostLink Home">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <span class="liquid-logo-bubble">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
-            </svg>
-          </span>
-          <span class="brand-text">LostLink</span>
-          <span class="brand-live-dot" title="Active Campus Desk"></span>
-        </a>
-      </div>
-
-      <!-- 21st.dev Liquid Glass Navbar Floating Center Component (UNMODIFIED) -->
-      <div class="header-center">
-        <nav id="studentNav" class="nimbus-nav" data-tone="light" data-gl="off" aria-label="Campus Navigation">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <canvas id="nimbusCanvas" class="nimbus-water hidden" aria-hidden="true"></canvas>
-          <span id="nimbusDrop" class="nimbus-drop" aria-hidden="true"></span>
-
-          <!-- Start / Home view -->
-          <button class="nimbus-item tab-button active" type="button" data-go="start" aria-label="Start" aria-current="page">
-            <span class="nv-ico" data-fx="glow">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3.5 11.2 12 4l8.5 7.2" /><path d="M6 9.6V20h12V9.6" /><path class="nv-door" d="M10 20v-5h4v5Z" />
-              </svg>
-            </span>
-            <span class="nimbus-label">Start</span>
-          </button>
-
-          <!-- Browse items -->
-          <button class="nimbus-item tab-button" type="button" data-view="browse" aria-label="Browse items">
-            <span class="nv-ico" data-fx="spin">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17" />
-              </svg>
-            </span>
-            <span class="nimbus-label">Browse</span>
-          </button>
-
-          <!-- Submit Report -->
-          <button class="nimbus-item tab-button" type="button" data-view="report" aria-label="New report">
-            <span class="nv-ico" data-fx="drop">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Report</span>
-          </button>
-
-          <!-- My reports -->
-          <button class="nimbus-item tab-button" type="button" data-view="my-reports" aria-label="My reports">
-            <span class="nv-ico" data-fx="plane">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 12.2 3.6 5.4l2.7 6.8-2.7 6.4L21 12.2Zm-14.7 0H13" />
-              </svg>
-            </span>
-            <span class="nimbus-label">My Reports</span>
-          </button>
-
-          <!-- My claims -->
-          <button class="nimbus-item tab-button" type="button" data-view="my-claims" aria-label="My claims">
-            <span class="nv-ico" data-fx="wave">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Claims</span>
-            <span id="claimNavCount" class="nav-count hidden">0</span>
-          </button>
-
-          <!-- Notifications -->
-          <button class="nimbus-item tab-button" type="button" data-view="notifications" aria-label="Notifications">
-            <span class="nv-ico" data-fx="pop">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Alerts</span>
-            <span id="notificationNavCount" class="nav-count hidden">0</span>
-          </button>
-
-          <!-- Activity & certificates -->
-          <button id="activityNavButton" class="nimbus-item tab-button" type="button" data-view="activity" aria-label="Activity & certificates">
-            <span class="nv-ico" data-fx="glow">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Activity</span>
-          </button>
-
-          <!-- Profile tab -->
-          <button id="profileNavButton" class="nimbus-item tab-button" type="button" data-go="profile" aria-label="Profile">
-            <span class="nv-ico" data-fx="pop">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </span>
-            <span class="nimbus-label">Profile</span>
-          </button>
-
-          <!-- Office console (office only) -->
-          <button id="officeNavButton" class="nimbus-item tab-button office-tab hidden" type="button" data-view="office" aria-label="Office Console">
-            <span class="nv-ico" data-fx="spin">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-              </svg>
-            </span>
-            <span class="nimbus-label">Console</span>
-          </button>
-        </nav>
-      </div>
-
-      <!-- Redesigned Single Liquid Glass Profile Tab Button -->
-      <div class="header-right">
-        <button id="profileTabBtn" class="profile-liquid-pill" type="button" data-go="profile" aria-label="Open user profile">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <span id="userInitial" class="avatar avatar-student">A</span>
-          <div class="profile-pill-info">
-            <span id="userName" class="profile-pill-name">Alex Chen</span>
-            <span id="roleChip" class="profile-role-chip">Student</span>
-          </div>
-          <span class="profile-pill-arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Hidden elements maintained for app.js status compatibility -->
-    <div class="sr-only" aria-hidden="true">
-      <h1 id="welcomeTitle">LostLink</h1>
-      <p id="welcomeSubtitle">Campus lost and found</p>
-      <span id="dropdownAvatar"></span>
-      <span id="dropdownUserName"></span>
-      <span id="dropdownUserEmail"></span>
-      <span id="switchViewLabel"></span>
-    </div>
-
-    <section id="notice" class="notice hidden" role="status"></section>
-    <div id="appModeNote" class="app-mode-note hidden" role="status">Interactive offline preview: changes stay in this browser session.</div>
-
-    <!-- ==================== 1. STARTING VIEW (CLEAN, FOCUSED: LOST VS FOUND ONLY) ==================== -->
-    <section id="startView" class="content-view start-view">
-      <div class="start-hero">
-        <div class="start-badge">
-          <span class="sparkle-icon">✦</span>
-          <span>CAMPUS WORKFLOW</span>
-        </div>
-        <h1 class="start-title">What would you like to do?</h1>
-        <p class="start-subtitle">Report missing property or hand in an item you discovered on campus.</p>
-      </div>
-
-      <div class="start-options-grid">
-        <!-- Option 1: Submit a Lost Report -->
-        <div class="start-glass-card start-card-lost" data-report-kind="lost">
-          <div class="card-specular-sheen" aria-hidden="true"></div>
-          <div class="start-card-icon-wrap icon-lost">
-            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <path d="M11 8v6M8 11h6"></path>
-            </svg>
-          </div>
-          <div class="start-card-content">
-            <span class="card-kicker">LOST PROPERTY</span>
-            <h2>Submit a Lost Report</h2>
-            <p>Tell us what went missing, when you last saw it, and where to look. We will match it against items catalogued by the campus office and notify you instantly.</p>
-          </div>
-          <div class="start-card-action">
-            <button class="button button-liquid button-full" type="button" data-report-kind="lost">
-              <span>Start lost report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Option 2: Submit a Found Report -->
-        <div class="start-glass-card start-card-found" data-report-kind="found">
-          <div class="card-specular-sheen" aria-hidden="true"></div>
-          <div class="start-card-icon-wrap icon-found">
-            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
-            </svg>
-          </div>
-          <div class="start-card-content">
-            <span class="card-kicker">DISCOVERED AN ITEM</span>
-            <h2>Submit a Found Report</h2>
-            <p>Found something belonging to someone else? Log what you found and where. Hand it to the campus office to be tagged and returned safely.</p>
-          </div>
-          <div class="start-card-action">
-            <button class="button button-liquid button-full button-found-action" type="button" data-report-kind="found">
-              <span>Start found report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quiet, non-cluttering secondary discovery link -->
-      <div class="start-browse-prompt">
-        <span>Looking for items currently held in office custody?</span>
-        <button class="link-btn" type="button" data-go="browse">Browse office inventory ↗</button>
-      </div>
-    </section>
-
-    <!-- ==================== 2. BROWSE ITEMS VIEW ==================== -->
-    <section id="browseView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">OFFICE INVENTORY</p>
-          <h2>Items held by the office</h2>
-          <p class="muted">Only items physically received, verified, and tagged by campus staff appear here.</p>
-        </div>
-        <span id="browseCount" class="count-pill">0 items</span>
-      </div>
-
-      <form id="searchForm" class="filter-panel glass-card">
-        <div class="search-main-row">
-          <label class="search-field">
-            <span class="search-icon">⌕</span>
-            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. “backpack”)...">
-          </label>
-          <button class="button button-liquid" type="submit">Search</button>
-          <button id="clearFilters" class="button button-quiet" type="button">Reset</button>
-        </div>
-
-        <div class="search-secondary-row">
-          <label class="select-label">
-            <span>Category</span>
-            <select id="filterCategory"><option value="">All categories</option></select>
-          </label>
-          <label class="select-label">
-            <span>Block / Building</span>
-            <select id="filterBlock"><option value="">All locations</option></select>
-          </label>
-          <label class="input-label">
-            <span>Room</span>
-            <input id="filterRoom" maxlength="80" placeholder="e.g. A-102">
-          </label>
-          <div class="date-filter">
-            <label><span>From</span><input id="filterDateFrom" type="date"></label>
-            <label><span>To</span><input id="filterDateTo" type="date"></label>
-          </div>
-        </div>
-      </form>
-
-      <div id="browseResults" class="item-grid"></div>
-      <div class="pagination-controls"><button id="browseLoadMore" class="button button-quiet button-small hidden" type="button">Load more items</button></div>
-      <div id="browseEmpty" class="empty-state hidden">
-        <span class="empty-icon">⌕</span>
-        <h3>No items found</h3>
-        <p>Try a broader keyword or reset filters. Sensitive items have restricted public details.</p>
-      </div>
-    </section>
-
-    <!-- ==================== 3. REPORT SUBMISSION VIEW ==================== -->
-    <section id="reportView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">CREATE A RECORD</p>
-          <h2 id="reportModeTitle">Choose your report type</h2>
-          <p id="reportModeDescription" class="muted">Lost and Found have separate guided paths so each report starts with the right context.</p>
-        </div>
-        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">← Back to options</button>
-      </div>
-
-      <div id="reportTypeChooser" class="report-type-chooser">
-        <button class="report-type-card glass-card" type="button" data-report-kind="lost">
-          <span class="report-type-icon">⌕</span>
-          <strong>I lost something</strong>
-          <small>Tell us what went missing, when you last saw it and where to search.</small>
-          <span class="report-type-action">Start lost report ↗</span>
-        </button>
-        <button class="report-type-card glass-card" type="button" data-report-kind="found">
-          <span class="report-type-icon">✦</span>
-          <strong>I found something</strong>
-          <small>Record the item and where it was found. Office staff must receive it before it is searchable.</small>
-          <span class="report-type-action">Start found report ↗</span>
-        </button>
-      </div>
-
-      <div class="form-layout">
-        <form id="reportForm" class="form-card form-stack liquid-glass-panel hidden">
-          <input id="reportType" name="report_type" type="hidden" value="">
-          
-          <div class="form-section-heading">
-            <span class="step-number">01</span>
-            <div>
-              <strong id="reportFormStepTitle">Report details</strong>
-              <small id="reportFormStepHint">Add the item and context.</small>
-            </div>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Item name <span class="field-required">Required</span></span>
-              <input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy backpack">
-            </label>
-            <div>
-              <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
-              <select id="reportCategory" name="category" required></select>
-              <div class="category-ai-control">
-                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button>
-                <small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small>
-              </div>
-            </div>
-          </div>
-
-          <label>
-            <span>Description <span class="field-required">Required</span></span>
-            <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
-            <small class="field-hint">Describe visible details only. Keep private proof of ownership, serial numbers, and passwords out of this description.</small>
-          </label>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">02</span>
-            <div>
-              <strong>Additional item details</strong>
-              <small>Optional details improve search and candidate matching.</small>
-            </div>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Brand / make <span class="field-optional">Optional</span></span>
-              <input id="reportBrand" name="brand" maxlength="80" placeholder="e.g. Wildcraft, Apple">
-            </label>
-            <label>
-              <span>Main colour <span class="field-optional">Optional</span></span>
-              <input id="reportColor" name="primary_color" maxlength="60" placeholder="e.g. Navy blue">
-            </label>
-          </div>
-
-          <label>
-            <span>Visible characteristics <span class="field-optional">Optional</span></span>
-            <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two front pockets, black zip, small scratch on the outer flap"></textarea>
-            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
-          </label>
-
-          <label>
-            <span id="reportDateLabel">Approximate date and time</span> <span class="field-optional">Optional</span>
-            <input id="reportDate" name="occurred_at" type="datetime-local">
-            <small id="reportDateHelp" class="field-hint">Use your best estimate; leave blank if you are unsure.</small>
-          </label>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">03</span>
-            <div>
-              <strong id="reportLocationHeading">Where did you last see it?</strong>
-              <small id="reportLocationHelp">Choose the closest known place.</small>
-            </div>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Block / building or area <span class="field-required">Required</span></span>
-              <select id="reportBlock" name="location_block"><option value="">Choose a block or area</option></select>
-            </label>
-            <label>
-              <span>Floor <span class="field-optional">Optional</span></span>
-              <select id="reportFloor" name="location_floor"><option value="">Not sure</option></select>
-            </label>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Room <span class="field-optional">Optional</span></span>
-              <input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. A-102">
-            </label>
-            <label>
-              <span>Nearby area / landmark <span class="field-optional">Optional</span></span>
-              <input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Library entrance, cafeteria">
-            </label>
-          </div>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">04</span>
-            <div>
-              <strong>Photograph (optional)</strong>
-              <small>A photo helps staff and students identify the item.</small>
-            </div>
-          </div>
-
-          <label class="upload-box glass-card" for="reportImage">
-            <span class="upload-symbol">↑</span>
-            <span>
-              <strong id="imageLabel">Choose a photo</strong>
-              <small>JPG, PNG or WebP · up to 5 MB</small>
-            </span>
-            <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-          </label>
-          <p id="reportImageWarning" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
-          <p id="reportError" class="form-error" role="alert"></p>
-
-          <div class="form-actions">
-            <button id="reportSubmitButton" class="button button-liquid" type="submit">
-              <span id="reportSubmitLabel">Submit lost report</span>
-              <span aria-hidden="true">↗</span>
-            </button>
-            <button id="backToReportTypes" class="button button-quiet" type="button">Change type</button>
-            <button id="cancelReport" class="button button-quiet" type="button">Cancel</button>
-          </div>
-        </form>
-
-        <aside class="side-guidance glass-card">
-          <div class="guidance-icon">✳</div>
-          <h3>Helpful details make better matches.</h3>
-          <p class="muted">Describe what is visible, when and where it was last seen, and safe characteristics.</p>
-          <div class="guidance-rule"><span>✓</span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
-          <div class="guidance-rule"><span>✓</span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- ==================== 4. MY REPORTS VIEW ==================== -->
-    <section id="myReportsView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">YOUR ACTIVITY</p>
-          <h2>My reports</h2>
-          <p class="muted">Check submitted reports and review AI candidate matches for your lost items.</p>
-        </div>
-        <button class="button button-liquid" type="button" data-go="report">＋ New report</button>
-      </div>
-      <div id="myReportsList" class="stack-list"></div>
-      <div class="pagination-controls"><button id="myReportsLoadMore" class="button button-quiet button-small hidden" type="button">Load more reports</button></div>
-      <div id="myReportsEmpty" class="empty-state hidden">
-        <span class="empty-icon">▤</span>
-        <h3>No reports yet</h3>
-        <p>Your lost and found reports will appear here.</p>
-      </div>
-      <div id="matchesPanel" class="matches-panel glass-card hidden">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">AI-ASSISTED MATCHES</p>
-            <h2>Possible matches</h2>
-            <p class="muted">Suggestions are discovery aids only, never proof of ownership.</p>
-          </div>
-          <button id="closeMatches" class="button button-quiet button-small" type="button">Close</button>
-        </div>
-        <div id="matchResults" class="item-grid"></div>
-      </div>
-    </section>
-
-    <!-- ==================== 5. MY CLAIMS VIEW ==================== -->
-    <section id="myClaimsView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">CLAIM STATUS</p>
-          <h2>My claims</h2>
-          <p class="muted">Your private evidence is visible only to you and authorised office staff.</p>
-        </div>
-      </div>
-      <div id="myClaimsList" class="stack-list"></div>
-      <div class="pagination-controls"><button id="myClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
-      <div id="myClaimsEmpty" class="empty-state hidden">
-        <span class="empty-icon">◷</span>
-        <h3>No claims submitted</h3>
-        <p>When you submit a claim for an office-held item, its review status appears here.</p>
-      </div>
-    </section>
-
-    <!-- ==================== 6. NOTIFICATIONS VIEW ==================== -->
-    <section id="notificationsView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">UPDATES</p>
-          <h2>Notifications</h2>
-          <p class="muted">Match discoveries, claim decisions, and contribution milestones.</p>
-        </div>
-        <button id="readAllNotifications" class="button button-quiet button-small" type="button">Mark all read</button>
-      </div>
-      <div id="notificationsList" class="stack-list"></div>
-      <div id="notificationsEmpty" class="empty-state hidden">
-        <span class="empty-icon">♧</span>
-        <h3>All caught up</h3>
-        <p>New match suggestions and review updates will appear here.</p>
-      </div>
-    </section>
-
-    <!-- ==================== 7. ACTIVITY & CERTIFICATES VIEW ==================== -->
-    <section id="activityView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">VERIFIED RECOGNITION</p>
-          <h2>Activity &amp; certificates</h2>
-          <p class="muted">Earn recognition when items you found are physically received and verified by staff.</p>
-        </div>
-        <span class="count-pill">Verified activity only</span>
-      </div>
-      <div id="activityOverview" class="activity-overview"></div>
-      
-      <div class="office-section leaderboard-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">CAMPUS COMMUNITY</p>
-            <h3>Contribution leaderboard</h3>
-            <p class="muted">Recognises verified contributions only. Privacy is preserved.</p>
-          </div>
-          <span id="leaderboardParticipantCount" class="count-pill">0 contributors</span>
-        </div>
-        <div id="leaderboardSummary" class="leaderboard-summary"></div>
-        <div id="leaderboardList" class="leaderboard-list"></div>
-        <div id="leaderboardEmpty" class="inline-empty hidden">No verified contributions yet. Return accepted items to start the board.</div>
-      </div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">RECOGNITION</p>
-            <h3>Your certificates</h3>
-            <p class="muted">Download certificates issued for milestone achievements.</p>
-          </div>
-        </div>
-        <div id="certificateList" class="certificate-grid"></div>
-        <div id="certificateEmpty" class="inline-empty hidden">No certificates yet. Earned when reaching verified contribution milestones.</div>
-      </div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">POINTS HISTORY</p>
-            <h3>Activity ledger</h3>
-            <p class="muted">Points awarded once for verified office contribution events.</p>
-          </div>
-        </div>
-        <div id="activityLedger" class="stack-list"></div>
-        <div id="activityEmpty" class="inline-empty hidden">No verified activity points yet.</div>
-      </div>
-    </section>
-
-    <!-- ==================== 7.5 PROFILE VIEW ==================== -->
-    <section id="profileView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">CAMPUS IDENTITY &amp; ACCOUNT</p>
-          <h2>User profile</h2>
-          <p class="muted">Manage your campus credentials, view your role permissions, track verified contributions, and switch demo roles.</p>
-        </div>
-        <span id="profileStatusBadge" class="count-pill">Active session</span>
-      </div>
-
-      <!-- Profile Hero Card -->
-      <div class="profile-hero-card">
-        <div class="profile-hero-main">
-          <div class="profile-avatar-wrapper">
-            <span id="profileHeroAvatar" class="profile-hero-avatar avatar-student">D</span>
-            <span class="profile-online-indicator" title="Active campus session"></span>
-          </div>
-          <div class="profile-hero-info">
-            <div class="profile-name-row">
-              <h3 id="profileHeroName">Demo Student</h3>
-              <span id="profileHeroRole" class="role-chip">Student</span>
-            </div>
-            <p id="profileHeroEmail" class="profile-email">student@lostlink.local</p>
-            <div class="profile-meta-chips">
-              <span class="profile-meta-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>Verified Campus Member</span>
-              </span>
-              <span class="profile-meta-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span>Demo Session Active</span>
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="profile-hero-actions">
-          <button id="viewSwitchBtn" class="button button-liquid" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
-            <span id="profileHeroSwitchText">Switch to office</span>
-          </button>
-          <button id="logoutButton" class="button button-quiet button-danger-quiet" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span>Sign out</span>
-          </button>
-          <button id="showLoginButton" class="button button-quiet hidden" type="button" aria-hidden="true">Login screen</button>
-        </div>
-      </div>
-
-      <!-- Profile Bento Summary Cards -->
-      <div class="profile-bento-grid">
-        <div class="profile-bento-card" data-go="activity">
-          <div class="bento-header">
-            <span class="eyebrow">RECOGNITION</span>
-            <div class="bento-icon">✦</div>
-          </div>
-          <div class="bento-metric">
-            <span id="profilePointsVal" class="bento-num">0</span>
-            <span class="bento-unit">verified points</span>
-          </div>
-          <p id="profileMilestoneTier" class="bento-label">Verified Finder tier</p>
-          <span class="bento-link">View activity &amp; certificates →</span>
-        </div>
-
-        <div class="profile-bento-card" data-go="my-reports">
-          <div class="bento-header">
-            <span class="eyebrow">MY REPORTS</span>
-            <div class="bento-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-          </div>
-          <div class="bento-metric">
-            <span id="profileReportsCount" class="bento-num">0</span>
-            <span class="bento-unit">reports filed</span>
-          </div>
-          <p class="bento-label">Lost &amp; found submissions</p>
-          <span class="bento-link">Manage my reports →</span>
-        </div>
-
-        <div class="profile-bento-card" data-go="my-claims">
-          <div class="bento-header">
-            <span class="eyebrow">CLAIMS</span>
-            <div class="bento-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-          </div>
-          <div class="bento-metric">
-            <span id="profileClaimsCount" class="bento-num">0</span>
-            <span class="bento-unit">claims recorded</span>
-          </div>
-          <p class="bento-label">Ownership verification status</p>
-          <span class="bento-link">Check claims →</span>
-        </div>
-
-        <div class="profile-bento-card" data-go="notifications">
-          <div class="bento-header">
-            <span class="eyebrow">ALERTS</span>
-            <div class="bento-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
-            </div>
-          </div>
-          <div class="bento-metric">
-            <span id="profileAlertsCount" class="bento-num">0</span>
-            <span class="bento-unit">active alerts</span>
-          </div>
-          <p class="bento-label">Match notifications enabled</p>
-          <span class="bento-link">Configure alerts →</span>
-        </div>
-      </div>
-
-      <!-- Campus Role Privileges & Guidelines Card -->
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">ROLE &amp; CAPABILITIES</p>
-            <h3>Account privileges &amp; guidelines</h3>
-            <p class="muted">Summary of permissions granted to your current designation.</p>
-          </div>
-        </div>
-        <div id="profilePrivilegesCard" class="profile-privileges-card">
-          <div class="privilege-item">
-            <div class="privilege-icon">✓</div>
-            <div>
-              <strong>Campus Lost &amp; Found Submissions</strong>
-              <p class="muted">File reports for lost personal items or items found across university buildings, libraries, and common areas.</p>
-            </div>
-          </div>
-          <div class="privilege-item">
-            <div class="privilege-icon">✓</div>
-            <div>
-              <strong>Private Claim Verification</strong>
-              <p class="muted">Submit confidential ownership proof, serial numbers, and photos. Evidence is kept strictly private from other students.</p>
-            </div>
-          </div>
-          <div class="privilege-item">
-            <div class="privilege-icon">✓</div>
-            <div>
-              <strong>Recognition &amp; Certificates</strong>
-              <p class="muted">Earn verified activity points upon staff intake or handover. Download verifiable PDF certificates for campus community service.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Shortcuts -->
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">NAVIGATION SHORTCUTS</p>
-            <h3>Quick actions</h3>
-            <p class="muted">Jump directly to common campus lost and found workflows.</p>
-          </div>
-        </div>
-        <div class="profile-shortcuts-grid">
-          <button class="profile-shortcut-btn" type="button" data-go="report">
-            <span class="shortcut-icon">+</span>
-            <div class="shortcut-text">
-              <strong>File a New Report</strong>
-              <small>Report lost property or submit a found item</small>
-            </div>
-          </button>
-          <button class="profile-shortcut-btn" type="button" data-go="browse">
-            <span class="shortcut-icon">🔍</span>
-            <div class="shortcut-text">
-              <strong>Browse Found Property</strong>
-              <small>Search tagged items currently held at campus office</small>
-            </div>
-          </button>
-          <button class="profile-shortcut-btn" type="button" data-go="activity">
-            <span class="shortcut-icon">🏆</span>
-            <div class="shortcut-text">
-              <strong>View Recognition Ledger</strong>
-              <small>Inspect points history and community leaderboard</small>
-            </div>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== 8. OFFICE CONSOLE VIEW ==================== -->
-    <section id="officeView" class="content-view hidden">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">AUTHORISED STAFF ONLY</p>
-          <h2>Campus office console</h2>
-          <p class="muted">Confirm physical intake, review ownership claims, and record verified handovers with tag checks.</p>
-        </div>
-        <span class="role-chip role-chip-office">Office staff</span>
-      </div>
-      <div id="officeStats" class="stats-grid"></div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">PHYSICAL CUSTODY</p>
-            <h3>Found items awaiting intake</h3>
-            <p class="muted">Assign a physical tag only after confirming the item is in physical custody.</p>
-          </div>
-        </div>
-        <div id="intakeQueue" class="stack-list"></div>
-        <div class="pagination-controls"><button id="intakeLoadMore" class="button button-quiet button-small hidden" type="button">Load more intake</button></div>
-        <div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div>
-      </div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">CAMPUS STORAGE REGISTER</p>
-            <h3>Items currently in custody</h3>
-            <p class="muted">Track storage and physical Tag IDs.</p>
-          </div>
-        </div>
-        <div id="officeInventory" class="stack-list"></div>
-        <div class="pagination-controls"><button id="inventoryLoadMore" class="button button-quiet button-small hidden" type="button">Load more inventory</button></div>
-        <div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items currently in campus custody.</div>
-      </div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">OWNERSHIP REVIEW</p>
-            <h3>Claims requiring attention</h3>
-            <p class="muted">Private evidence is visible only to staff reviewers.</p>
-          </div>
-        </div>
-        <div id="officeClaims" class="stack-list"></div>
-        <div class="pagination-controls"><button id="officeClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
-        <div id="officeClaimsEmpty" class="inline-empty hidden">No claims currently under review.</div>
-      </div>
-
-      <div class="office-section">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="eyebrow">APPROVED CLAIMS</p>
-            <h3>Ready for physical handover</h3>
-            <p class="muted">Verify claimant identity and match physical tag ID before release.</p>
-          </div>
-        </div>
-        <div id="handoverQueue" class="stack-list"></div>
-        <div class="pagination-controls"><button id="handoverLoadMore" class="button button-quiet button-small hidden" type="button">Load more handovers</button></div>
-        <div id="handoverEmpty" class="inline-empty hidden">No approved claims awaiting handover.</div>
-      </div>
-    </section>
-
-    <!-- App Footer -->
-    <footer class="app-footer">
-      <span>LostLink · Campus Property Assistance Protocol</span>
-      <span>AI suggestions are discovery aids, not proof of ownership. Handover requires office verification.</span>
-    </footer>
-  </main>
-
-  <!-- ==================== DIALOGS & MODALS ==================== -->
-  <dialog id="closeReportDialog" class="dialog-card liquid-glass-panel">
-    <form id="closeReportForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">REPORT LIFECYCLE</p><h2 id="closeReportDialogTitle">Close lost report</h2></div>
-        <button id="closeCloseReport" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <p id="closeReportDescription" class="muted small-copy">Close a lost report when recovered elsewhere or no longer searching.</p>
-      <label>
-        <span>Reason <span class="field-required">Required</span></span>
-        <select id="closeReportReason" required>
-          <option value="recovered_elsewhere">I recovered the item elsewhere</option>
-          <option value="no_longer_searching">I no longer need to search</option>
-          <option value="duplicate">This is a duplicate report</option>
-        </select>
-      </label>
-      <label>
-        <span>Additional note <span class="field-optional">Optional</span></span>
-        <textarea id="closeReportNote" rows="3" maxlength="400" placeholder="Optional context"></textarea>
-      </label>
-      <p id="closeReportError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="confirmCloseReportButton" class="button button-danger" type="submit">Close report</button>
-        <button id="cancelCloseReport" class="button button-quiet" type="button">Keep open</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="decisionConfirmDialog" class="dialog-card liquid-glass-panel">
-    <form id="decisionConfirmForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">CLAIM REVIEW</p><h2 id="decisionConfirmTitle">Confirm review decision</h2></div>
-        <button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <p id="decisionConfirmMessage" class="muted small-copy"></p>
-      <p class="field-hint">The decision will be logged to audit trail. Approval moves claim to ready for collection.</p>
-      <p id="decisionConfirmError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="confirmDecisionButton" class="button button-liquid" type="submit">Confirm decision</button>
-        <button id="cancelDecisionConfirm" class="button button-quiet" type="button">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="additionalEvidenceDialog" class="dialog-card liquid-glass-panel">
-    <form id="additionalEvidenceForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">CLAIM FOLLOW-UP</p><h2>Add ownership evidence</h2></div>
-        <button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <p id="additionalEvidenceSummary" class="muted small-copy">The office requested more evidence for this claim.</p>
-      <label>
-        <span>Additional evidence <span class="field-required">Required</span></span>
-        <textarea id="additionalEvidenceText" rows="5" required minlength="20" maxlength="1800" placeholder="Add verifiable details. Never share passwords or PINs."></textarea>
-      </label>
-      <p id="additionalEvidenceError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="saveAdditionalEvidenceButton" class="button button-liquid" type="submit">Submit evidence</button>
-        <button id="cancelAdditionalEvidence" class="button button-quiet" type="button">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="storageUpdateDialog" class="dialog-card liquid-glass-panel">
-    <form id="storageUpdateForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">CAMPUS INVENTORY</p><h2>Update storage location</h2></div>
-        <button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <p id="storageUpdateSummary" class="muted small-copy">Update only after the physical item has been moved.</p>
-      <label>
-        <span>New physical location <span class="field-required">Required</span></span>
-        <input id="storageUpdateLocation" required minlength="4" maxlength="160" placeholder="Lost & Found room · Cabinet A · Shelf 01">
-      </label>
-      <label>
-        <span>Move note <span class="field-optional">Optional</span></span>
-        <textarea id="storageUpdateNote" rows="3" maxlength="800" placeholder="Optional reason or custody note"></textarea>
-      </label>
-      <p id="storageUpdateError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="saveStorageUpdateButton" class="button button-liquid" type="submit">Save location</button>
-        <button id="cancelStorageUpdate" class="button button-quiet" type="button">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="handoverDialog" class="dialog-card liquid-glass-panel">
-    <form id="handoverForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">PHYSICAL RETURN</p><h2>Confirm item handover</h2></div>
-        <button id="closeHandover" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <p id="handoverSummary" class="muted small-copy">Read the physical label and verify claimant identity before release.</p>
-      <label>
-        <span>Physical Tag ID <span class="field-required">Required</span></span>
-        <input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read exact ID printed on item's physical label">
-      </label>
-      <label class="checkbox-line"><input id="handoverIdentityChecked" type="checkbox" required> I checked the claimant's identity under campus policy.</label>
-      <label class="checkbox-line"><input id="handoverPhysicalChecked" type="checkbox" required> I physically handed the item to the verified claimant.</label>
-      <label>
-        <span>Internal handover note <span class="field-optional">Optional</span></span>
-        <textarea id="handoverNote" rows="2" maxlength="800" placeholder="Do not include sensitive personal data"></textarea>
-      </label>
-      <p class="field-hint">If Tag ID does not match the record, stop release immediately.</p>
-      <p id="handoverError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="confirmHandoverButton" class="button button-liquid" type="submit">Record physical handover</button>
-        <button id="cancelHandover" class="button button-quiet" type="button">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="itemDetailsDialog" class="dialog-card liquid-glass-panel">
-    <div class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">PUBLIC ITEM RECORD</p><h2 id="itemDetailsTitle">Item details</h2></div>
-        <button id="closeItemDetails" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <div id="itemDetailsContent" class="item-details-content"></div>
-      <div class="form-actions">
-        <button id="itemDetailsClaimButton" class="button button-liquid" type="button">Submit claim</button>
-        <button id="cancelItemDetails" class="button button-quiet" type="button">Close details</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="claimDialog" class="dialog-card liquid-glass-panel">
-    <form id="claimForm" class="form-stack">
-      <div class="dialog-heading">
-        <div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Help verify this item</h2></div>
-        <button id="closeClaim" type="button" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <div id="claimItemSummary" class="claim-item-summary"></div>
-      <label>
-        <span>Link to your lost report <span class="field-optional">Optional</span></span>
-        <select id="claimLostReport"><option value="">No linked lost report</option></select>
-        <small class="field-hint">If approved and physically returned, the linked report closes automatically.</small>
-      </label>
-      <p class="muted small-copy">Explain details establishing ownership. Private to you and authorised office staff.</p>
-      <fieldset class="evidence-type-fieldset">
-        <legend>Which kinds of proof can support your claim? <span class="field-required">Choose at least one</span></legend>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="purchase_or_receipt"> Purchase / receipt proof available for staff to check</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="packaging_or_accessory"> Matching packaging, accessory or paired item</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="timeline_and_location"> Consistent date and place of loss</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="device_or_account_context"> Device/account context that staff can verify</label>
-        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> Other verifiable evidence</label>
-      </fieldset>
-      <label class="upload-box glass-card" for="claimEvidenceImage">
-        <span class="upload-symbol">＋</span>
-        <span>
-          <strong id="claimEvidenceImageLabel">Attach one supporting photo (optional)</strong>
-          <small>JPG, PNG or WebP · up to 5 MB</small>
-        </span>
-        <input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp">
-      </label>
-      <label>
-        <span>Private explanation <span class="field-required">Required</span></span>
-        <textarea id="claimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Explain what proves this item is yours and how staff can check it."></textarea>
-      </label>
-      <p id="claimError" class="form-error" role="alert"></p>
-      <div class="form-actions">
-        <button id="claimSubmitButton" class="button button-liquid" type="submit">Submit private claim</button>
-        <button id="cancelClaim" class="button button-quiet" type="button">Cancel</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js" defer></script>
-</body>
-</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#dcebf5">
+  <meta name="description" content="LostLink campus lost and found reporting and claim verification. Apple-grade liquid glass interface.">
+  <title>LostLink · Campus Lost &amp; Found</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <!-- 21st.dev Aurora Background by @manuarora700 -->
+  <div class="aurora-background-container" aria-hidden="true">
+    <div class="aurora-layer-base"></div>
+    <div class="aurora-layer"></div>
+  </div>
+  <!-- Ambient Liquid Glass Orbs (soft water glow matching 21st.dev navbar palette) -->
+  <div class="ambient-mesh" aria-hidden="true">
+    <div class="liquid-orb orb-1"></div>
+    <div class="liquid-orb orb-2"></div>
+    <div class="liquid-orb orb-3"></div>
+  </div>
+
+  <!-- SVG Refraction Filter for 21st.dev Liquid Glass Navbar -->
+  <svg width="0" height="0" style="position: absolute; pointer-events: none;" aria-hidden="true">
+    <filter id="nimbus-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.02" numOctaves="2" seed="7" result="noise" />
+      <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="60" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+
+  <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
+  <main id="loginView" class="login-shell">
+    <section class="login-story">
+      <!-- Sleek Liquid Glass Logo & Brand -->
+      <div class="brand-liquid-pill">
+        <span class="nimbus-glass" aria-hidden="true"></span>
+        <span class="liquid-logo-bubble">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
+          </svg>
+        </span>
+        <span class="brand-text">LostLink</span>
+        <span class="brand-live-dot" title="Active Campus System"></span>
+      </div>
+
+      <div class="story-copy">
+        <p class="eyebrow"><span class="pulse-dot"></span> Verified Campus Custody</p>
+        <h1>Lost something?<br><span>Start here.</span></h1>
+        <p class="lede">A calm, verified campus lost and found workflow. Report an item, search registered custody, and track claims privately.</p>
+        
+        <div class="story-points">
+          <div class="glass-point">
+            <span class="point-icon">01</span>
+            <div><strong>Report clearly</strong><small>Add useful visible details without exposing private proof.</small></div>
+          </div>
+          <div class="glass-point">
+            <span class="point-icon">02</span>
+            <div><strong>Find likely matches</strong><small>AI-assisted discovery helps surface office-held items.</small></div>
+          </div>
+          <div class="glass-point">
+            <span class="point-icon">03</span>
+            <div><strong>Verify before release</strong><small>Physical inspection and verified tag check before handover.</small></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="story-footer">
+        <span>LostLink · Campus Property Assistance Protocol</span>
+      </div>
+    </section>
+
+    <section class="login-panel liquid-glass-panel">
+      <div class="panel-specular-light" aria-hidden="true"></div>
+      <div class="panel-kicker">
+        <span class="status-dot"></span>
+        <span>CAMPUS ACCESS</span>
+      </div>
+      <h2>Welcome back</h2>
+      <p class="muted">Sign in to report, search, or review a claim.</p>
+
+      <form id="loginForm" class="form-stack">
+        <label>
+          <span>Email address</span>
+          <div class="input-glass-wrap">
+            <input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu">
+          </div>
+        </label>
+        <label>
+          <span>Password</span>
+          <div class="input-glass-wrap">
+            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
+          </div>
+        </label>
+        <button class="button button-liquid button-full" type="submit">
+          <span>Sign in</span>
+          <span class="button-arrow" aria-hidden="true">↗</span>
+        </button>
+        <p id="loginError" class="form-error" role="alert"></p>
+      </form>
+
+      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
+
+      <div id="demoAccess" class="demo-access hidden">
+        <div class="divider-label">
+          <span></span>
+          <small>QUICK DEMO ACCOUNTS</small>
+          <span></span>
+        </div>
+        <div class="demo-accounts-grid">
+          <button id="fillStudent" class="demo-account glass-pill" type="button">
+            <span class="avatar avatar-student">S</span>
+            <div class="demo-info">
+              <strong>Student 1 · Demo</strong>
+              <small>student@lostlink.local</small>
+            </div>
+            <span class="arrow">→</span>
+          </button>
+          <button class="demo-account glass-pill" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
+            <span class="avatar avatar-student">A</span>
+            <div class="demo-info">
+              <strong>Student 2 · Aarav</strong>
+              <small>student2@lostlink.local</small>
+            </div>
+            <span class="arrow">→</span>
+          </button>
+          <button class="demo-account glass-pill" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
+            <span class="avatar avatar-student">R</span>
+            <div class="demo-info">
+              <strong>Student 3 · Riya</strong>
+              <small>student3@lostlink.local</small>
+            </div>
+            <span class="arrow">→</span>
+          </button>
+          <button id="fillOffice" class="demo-account glass-pill demo-office" type="button">
+            <span class="avatar avatar-office">O</span>
+            <div class="demo-info">
+              <strong>Campus Office Staff</strong>
+              <small>office@lostlink.local</small>
+            </div>
+            <span class="arrow">→</span>
+          </button>
+        </div>
+        <p class="demo-credentials">Demo mode enabled. Click any account above to sign in instantly.</p>
+      </div>
+
+      <div class="privacy-note">
+        <span class="lock-icon">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        <div>
+          <strong>Private by design</strong>
+          <small>Claim evidence and verification details are accessible only to the claimant and authorised staff.</small>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MAIN APP VIEW ==================== -->
+  <main id="appView" class="app-shell hidden">
+    <!-- Uncluttered Top Navigation Bar -->
+    <header class="app-header">
+      <!-- Redesigned Top-Left Liquid Glass Logo (NO ugly subtitle) -->
+      <div class="header-left">
+        <a class="brand-liquid-pill" href="#" id="homeBrandLink" aria-label="LostLink Home">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <span class="liquid-logo-bubble">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
+            </svg>
+          </span>
+          <span class="brand-text">LostLink</span>
+          <span class="brand-live-dot" title="Active Campus Desk"></span>
+        </a>
+      </div>
+
+      <!-- 21st.dev Liquid Glass Navbar Floating Center Component (UNMODIFIED) -->
+      <div class="header-center">
+        <nav id="studentNav" class="nimbus-nav" data-tone="light" data-gl="on" data-refract="on" aria-label="Campus Navigation">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <canvas id="nimbusCanvas" class="nimbus-water" aria-hidden="true"></canvas>
+          <span id="nimbusDrop" class="nimbus-drop" aria-hidden="true"></span>
+
+          <!-- Start / Home view -->
+          <button class="nimbus-item tab-button active" type="button" data-go="start" aria-label="Start" aria-current="page">
+            <span class="nv-ico" data-fx="glow">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3.5 11.2 12 4l8.5 7.2" /><path d="M6 9.6V20h12V9.6" /><path class="nv-door" d="M10 20v-5h4v5Z" />
+              </svg>
+            </span>
+            <span class="nimbus-label">Start</span>
+          </button>
+
+          <!-- Browse items -->
+          <button class="nimbus-item tab-button" type="button" data-view="browse" aria-label="Browse items">
+            <span class="nv-ico" data-fx="spin">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17" />
+              </svg>
+            </span>
+            <span class="nimbus-label">Browse</span>
+          </button>
+
+          <!-- Submit Report -->
+          <button class="nimbus-item tab-button" type="button" data-view="report" aria-label="New report">
+            <span class="nv-ico" data-fx="drop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Report</span>
+          </button>
+
+          <!-- My reports -->
+          <button class="nimbus-item tab-button" type="button" data-view="my-reports" aria-label="My reports">
+            <span class="nv-ico" data-fx="plane">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.2 3.6 5.4l2.7 6.8-2.7 6.4L21 12.2Zm-14.7 0H13" />
+              </svg>
+            </span>
+            <span class="nimbus-label">My Reports</span>
+          </button>
+
+          <!-- My claims -->
+          <button class="nimbus-item tab-button" type="button" data-view="my-claims" aria-label="My claims">
+            <span class="nv-ico" data-fx="wave">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Claims</span>
+            <span id="claimNavCount" class="nav-count hidden">0</span>
+          </button>
+
+          <!-- Notifications -->
+          <button class="nimbus-item tab-button" type="button" data-view="notifications" aria-label="Notifications">
+            <span class="nv-ico" data-fx="pop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Alerts</span>
+            <span id="notificationNavCount" class="nav-count hidden">0</span>
+          </button>
+
+          <!-- Activity & certificates -->
+          <button id="activityNavButton" class="nimbus-item tab-button" type="button" data-view="activity" aria-label="Activity & certificates">
+            <span class="nv-ico" data-fx="glow">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Activity</span>
+          </button>
+
+          <!-- Profile tab -->
+          <button id="profileNavButton" class="nimbus-item tab-button" type="button" data-view="profile" aria-label="Profile">
+            <span class="nv-ico" data-fx="pop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <span class="nimbus-label">Profile</span>
+          </button>
+
+          <!-- Office console (office only) -->
+          <button id="officeNavButton" class="nimbus-item tab-button office-tab hidden" type="button" data-view="office" aria-label="Office Console">
+            <span class="nv-ico" data-fx="spin">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+            </span>
+            <span class="nimbus-label">Console</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Redesigned Single Liquid Glass Profile Tab Button -->
+      <div class="header-right">
+        <button id="profileTabBtn" class="profile-liquid-pill" type="button" data-view="profile" aria-label="Open user profile">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <span id="userInitial" class="avatar avatar-student">A</span>
+          <div class="profile-pill-info">
+            <span id="userName" class="profile-pill-name">Alex Chen</span>
+            <span id="roleChip" class="profile-role-chip">Student</span>
+          </div>
+          <span class="profile-pill-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Hidden elements maintained for app.js status compatibility -->
+    <div class="sr-only" aria-hidden="true">
+      <h1 id="welcomeTitle">LostLink</h1>
+      <p id="welcomeSubtitle">Campus lost and found</p>
+      <span id="dropdownAvatar"></span>
+      <span id="dropdownUserName"></span>
+      <span id="dropdownUserEmail"></span>
+      <span id="switchViewLabel"></span>
+    </div>
+
+    <section id="notice" class="notice hidden" role="status"></section>
+    <div id="appModeNote" class="app-mode-note hidden" role="status">Interactive offline preview: changes stay in this browser session.</div>
+
+    <!-- ==================== 1. STARTING VIEW (CLEAN, FOCUSED: LOST VS FOUND ONLY) ==================== -->
+    <section id="startView" class="content-view start-view">
+      <div class="start-hero">
+        <div class="start-badge">
+          <span class="sparkle-icon">✦</span>
+          <span>CAMPUS WORKFLOW</span>
+        </div>
+        <h1 class="start-title">What would you like to do?</h1>
+        <p class="start-subtitle">Report missing property or hand in an item you discovered on campus.</p>
+      </div>
+
+      <div class="start-options-grid">
+        <!-- Option 1: Submit a Lost Report -->
+        <div class="start-glass-card start-card-lost" data-report-kind="lost">
+          <div class="card-specular-sheen" aria-hidden="true"></div>
+          <div class="start-card-icon-wrap icon-lost">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <path d="M11 8v6M8 11h6"></path>
+            </svg>
+          </div>
+          <div class="start-card-content">
+            <span class="card-kicker">LOST PROPERTY</span>
+            <h2>Submit a Lost Report</h2>
+            <p>Tell us what went missing, when you last saw it, and where to look. We will match it against items catalogued by the campus office and notify you instantly.</p>
+          </div>
+          <div class="start-card-action">
+            <button class="button button-liquid button-full" type="button" data-report-kind="lost">
+              <span>Start lost report</span>
+              <span class="btn-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Option 2: Submit a Found Report -->
+        <div class="start-glass-card start-card-found" data-report-kind="found">
+          <div class="card-specular-sheen" aria-hidden="true"></div>
+          <div class="start-card-icon-wrap icon-found">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
+            </svg>
+          </div>
+          <div class="start-card-content">
+            <span class="card-kicker">DISCOVERED AN ITEM</span>
+            <h2>Submit a Found Report</h2>
+            <p>Found something belonging to someone else? Log what you found and where. Hand it to the campus office to be tagged and returned safely.</p>
+          </div>
+          <div class="start-card-action">
+            <button class="button button-liquid button-full button-found-action" type="button" data-report-kind="found">
+              <span>Start found report</span>
+              <span class="btn-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiet, non-cluttering secondary discovery link -->
+      <div class="start-browse-prompt">
+        <span>Looking for items currently held in office custody?</span>
+        <button class="link-btn" type="button" data-go="browse">Browse office inventory ↗</button>
+      </div>
+    </section>
+
+    <!-- ==================== 2. BROWSE ITEMS VIEW ==================== -->
+    <section id="browseView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">OFFICE INVENTORY</p>
+          <h2>Items held by the office</h2>
+          <p class="muted">Only items physically received, verified, and tagged by campus staff appear here.</p>
+        </div>
+        <span id="browseCount" class="count-pill">0 items</span>
+      </div>
+
+      <form id="searchForm" class="filter-panel glass-card">
+        <div class="search-main-row">
+          <label class="search-field">
+            <span class="search-icon">⌕</span>
+            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. “backpack”)...">
+          </label>
+          <button class="button button-liquid" type="submit">Search</button>
+          <button id="clearFilters" class="button button-quiet" type="button">Reset</button>
+        </div>
+
+        <div class="search-secondary-row">
+          <label class="select-label">
+            <span>Category</span>
+            <select id="filterCategory"><option value="">All categories</option></select>
+          </label>
+          <label class="select-label">
+            <span>Block / Building</span>
+            <select id="filterBlock"><option value="">All locations</option></select>
+          </label>
+          <label class="input-label">
+            <span>Room</span>
+            <input id="filterRoom" maxlength="80" placeholder="e.g. A-102">
+          </label>
+          <div class="date-filter">
+            <label><span>From</span><input id="filterDateFrom" type="date"></label>
+            <label><span>To</span><input id="filterDateTo" type="date"></label>
+          </div>
+        </div>
+      </form>
+
+      <div id="browseResults" class="item-grid"></div>
+      <div class="pagination-controls"><button id="browseLoadMore" class="button button-quiet button-small hidden" type="button">Load more items</button></div>
+      <div id="browseEmpty" class="empty-state hidden">
+        <span class="empty-icon">⌕</span>
+        <h3>No items found</h3>
+        <p>Try a broader keyword or reset filters. Sensitive items have restricted public details.</p>
+      </div>
+    </section>
+
+    <!-- ==================== 3. REPORT SUBMISSION VIEW ==================== -->
+    <section id="reportView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CREATE A RECORD</p>
+          <h2 id="reportModeTitle">Choose your report type</h2>
+          <p id="reportModeDescription" class="muted">Lost and Found have separate guided paths so each report starts with the right context.</p>
+        </div>
+        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">← Back to options</button>
+      </div>
+
+      <div id="reportTypeChooser" class="report-type-chooser">
+        <button class="report-type-card glass-card" type="button" data-report-kind="lost">
+          <span class="report-type-icon">⌕</span>
+          <strong>I lost something</strong>
+          <small>Tell us what went missing, when you last saw it and where to search.</small>
+          <span class="report-type-action">Start lost report ↗</span>
+        </button>
+        <button class="report-type-card glass-card" type="button" data-report-kind="found">
+          <span class="report-type-icon">✦</span>
+          <strong>I found something</strong>
+          <small>Record the item and where it was found. Office staff must receive it before it is searchable.</small>
+          <span class="report-type-action">Start found report ↗</span>
+        </button>
+      </div>
+
+      <div class="form-layout">
+        <form id="reportForm" class="form-card form-stack liquid-glass-panel hidden">
+          <input id="reportType" name="report_type" type="hidden" value="">
+          
+          <div class="form-section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <strong id="reportFormStepTitle">Report details</strong>
+              <small id="reportFormStepHint">Add the item and context.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Item name <span class="field-required">Required</span></span>
+              <input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy backpack">
+            </label>
+            <div>
+              <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
+              <select id="reportCategory" name="category" required></select>
+              <div class="category-ai-control">
+                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button>
+                <small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small>
+              </div>
+            </div>
+          </div>
+
+          <label>
+            <span>Description <span class="field-required">Required</span></span>
+            <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
+            <small class="field-hint">Describe visible details only. Keep private proof of ownership, serial numbers, and passwords out of this description.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">02</span>
+            <div>
+              <strong>Additional item details</strong>
+              <small>Optional details improve search and candidate matching.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Brand / make <span class="field-optional">Optional</span></span>
+              <input id="reportBrand" name="brand" maxlength="80" placeholder="e.g. Wildcraft, Apple">
+            </label>
+            <label>
+              <span>Main colour <span class="field-optional">Optional</span></span>
+              <input id="reportColor" name="primary_color" maxlength="60" placeholder="e.g. Navy blue">
+            </label>
+          </div>
+
+          <label>
+            <span>Visible characteristics <span class="field-optional">Optional</span></span>
+            <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two front pockets, black zip, small scratch on the outer flap"></textarea>
+            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
+          </label>
+
+          <label>
+            <span id="reportDateLabel">Approximate date and time</span> <span class="field-optional">Optional</span>
+            <input id="reportDate" name="occurred_at" type="datetime-local">
+            <small id="reportDateHelp" class="field-hint">Use your best estimate; leave blank if you are unsure.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">03</span>
+            <div>
+              <strong id="reportLocationHeading">Where did you last see it?</strong>
+              <small id="reportLocationHelp">Choose the closest known place.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Block / building or area <span class="field-required">Required</span></span>
+              <select id="reportBlock" name="location_block"><option value="">Choose a block or area</option></select>
+            </label>
+            <label>
+              <span>Floor <span class="field-optional">Optional</span></span>
+              <select id="reportFloor" name="location_floor"><option value="">Not sure</option></select>
+            </label>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Room <span class="field-optional">Optional</span></span>
+              <input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. A-102">
+            </label>
+            <label>
+              <span>Nearby area / landmark <span class="field-optional">Optional</span></span>
+              <input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Library entrance, cafeteria">
+            </label>
+          </div>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">04</span>
+            <div>
+              <strong>Photograph (optional)</strong>
+              <small>A photo helps staff and students identify the item.</small>
+            </div>
+          </div>
+
+          <label class="upload-box glass-card" for="reportImage">
+            <span class="upload-symbol">↑</span>
+            <span>
+              <strong id="imageLabel">Choose a photo</strong>
+              <small>JPG, PNG or WebP · up to 5 MB</small>
+            </span>
+            <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+          </label>
+          <p id="reportImageWarning" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
+          <p id="reportError" class="form-error" role="alert"></p>
+
+          <div class="form-actions">
+            <button id="reportSubmitButton" class="button button-liquid" type="submit">
+              <span id="reportSubmitLabel">Submit lost report</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <button id="backToReportTypes" class="button button-quiet" type="button">Change type</button>
+            <button id="cancelReport" class="button button-quiet" type="button">Cancel</button>
+          </div>
+        </form>
+
+        <aside class="side-guidance glass-card">
+          <div class="guidance-icon">✳</div>
+          <h3>Helpful details make better matches.</h3>
+          <p class="muted">Describe what is visible, when and where it was last seen, and safe characteristics.</p>
+          <div class="guidance-rule"><span>✓</span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
+          <div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
+          <div class="guidance-rule"><span>✓</span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ==================== 4. MY REPORTS VIEW ==================== -->
+    <section id="myReportsView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">YOUR ACTIVITY</p>
+          <h2>My reports</h2>
+          <p class="muted">Check submitted reports and review AI candidate matches for your lost items.</p>
+        </div>
+        <button class="button button-liquid" type="button" data-go="report">＋ New report</button>
+      </div>
+      <div id="myReportsList" class="stack-list"></div>
+      <div class="pagination-controls"><button id="myReportsLoadMore" class="button button-quiet button-small hidden" type="button">Load more reports</button></div>
+      <div id="myReportsEmpty" class="empty-state hidden">
+        <span class="empty-icon">▤</span>
+        <h3>No reports yet</h3>
+        <p>Your lost and found reports will appear here.</p>
+      </div>
+      <div id="matchesPanel" class="matches-panel glass-card hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">AI-ASSISTED MATCHES</p>
+            <h2>Possible matches</h2>
+            <p class="muted">Suggestions are discovery aids only, never proof of ownership.</p>
+          </div>
+          <button id="closeMatches" class="button button-quiet button-small" type="button">Close</button>
+        </div>
+        <div id="matchResults" class="item-grid"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 5. MY CLAIMS VIEW ==================== -->
+    <section id="myClaimsView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CLAIM STATUS</p>
+          <h2>My claims</h2>
+          <p class="muted">Your private evidence is visible only to you and authorised office staff.</p>
+        </div>
+      </div>
+      <div id="myClaimsList" class="stack-list"></div>
+      <div class="pagination-controls"><button id="myClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
+      <div id="myClaimsEmpty" class="empty-state hidden">
+        <span class="empty-icon">◷</span>
+        <h3>No claims submitted</h3>
+        <p>When you submit a claim for an office-held item, its review status appears here.</p>
+      </div>
+    </section>
+
+    <!-- ==================== 6. NOTIFICATIONS VIEW ==================== -->
+    <section id="notificationsView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">UPDATES</p>
+          <h2>Notifications</h2>
+          <p class="muted">Match discoveries, claim decisions, and contribution milestones.</p>
+        </div>
+        <button id="readAllNotifications" class="button button-quiet button-small" type="button">Mark all read</button>
+      </div>
+      <div id="notificationsList" class="stack-list"></div>
+      <div id="notificationsEmpty" class="empty-state hidden">
+        <span class="empty-icon">♧</span>
+        <h3>All caught up</h3>
+        <p>New match suggestions and review updates will appear here.</p>
+      </div>
+    </section>
+
+    <!-- ==================== 7. ACTIVITY & CERTIFICATES VIEW ==================== -->
+    <section id="activityView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">VERIFIED RECOGNITION</p>
+          <h2>Activity &amp; certificates</h2>
+          <p class="muted">Earn recognition when items you found are physically received and verified by staff.</p>
+        </div>
+        <span class="count-pill">Verified activity only</span>
+      </div>
+      <div id="activityOverview" class="activity-overview"></div>
+      
+      <div class="office-section leaderboard-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">CAMPUS COMMUNITY</p>
+            <h3>Contribution leaderboard</h3>
+            <p class="muted">Recognises verified contributions only. Privacy is preserved.</p>
+          </div>
+          <span id="leaderboardParticipantCount" class="count-pill">0 contributors</span>
+        </div>
+        <div id="leaderboardSummary" class="leaderboard-summary"></div>
+        <div id="leaderboardList" class="leaderboard-list"></div>
+        <div id="leaderboardEmpty" class="inline-empty hidden">No verified contributions yet. Return accepted items to start the board.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">RECOGNITION</p>
+            <h3>Your certificates</h3>
+            <p class="muted">Download certificates issued for milestone achievements.</p>
+          </div>
+        </div>
+        <div id="certificateList" class="certificate-grid"></div>
+        <div id="certificateEmpty" class="inline-empty hidden">No certificates yet. Earned when reaching verified contribution milestones.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">POINTS HISTORY</p>
+            <h3>Activity ledger</h3>
+            <p class="muted">Points awarded once for verified office contribution events.</p>
+          </div>
+        </div>
+        <div id="activityLedger" class="stack-list"></div>
+        <div id="activityEmpty" class="inline-empty hidden">No verified activity points yet.</div>
+      </div>
+    </section>
+
+    <!-- ==================== 7.5 PROFILE VIEW ==================== -->
+    <section id="profileView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CAMPUS IDENTITY &amp; ACCOUNT</p>
+          <h2>User profile</h2>
+          <p class="muted">Manage your campus credentials, view your role permissions, track verified contributions, and switch demo roles.</p>
+        </div>
+        <span id="profileStatusBadge" class="count-pill">Active session</span>
+      </div>
+
+      <!-- Profile Hero Card -->
+      <div class="profile-hero-card">
+        <div class="profile-hero-main">
+          <div class="profile-avatar-wrapper">
+            <span id="profileHeroAvatar" class="profile-hero-avatar avatar-student">D</span>
+            <span class="profile-online-indicator" title="Active campus session"></span>
+          </div>
+          <div class="profile-hero-info">
+            <div class="profile-name-row">
+              <h3 id="profileHeroName">Demo Student</h3>
+              <span id="profileHeroRole" class="role-chip">Student</span>
+            </div>
+            <p id="profileHeroEmail" class="profile-email">student@lostlink.local</p>
+            <div class="profile-meta-chips">
+              <span class="profile-meta-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Verified Campus Member</span>
+              </span>
+              <span class="profile-meta-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Demo Session Active</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-hero-actions">
+          <button id="viewSwitchBtn" class="button button-liquid" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+            <span id="profileHeroSwitchText">Switch to office</span>
+          </button>
+          <button id="logoutButton" class="button button-quiet button-danger-quiet" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Sign out</span>
+          </button>
+          <button id="showLoginButton" class="button button-quiet hidden" type="button" aria-hidden="true">Login screen</button>
+        </div>
+      </div>
+
+      <!-- Profile Bento Summary Cards -->
+      <div class="profile-bento-grid">
+        <div class="profile-bento-card" data-go="activity">
+          <div class="bento-header">
+            <span class="eyebrow">RECOGNITION</span>
+            <div class="bento-icon">✦</div>
+          </div>
+          <div class="bento-metric">
+            <span id="profilePointsVal" class="bento-num">0</span>
+            <span class="bento-unit">verified points</span>
+          </div>
+          <p id="profileMilestoneTier" class="bento-label">Verified Finder tier</p>
+          <span class="bento-link">View activity &amp; certificates →</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="my-reports">
+          <div class="bento-header">
+            <span class="eyebrow">MY REPORTS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileReportsCount" class="bento-num">0</span>
+            <span class="bento-unit">reports filed</span>
+          </div>
+          <p class="bento-label">Lost &amp; found submissions</p>
+          <span class="bento-link">Manage my reports →</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="my-claims">
+          <div class="bento-header">
+            <span class="eyebrow">CLAIMS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileClaimsCount" class="bento-num">0</span>
+            <span class="bento-unit">claims recorded</span>
+          </div>
+          <p class="bento-label">Ownership verification status</p>
+          <span class="bento-link">Check claims →</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="notifications">
+          <div class="bento-header">
+            <span class="eyebrow">ALERTS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileAlertsCount" class="bento-num">0</span>
+            <span class="bento-unit">active alerts</span>
+          </div>
+          <p class="bento-label">Match notifications enabled</p>
+          <span class="bento-link">Configure alerts →</span>
+        </div>
+      </div>
+
+      <!-- Campus Role Privileges & Guidelines Card -->
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">ROLE &amp; CAPABILITIES</p>
+            <h3>Account privileges &amp; guidelines</h3>
+            <p class="muted">Summary of permissions granted to your current designation.</p>
+          </div>
+        </div>
+        <div id="profilePrivilegesCard" class="profile-privileges-card">
+          <div class="privilege-item">
+            <div class="privilege-icon">✓</div>
+            <div>
+              <strong>Campus Lost &amp; Found Submissions</strong>
+              <p class="muted">File reports for lost personal items or items found across university buildings, libraries, and common areas.</p>
+            </div>
+          </div>
+          <div class="privilege-item">
+            <div class="privilege-icon">✓</div>
+            <div>
+              <strong>Private Claim Verification</strong>
+              <p class="muted">Submit confidential ownership proof, serial numbers, and photos. Evidence is kept strictly private from other students.</p>
+            </div>
+          </div>
+          <div class="privilege-item">
+            <div class="privilege-icon">✓</div>
+            <div>
+              <strong>Recognition &amp; Certificates</strong>
+              <p class="muted">Earn verified activity points upon staff intake or handover. Download verifiable PDF certificates for campus community service.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Shortcuts -->
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">NAVIGATION SHORTCUTS</p>
+            <h3>Quick actions</h3>
+            <p class="muted">Jump directly to common campus lost and found workflows.</p>
+          </div>
+        </div>
+        <div class="profile-shortcuts-grid">
+          <button class="profile-shortcut-btn" type="button" data-go="report">
+            <span class="shortcut-icon">+</span>
+            <div class="shortcut-text">
+              <strong>File a New Report</strong>
+              <small>Report lost property or submit a found item</small>
+            </div>
+          </button>
+          <button class="profile-shortcut-btn" type="button" data-go="browse">
+            <span class="shortcut-icon">🔍</span>
+            <div class="shortcut-text">
+              <strong>Browse Found Property</strong>
+              <small>Search tagged items currently held at campus office</small>
+            </div>
+          </button>
+          <button class="profile-shortcut-btn" type="button" data-go="activity">
+            <span class="shortcut-icon">🏆</span>
+            <div class="shortcut-text">
+              <strong>View Recognition Ledger</strong>
+              <small>Inspect points history and community leaderboard</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 8. OFFICE CONSOLE VIEW ==================== -->
+    <section id="officeView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">AUTHORISED STAFF ONLY</p>
+          <h2>Campus office console</h2>
+          <p class="muted">Confirm physical intake, review ownership claims, and record verified handovers with tag checks.</p>
+        </div>
+        <span class="role-chip role-chip-office">Office staff</span>
+      </div>
+      <div id="officeStats" class="stats-grid"></div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">PHYSICAL CUSTODY</p>
+            <h3>Found items awaiting intake</h3>
+            <p class="muted">Assign a physical tag only after confirming the item is in physical custody.</p>
+          </div>
+        </div>
+        <div id="intakeQueue" class="stack-list"></div>
+        <div class="pagination-controls"><button id="intakeLoadMore" class="button button-quiet button-small hidden" type="button">Load more intake</button></div>
+        <div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">CAMPUS STORAGE REGISTER</p>
+            <h3>Items currently in custody</h3>
+            <p class="muted">Track storage and physical Tag IDs.</p>
+          </div>
+        </div>
+        <div id="officeInventory" class="stack-list"></div>
+        <div class="pagination-controls"><button id="inventoryLoadMore" class="button button-quiet button-small hidden" type="button">Load more inventory</button></div>
+        <div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items currently in campus custody.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">OWNERSHIP REVIEW</p>
+            <h3>Claims requiring attention</h3>
+            <p class="muted">Private evidence is visible only to staff reviewers.</p>
+          </div>
+        </div>
+        <div id="officeClaims" class="stack-list"></div>
+        <div class="pagination-controls"><button id="officeClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
+        <div id="officeClaimsEmpty" class="inline-empty hidden">No claims currently under review.</div>
+      </div>
+
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">APPROVED CLAIMS</p>
+            <h3>Ready for physical handover</h3>
+            <p class="muted">Verify claimant identity and match physical tag ID before release.</p>
+          </div>
+        </div>
+        <div id="handoverQueue" class="stack-list"></div>
+        <div class="pagination-controls"><button id="handoverLoadMore" class="button button-quiet button-small hidden" type="button">Load more handovers</button></div>
+        <div id="handoverEmpty" class="inline-empty hidden">No approved claims awaiting handover.</div>
+      </div>
+    </section>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <span>LostLink · Campus Property Assistance Protocol</span>
+      <span>AI suggestions are discovery aids, not proof of ownership. Handover requires office verification.</span>
+    </footer>
+  </main>
+
+  <!-- ==================== DIALOGS & MODALS ==================== -->
+  <dialog id="closeReportDialog" class="dialog-card liquid-glass-panel">
+    <form id="closeReportForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">REPORT LIFECYCLE</p><h2 id="closeReportDialogTitle">Close lost report</h2></div>
+        <button id="closeCloseReport" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <p id="closeReportDescription" class="muted small-copy">Close a lost report when recovered elsewhere or no longer searching.</p>
+      <label>
+        <span>Reason <span class="field-required">Required</span></span>
+        <select id="closeReportReason" required>
+          <option value="recovered_elsewhere">I recovered the item elsewhere</option>
+          <option value="no_longer_searching">I no longer need to search</option>
+          <option value="duplicate">This is a duplicate report</option>
+        </select>
+      </label>
+      <label>
+        <span>Additional note <span class="field-optional">Optional</span></span>
+        <textarea id="closeReportNote" rows="3" maxlength="400" placeholder="Optional context"></textarea>
+      </label>
+      <p id="closeReportError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="confirmCloseReportButton" class="button button-danger" type="submit">Close report</button>
+        <button id="cancelCloseReport" class="button button-quiet" type="button">Keep open</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="decisionConfirmDialog" class="dialog-card liquid-glass-panel">
+    <form id="decisionConfirmForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">CLAIM REVIEW</p><h2 id="decisionConfirmTitle">Confirm review decision</h2></div>
+        <button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <p id="decisionConfirmMessage" class="muted small-copy"></p>
+      <p class="field-hint">The decision will be logged to audit trail. Approval moves claim to ready for collection.</p>
+      <p id="decisionConfirmError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="confirmDecisionButton" class="button button-liquid" type="submit">Confirm decision</button>
+        <button id="cancelDecisionConfirm" class="button button-quiet" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="additionalEvidenceDialog" class="dialog-card liquid-glass-panel">
+    <form id="additionalEvidenceForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">CLAIM FOLLOW-UP</p><h2>Add ownership evidence</h2></div>
+        <button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <p id="additionalEvidenceSummary" class="muted small-copy">The office requested more evidence for this claim.</p>
+      <label>
+        <span>Additional evidence <span class="field-required">Required</span></span>
+        <textarea id="additionalEvidenceText" rows="5" required minlength="20" maxlength="1800" placeholder="Add verifiable details. Never share passwords or PINs."></textarea>
+      </label>
+      <p id="additionalEvidenceError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="saveAdditionalEvidenceButton" class="button button-liquid" type="submit">Submit evidence</button>
+        <button id="cancelAdditionalEvidence" class="button button-quiet" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="storageUpdateDialog" class="dialog-card liquid-glass-panel">
+    <form id="storageUpdateForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">CAMPUS INVENTORY</p><h2>Update storage location</h2></div>
+        <button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <p id="storageUpdateSummary" class="muted small-copy">Update only after the physical item has been moved.</p>
+      <label>
+        <span>New physical location <span class="field-required">Required</span></span>
+        <input id="storageUpdateLocation" required minlength="4" maxlength="160" placeholder="Lost & Found room · Cabinet A · Shelf 01">
+      </label>
+      <label>
+        <span>Move note <span class="field-optional">Optional</span></span>
+        <textarea id="storageUpdateNote" rows="3" maxlength="800" placeholder="Optional reason or custody note"></textarea>
+      </label>
+      <p id="storageUpdateError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="saveStorageUpdateButton" class="button button-liquid" type="submit">Save location</button>
+        <button id="cancelStorageUpdate" class="button button-quiet" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="handoverDialog" class="dialog-card liquid-glass-panel">
+    <form id="handoverForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">PHYSICAL RETURN</p><h2>Confirm item handover</h2></div>
+        <button id="closeHandover" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <p id="handoverSummary" class="muted small-copy">Read the physical label and verify claimant identity before release.</p>
+      <label>
+        <span>Physical Tag ID <span class="field-required">Required</span></span>
+        <input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read exact ID printed on item's physical label">
+      </label>
+      <label class="checkbox-line"><input id="handoverIdentityChecked" type="checkbox" required> I checked the claimant's identity under campus policy.</label>
+      <label class="checkbox-line"><input id="handoverPhysicalChecked" type="checkbox" required> I physically handed the item to the verified claimant.</label>
+      <label>
+        <span>Internal handover note <span class="field-optional">Optional</span></span>
+        <textarea id="handoverNote" rows="2" maxlength="800" placeholder="Do not include sensitive personal data"></textarea>
+      </label>
+      <p class="field-hint">If Tag ID does not match the record, stop release immediately.</p>
+      <p id="handoverError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="confirmHandoverButton" class="button button-liquid" type="submit">Record physical handover</button>
+        <button id="cancelHandover" class="button button-quiet" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="itemDetailsDialog" class="dialog-card liquid-glass-panel">
+    <div class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">PUBLIC ITEM RECORD</p><h2 id="itemDetailsTitle">Item details</h2></div>
+        <button id="closeItemDetails" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <div id="itemDetailsContent" class="item-details-content"></div>
+      <div class="form-actions">
+        <button id="itemDetailsClaimButton" class="button button-liquid" type="button">Submit claim</button>
+        <button id="cancelItemDetails" class="button button-quiet" type="button">Close details</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="claimDialog" class="dialog-card liquid-glass-panel">
+    <form id="claimForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Help verify this item</h2></div>
+        <button id="closeClaim" type="button" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <div id="claimItemSummary" class="claim-item-summary"></div>
+      <label>
+        <span>Link to your lost report <span class="field-optional">Optional</span></span>
+        <select id="claimLostReport"><option value="">No linked lost report</option></select>
+        <small class="field-hint">If approved and physically returned, the linked report closes automatically.</small>
+      </label>
+      <p class="muted small-copy">Explain details establishing ownership. Private to you and authorised office staff.</p>
+      <fieldset class="evidence-type-fieldset">
+        <legend>Which kinds of proof can support your claim? <span class="field-required">Choose at least one</span></legend>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="purchase_or_receipt"> Purchase / receipt proof available for staff to check</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="packaging_or_accessory"> Matching packaging, accessory or paired item</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="timeline_and_location"> Consistent date and place of loss</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="device_or_account_context"> Device/account context that staff can verify</label>
+        <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> Other verifiable evidence</label>
+      </fieldset>
+      <label class="upload-box glass-card" for="claimEvidenceImage">
+        <span class="upload-symbol">＋</span>
+        <span>
+          <strong id="claimEvidenceImageLabel">Attach one supporting photo (optional)</strong>
+          <small>JPG, PNG or WebP · up to 5 MB</small>
+        </span>
+        <input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp">
+      </label>
+      <label>
+        <span>Private explanation <span class="field-required">Required</span></span>
+        <textarea id="claimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Explain what proves this item is yours and how staff can check it."></textarea>
+      </label>
+      <p id="claimError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="claimSubmitButton" class="button button-liquid" type="submit">Submit private claim</button>
+        <button id="cancelClaim" class="button button-quiet" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
