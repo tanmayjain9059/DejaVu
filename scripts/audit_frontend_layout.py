@@ -35,7 +35,9 @@ AUDIT = r"""
         overlaps.push({
           first: a.el.id || a.el.getAttribute('aria-label') || a.el.textContent.trim().slice(0, 45) || a.el.tagName,
           second: b.el.id || b.el.getAttribute('aria-label') || b.el.textContent.trim().slice(0, 45) || b.el.tagName,
-          overlapRatio: Number((area / Math.max(1, minArea)).toFixed(2)),\n          firstRect: {x:a.rect.x,y:a.rect.y,width:a.rect.width,height:a.rect.height},\n          secondRect: {x:b.rect.x,y:b.rect.y,width:b.rect.width,height:b.rect.height}
+          overlapRatio: Number((area / Math.max(1, minArea)).toFixed(2)),
+          firstRect: {x:a.rect.x,y:a.rect.y,width:a.rect.width,height:a.rect.height},
+          secondRect: {x:b.rect.x,y:b.rect.y,width:b.rect.width,height:b.rect.height}
         });
       }
     }
