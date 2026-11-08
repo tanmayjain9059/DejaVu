@@ -90,7 +90,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
             payload = {"id": row["id"], "email": row["email"],
                        "display_name": row["display_name"], "role": row["role"]}
 
-            async def test_student_identity(request):
+            async def test_student_identity():
                 return payload
 
             self.client.app.dependency_overrides[authenticated_user] = test_student_identity
