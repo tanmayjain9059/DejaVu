@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.core.config import (
