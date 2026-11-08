@@ -192,6 +192,11 @@ class PublicEvidenceBody(BaseModel):
     evidence: str = Field(min_length=20, max_length=1800)
 
 
+class PublicCloseBody(BaseModel):
+    reason: Literal["recovered_elsewhere", "no_longer_searching", "found_report_withdrawn"]
+    note: str | None = Field(default=None, max_length=400)
+
+
 class StaffIntakeBody(BaseModel):
     confirmed_physical_receipt: bool
     storage_location: str = Field(min_length=3, max_length=160)
@@ -289,6 +294,60 @@ def track_one_case(reference: str, roll_number: str,
                               "evidence": claim["evidence"], "created_at": claim["created_at"]},
                     "item": _public_case(parent)}
     raise HTTPException(status_code=404, detail="Tracking access not found.")
+
+
+@router.post("/cases/{reference}/close")
+def close_public_case(reference: str, body: PublicCloseBody, roll_number: str,
+                      tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret")):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT * FROM public_cases WHERE public_ref=?", (reference,)).fetchone()
+        if not row or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404, detail="Tracking access not found.")
+        if row["report_type"] == "lost" and row["status"] == "open":
+            if body.reason == "found_report_withdrawn":
+                raise HTTPException(status_code=422, detail="Invalid closure reason for a lost report.")
+            status = "closed"
+        elif row["report_type"] == "found" and row["status"] == "awaiting_intake":
+            if body.reason != "found_report_withdrawn":
+                raise HTTPException(status_code=422, detail="A found report can only be withdrawn before office intake.")
+            status = "cancelled"
+        else:
+            raise HTTPException(status_code=409, detail="This case can no longer be closed by its reporter.")
+        timestamp = now_iso()
+        conn.execute("UPDATE public_cases SET status=?,closure_reason=?,updated_at=? WHERE id=?",
+                     (status, body.reason, timestamp, row["id"]))
+        conn.execute("INSERT INTO public_case_events(id,case_id,event_type,details_json,created_at) VALUES (?,?,?,?,?)",
+                     (uuid.uuid4().hex,row["id"],"report_"+status,'{"reason":"'+body.reason+'"}',timestamp))
+    return {"reference": reference, "status": status}
+
+
+@router.post("/claims/{reference}/evidence")
+def add_public_claim_evidence(reference: str, body: PublicEvidenceBody, roll_number: str,
+                              tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret")):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        claim = conn.execute("SELECT * FROM public_claims WHERE public_ref=?", (reference,)).fetchone()
+        if not claim or claim["roll_number"] != roll or not _verify_token(claim["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404, detail="Tracking access not found.")
+        if claim["status"] != "needs_more_evidence":
+            raise HTTPException(status_code=409, detail="The office has not requested additional evidence.")
+        competing = conn.execute(
+            "SELECT COUNT(*) AS n FROM public_claims WHERE case_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+            (claim["case_id"],claim["id"]),
+        ).fetchone()["n"]
+        status = "disputed" if competing else "pending"
+        timestamp = now_iso()
+        conn.execute("UPDATE public_claims SET evidence=?,status=?,updated_at=? WHERE id=?",
+                     (body.evidence.strip(),status,timestamp,claim["id"]))
+        if competing:
+            conn.execute("UPDATE public_claims SET status='disputed',updated_at=? WHERE case_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+                         (timestamp,claim["case_id"]))
+        conn.execute("INSERT INTO public_case_events(id,case_id,claim_id,event_type,created_at) VALUES (?,?,?,?,?)",
+                     (uuid.uuid4().hex,claim["case_id"],claim["id"],"claim_evidence_added",timestamp))
+    return {"reference": reference, "status": status}
 
 
 @router.post("/found/{case_id}/claims", status_code=201)
