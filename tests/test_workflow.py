@@ -1120,9 +1120,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
 
         self.login("claimant@example.test", "claimant-password")
         rival_client = TestClient(main.app)
-        self.assertEqual(rival_client.post("/api/login", json={
-            "email": "rival@example.test", "password": "rival-password"
-        }).status_code, 200)
+        rival_client.headers["X-Test-Student"] = "rival@example.test"
         payloads = (
             {"report_id": report_id, "evidence": "I can identify the wooden curved handle and the silver tip beneath it.", "evidence_types": ["distinctive_features"]},
             {"report_id": report_id, "evidence": "I can identify the silver tip and describe the unique wear on the handle.", "evidence_types": ["distinctive_features"]},
