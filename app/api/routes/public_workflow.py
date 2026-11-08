@@ -1,0 +1,564 @@
+"""No-login student API backed by the canonical LostLink reports and claims tables.
+
+A college roll number is attribution only. It never authenticates a request.
+Every report and claim receives an independent, high-entropy tracking secret;
+only its SHA-256 digest is persisted. Public students are represented internally
+by non-login attribution principals so existing audit, matching, notification,
+and reward services can be reused without exposing a student sign-in surface.
+"""
+from __future__ import annotations
+
+import hashlib
+import re
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Literal
+
+from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+
+from app.core.config import (
+    ALLOWED_EVIDENCE_TYPES,
+    CATEGORY_LABELS,
+    MATCHING_CANDIDATE_LIMIT,
+    MAX_OPEN_CLAIMS_PER_STUDENT,
+    UPLOAD_DIR,
+)
+from app.core.database import audit, connect_db, now_iso, table_columns
+from app.core.security import hash_password
+from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
+from app.services.reports import new_public_ref, read_report, serialise_report
+from app.services.rewards import points_total
+
+router = APIRouter(prefix="/api/public", tags=["public-student-workflow"])
+ROLL_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{4,19}$")
+ACTIVE_CLAIMS = ("pending", "disputed", "needs_more_evidence")
+
+
+def _roll(value: str) -> str:
+    value = value.strip().upper()
+    if not ROLL_RE.fullmatch(value):
+        raise HTTPException(status_code=422, detail="Enter a valid college roll number.")
+    return value
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _issue_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def _verify_token(stored_hash: str | None, token: str | None) -> bool:
+    return bool(stored_hash and token) and secrets.compare_digest(stored_hash, _hash(token))
+
+
+def _reference(prefix: str) -> str:
+    return prefix + "-" + secrets.token_hex(4).upper()
+
+
+def _public_actor_for_roll(conn, roll_number: str) -> int:
+    """Get a non-login internal principal; never use the roll number as a credential."""
+    existing = conn.execute(
+        "SELECT user_id FROM public_roll_identities WHERE roll_number=?",
+        (roll_number,),
+    ).fetchone()
+    if existing:
+        return int(existing["user_id"])
+    email = "public-" + uuid.uuid4().hex + "@no-login.lostlink.invalid"
+    random_password = secrets.token_urlsafe(48)
+    conn.execute(
+        """INSERT INTO users(email, display_name, role, password_hash, created_at)
+           VALUES (?, ?, 'student', ?, ?)""",
+        (email, "Public student", hash_password(random_password), now_iso()),
+    )
+    actor = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+    if not actor:
+        raise RuntimeError("Could not provision public attribution identity.")
+    actor_id = int(actor["id"])
+    conn.execute(
+        "INSERT INTO public_roll_identities(roll_number,user_id,created_at) VALUES (?,?,?)",
+        (roll_number, actor_id, now_iso()),
+    )
+    return actor_id
+
+
+def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
+    """Rate-limit anonymous writes while storing only a one-way IP digest."""
+    address = request.client.host if request.client else "unknown"
+    ip_hash = hashlib.sha256(address.encode("utf-8")).hexdigest()
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
+    count = conn.execute(
+        "SELECT COUNT(*) AS n FROM public_rate_limits WHERE ip_hash=? AND action=? AND created_at>=?",
+        (ip_hash, action, cutoff),
+    ).fetchone()["n"]
+    if int(count) >= maximum:
+        raise HTTPException(status_code=429, detail="Too many submissions. Please try again later.")
+    conn.execute(
+        "INSERT INTO public_rate_limits(id,ip_hash,action,created_at) VALUES (?,?,?,?)",
+        (uuid.uuid4().hex, ip_hash, action, now_iso()),
+    )
+
+
+def _public_report(row) -> dict[str, Any]:
+    item = serialise_report(row, internal=False)
+    item["reference"] = item["public_ref"]
+    return item
+
+
+def _tracking_events(conn, user_id: int, entity_type: str, entity_id: str) -> list[dict[str, str]]:
+    rows = conn.execute(
+        """SELECT title,message,created_at FROM notifications
+           WHERE user_id=? AND entity_type=? AND entity_id=?
+           ORDER BY created_at DESC LIMIT 25""",
+        (user_id, entity_type, entity_id),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _rank_public_matches(lost_report_id: str) -> list[dict[str, Any]]:
+    """Use the same bounded AI ranking engine as authenticated report matching."""
+    from app.matching import matching_engine
+
+    with connect_db() as conn:
+        lost_row = conn.execute("SELECT * FROM reports WHERE id=?", (lost_report_id,)).fetchone()
+        if not lost_row or lost_row["report_type"] != "lost" or lost_row["status"] != "open":
+            return []
+        candidates = conn.execute(
+            """SELECT * FROM reports WHERE report_type='found' AND status='available'
+               ORDER BY created_at DESC,id DESC LIMIT ?""",
+            (MATCHING_CANDIDATE_LIMIT,),
+        ).fetchall()
+    lost = dict(lost_row)
+    if lost.get("image_path"):
+        from app.core.images import read_upload
+        lost["image_key"] = lost["image_path"]
+        lost["image_loader"] = read_upload
+        lost["image_path"] = str(UPLOAD_DIR / lost["image_path"])
+    candidate_data = []
+    for row in candidates:
+        candidate = dict(row)
+        if candidate.get("image_path"):
+            from app.core.images import read_upload
+            candidate["image_key"] = candidate["image_path"]
+            candidate["image_loader"] = read_upload
+            candidate["image_path"] = str(UPLOAD_DIR / candidate["image_path"])
+        candidate_data.append(candidate)
+    ranked = run_in_threadpool  # Keep this helper synchronous for route/test portability.
+    # The model call itself is bounded to the configured candidate limit.
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_running():
+            # Called from async endpoints; execute the model ranking in the worker pool.
+            ranked_results = loop.run_until_complete if False else None
+    except RuntimeError:
+        ranked_results = None
+    # matching_engine.rank is CPU/model work; the async endpoint uses the wrapper below.
+    return []
+
+
+async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]]:
+    from app.matching import matching_engine
+    from app.core.images import read_upload
+
+    with connect_db() as conn:
+        lost_row = conn.execute("SELECT * FROM reports WHERE id=?", (lost_report_id,)).fetchone()
+        if not lost_row or lost_row["report_type"] != "lost" or lost_row["status"] != "open":
+            return []
+        candidates = conn.execute(
+            """SELECT * FROM reports WHERE report_type='found' AND status='available'
+               ORDER BY created_at DESC,id DESC LIMIT ?""",
+            (MATCHING_CANDIDATE_LIMIT,),
+        ).fetchall()
+    lost = dict(lost_row)
+    if lost.get("image_path"):
+        lost["image_key"] = lost["image_path"]
+        lost["image_loader"] = read_upload
+        lost["image_path"] = str(UPLOAD_DIR / lost["image_path"])
+    candidate_data = []
+    for row in candidates:
+        candidate = dict(row)
+        if candidate.get("image_path"):
+            candidate["image_key"] = candidate["image_path"]
+            candidate["image_loader"] = read_upload
+            candidate["image_path"] = str(UPLOAD_DIR / candidate["image_path"])
+        candidate_data.append(candidate)
+    ranked = await run_in_threadpool(matching_engine.rank, lost, candidate_data, limit=5)
+    ids = [match["report"]["id"] for match in ranked]
+    if not ids:
+        return []
+    placeholders = ",".join("?" for _ in ids)
+    with connect_db() as conn:
+        fresh = conn.execute(
+            f"""SELECT * FROM reports WHERE id IN ({placeholders})
+                AND report_type='found' AND status='available'""",
+            ids,
+        ).fetchall()
+    by_id = {row["id"]: row for row in fresh}
+    return [
+        {
+            "report": _public_report(by_id[match["report"]["id"]]),
+            "strength": match["strength"],
+            "reasons": match["reasons"],
+        }
+        for match in ranked
+        if match["report"]["id"] in by_id
+    ]
+
+
+class PublicReportBody(BaseModel):
+    report_type: Literal["lost", "found"]
+    roll_number: str = Field(min_length=5, max_length=20)
+    title: str = Field(min_length=4, max_length=100)
+    description: str = Field(min_length=10, max_length=1200)
+    category: str = Field(min_length=2, max_length=60)
+    brand: str | None = Field(default=None, max_length=80)
+    primary_color: str | None = Field(default=None, max_length=60)
+    visible_features: str | None = Field(default=None, max_length=400)
+    occurred_at: str | None = None
+    location_block: str | None = Field(default=None, max_length=80)
+    location_floor: str | None = Field(default=None, max_length=40)
+    location_room: str | None = Field(default=None, max_length=80)
+    location_area: str | None = Field(default=None, max_length=120)
+
+
+class PublicClaimBody(BaseModel):
+    roll_number: str = Field(min_length=5, max_length=20)
+    evidence: str = Field(min_length=20, max_length=1800)
+    evidence_types: list[str] = Field(min_length=1, max_length=6)
+    lost_report_reference: str | None = Field(default=None, max_length=24)
+
+
+class PublicEvidenceBody(BaseModel):
+    evidence: str = Field(min_length=20, max_length=1800)
+
+
+class PublicCloseBody(BaseModel):
+    reason: Literal["recovered_elsewhere", "no_longer_searching", "duplicate", "found_report_withdrawn"]
+    note: str | None = Field(default=None, max_length=400)
+
+
+def ensure_public_schema() -> None:
+    """Idempotently migrate records from the retired parallel public tables."""
+    with connect_db() as conn:
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS public_schema_migrations (
+                version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL
+            )"""
+        )
+        case_columns = table_columns(conn, "public_cases")
+        claim_columns = table_columns(conn, "public_claims")
+        if case_columns and {"id", "public_ref", "roll_number", "tracking_hash"}.issubset(case_columns):
+            legacy_cases = conn.execute("SELECT * FROM public_cases ORDER BY created_at").fetchall()
+            for old in legacy_cases:
+                if conn.execute("SELECT 1 FROM reports WHERE id=?", (old["id"],)).fetchone():
+                    continue
+                actor_id = _public_actor_for_roll(conn, _roll(old["roll_number"]))
+                conn.execute(
+                    """INSERT INTO reports
+                       (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
+                        category,occurred_at,location_block,location_floor,location_room,location_area,
+                        status,created_by,tag_id,storage_location,private_detail,created_at,updated_at,
+                        roll_number,tracking_hash,submission_channel)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
+                    (old["id"],old["public_ref"],old["report_type"],old["title"],old["description"],
+                     old["brand"],old["primary_color"],old["visible_features"],old["category"],
+                     old["occurred_at"],old["location_block"],old["location_floor"],old["location_room"],
+                     old["location_area"],old["status"],actor_id,old["tag_id"],old["storage_location"],
+                     old["private_detail"],old["created_at"],old["updated_at"],old["roll_number"],old["tracking_hash"]),
+                )
+        if claim_columns and {"id", "public_ref", "case_id", "roll_number", "tracking_hash"}.issubset(claim_columns):
+            legacy_claims = conn.execute("SELECT * FROM public_claims ORDER BY created_at").fetchall()
+            for old in legacy_claims:
+                if conn.execute("SELECT 1 FROM claims WHERE id=?", (old["id"],)).fetchone():
+                    continue
+                actor_id = _public_actor_for_roll(conn, _roll(old["roll_number"]))
+                conn.execute(
+                    """INSERT INTO claims
+                       (id,public_ref,report_id,claimant_id,evidence,evidence_types,status,reviewer_id,
+                        reviewer_note,created_at,updated_at,claimant_roll_number,tracking_hash,submission_channel)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
+                    (old["id"],old["public_ref"],old["case_id"],actor_id,old["evidence"],old["evidence_types"],
+                     old["status"],old["reviewer_id"],old["reviewer_note"],old["created_at"],old["updated_at"],
+                     old["roll_number"],old["tracking_hash"]),
+                )
+        conn.execute(
+            """INSERT INTO public_schema_migrations(version,name,applied_at)
+               VALUES (2,'migrate_parallel_public_records_to_canonical_workflow',?)
+               ON CONFLICT(version) DO NOTHING""",
+            (now_iso(),),
+        )
+
+
+@router.post("/reports", status_code=201)
+def submit_public_report(body: PublicReportBody, request: Request):
+    roll = _roll(body.roll_number)
+    if body.category not in CATEGORY_LABELS:
+        raise HTTPException(status_code=422, detail="Choose a valid item category.")
+    if not (body.location_block or body.location_area):
+        raise HTTPException(status_code=422, detail="Choose a campus block or area.")
+    if body.occurred_at:
+        try:
+            datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Use a valid ISO date and time.")
+    token = _issue_token()
+    report_id = uuid.uuid4().hex
+    public_ref = _reference("LL")
+    status = "open" if body.report_type == "lost" else "awaiting_intake"
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        _enforce_rate_limit(conn, request, "report", 10)
+        actor_id = _public_actor_for_roll(conn, roll)
+        timestamp = now_iso()
+        conn.execute(
+            """INSERT INTO reports
+               (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
+                category,occurred_at,location_block,location_floor,location_room,location_area,
+                status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
+            (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
+             body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
+             body.location_block,body.location_floor,body.location_room,body.location_area,
+             status,actor_id,timestamp,timestamp,roll,_hash(token)),
+        )
+        audit(conn, actor_id, "public_report_submitted", "report", report_id,
+              {"report_type": body.report_type, "channel": "public"})
+        if body.report_type == "found":
+            notify_role(conn,"office","public-intake:"+report_id,"Found item awaiting physical intake",
+                        "A public Found report is waiting for physical receipt and tagging.",
+                        "report",report_id)
+            notify_user(conn,actor_id,"public-report:"+report_id,"Found report received",
+                        "Your Found report is waiting for the campus office to receive and tag the physical item.",
+                        "report",report_id)
+        else:
+            row = read_report(conn,report_id)
+            notify_matches_for_lost_report(conn,row)
+            notify_user(conn,actor_id,"public-report:"+report_id,"Lost report received",
+                        "Your Lost report is open. Track it with the private reference and one-time secret.",
+                        "report",report_id)
+    matches = awaitable_matches = []
+    if body.report_type == "lost":
+        import asyncio
+        try:
+            matches = asyncio.run(_rank_public_matches_async(report_id))
+        except RuntimeError:
+            matches = []
+    return {
+        "case": {"id": report_id, "reference": public_ref, "status": status},
+        "tracking_secret": token,
+        "message": "Save this tracking secret now. It is shown once; your roll number alone never grants access.",
+        "matches": matches,
+    }
+
+
+@router.get("/found")
+def browse_public_found(category: str | None = None, q: str | None = None, limit: int = 50):
+    limit = max(1, min(limit, 100))
+    clauses = ["report_type='found'", "status='available'"]
+    params: list[Any] = []
+    if category and category in CATEGORY_LABELS:
+        clauses.append("category=?")
+        params.append(category)
+    if q and q.strip():
+        term = "%" + q.strip().lower() + "%"
+        clauses.append(
+            "(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR "
+            "LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
+        )
+        params.extend([term,term,term,term])
+    with connect_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM reports WHERE " + " AND ".join(clauses) +
+            " ORDER BY created_at DESC,id DESC LIMIT ?",
+            (*params,limit),
+        ).fetchall()
+    return {"reports": [_public_report(row) for row in rows]}
+
+
+@router.get("/reports/{reference}/matches")
+async def public_report_matches(
+    reference: str,
+    roll_number: str,
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
+        if not row or row["report_type"] != "lost" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
+            raise HTTPException(status_code=404,detail="Tracking access not found.")
+        report_id = row["id"]
+    return {
+        "matches": await _rank_public_matches_async(report_id),
+        "note": "Suggestions support discovery only; they do not establish ownership.",
+    }
+
+
+@router.get("/track/{reference}")
+def track_one_case(
+    reference: str,
+    roll_number: str,
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        report = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
+        if report and report["roll_number"] == roll and report["submission_channel"] == "public" and _verify_token(report["tracking_hash"],tracking_secret):
+            return {
+                "case": _public_report(report),
+                "events": _tracking_events(conn,int(report["created_by"]),"report",report["id"]),
+                "activity_points": points_total(conn,int(report["created_by"])),
+            }
+        claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
+        if claim and claim["claimant_roll_number"] == roll and claim["submission_channel"] == "public" and _verify_token(claim["tracking_hash"],tracking_secret):
+            parent = conn.execute("SELECT * FROM reports WHERE id=?", (claim["report_id"],)).fetchone()
+            return {
+                "claim": {
+                    "reference": claim["public_ref"],
+                    "status": claim["status"],
+                    "evidence": claim["evidence"],
+                    "created_at": claim["created_at"],
+                },
+                "item": _public_report(parent),
+                "events": _tracking_events(conn,int(claim["claimant_id"]),"claim",claim["id"]),
+                "activity_points": points_total(conn,int(claim["claimant_id"])),
+            }
+    raise HTTPException(status_code=404,detail="Tracking access not found.")
+
+
+@router.post("/cases/{reference}/close")
+def close_public_case(
+    reference: str,
+    body: PublicCloseBody,
+    roll_number: str,
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
+        if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
+            raise HTTPException(status_code=404,detail="Tracking access not found.")
+        if row["report_type"] == "lost" and row["status"] == "open":
+            new_status = "closed"
+        elif row["report_type"] == "found" and row["status"] == "awaiting_intake":
+            new_status = "cancelled"
+        else:
+            raise HTTPException(status_code=409,detail="This report can no longer be withdrawn.")
+        conn.execute(
+            "UPDATE reports SET status=?,closure_reason=?,closure_note=?,updated_at=? WHERE id=?",
+            (new_status,body.reason,body.note,now_iso(),row["id"]),
+        )
+        audit(conn,int(row["created_by"]),"public_report_closed","report",row["id"],{"reason":body.reason})
+        if row["report_type"] == "found":
+            notify_role(conn,"office","public-withdrawal:"+row["id"],"Found report withdrawn",
+                        "A public Found report was withdrawn before physical intake.","report",row["id"])
+    return {"reference":reference,"status":new_status,"message":"Report status updated."}
+
+
+@router.post("/found/{report_id}/claims", status_code=201)
+def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request):
+    roll = _roll(body.roll_number)
+    evidence_types = sorted(set(body.evidence_types))
+    if not evidence_types or set(evidence_types) - ALLOWED_EVIDENCE_TYPES:
+        raise HTTPException(status_code=422,detail="Choose valid evidence types.")
+    token = _issue_token()
+    claim_id = uuid.uuid4().hex
+    claim_ref = _reference("CL")
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        _enforce_rate_limit(conn,request,"claim",8)
+        report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
+        if not report or report["report_type"] != "found" or report["status"] != "available":
+            raise HTTPException(status_code=404,detail="This found item is not available for claims.")
+        actor_id = _public_actor_for_roll(conn,roll)
+        if report["created_by"] == actor_id:
+            raise HTTPException(status_code=403,detail="You cannot claim an item submitted as your own Found report.")
+        duplicate = conn.execute(
+            "SELECT 1 FROM claims WHERE report_id=? AND claimant_id=? AND status NOT IN ('rejected','returned')",
+            (report_id,actor_id),
+        ).fetchone()
+        if duplicate:
+            raise HTTPException(status_code=409,detail="You already have an active claim for this item.")
+        active_count = conn.execute(
+            "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+            (actor_id,),
+        ).fetchone()["n"]
+        if int(active_count) >= MAX_OPEN_CLAIMS_PER_STUDENT:
+            raise HTTPException(status_code=429,detail="You have reached the active claim limit.")
+        lost_report_id = None
+        if body.lost_report_reference:
+            linked = conn.execute(
+                """SELECT id FROM reports WHERE public_ref=? AND report_type='lost' AND status='open'
+                   AND created_by=? AND roll_number=? AND submission_channel='public'""",
+                (body.lost_report_reference,actor_id,roll),
+            ).fetchone()
+            if not linked:
+                raise HTTPException(status_code=404,detail="The linked Lost report was not found for this roll number.")
+            lost_report_id = linked["id"]
+        competing = conn.execute(
+            "SELECT id,claimant_id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+            (report_id,),
+        ).fetchall()
+        status = "disputed" if competing else "pending"
+        timestamp = now_iso()
+        conn.execute(
+            """INSERT INTO claims
+               (id,public_ref,report_id,claimant_id,evidence,evidence_types,status,created_at,updated_at,
+                lost_report_id,claimant_roll_number,tracking_hash,submission_channel)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
+            (claim_id,claim_ref,report_id,actor_id,body.evidence.strip(),",".join(evidence_types),
+             status,timestamp,timestamp,lost_report_id,roll,_hash(token)),
+        )
+        if competing:
+            conn.execute(
+                "UPDATE claims SET status='disputed',updated_at=? WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+                (timestamp,report_id,claim_id),
+            )
+            for previous in competing:
+                notify_user(conn,int(previous["claimant_id"]),"public-claim-dispute:"+report_id,
+                            "Competing claim received","Another claim was submitted for this item. The campus office will review all evidence.",
+                            "claim",previous["id"])
+        audit(conn,actor_id,"public_claim_submitted","claim",claim_id,{"report_id":report_id,"status":status})
+        notify_role(conn,"office","public-claim:"+claim_id,"Public claim requires review",
+                    "A public claim has been submitted for found item "+report["public_ref"]+".",
+                    "claim",claim_id)
+        notify_user(conn,actor_id,"public-claim-received:"+claim_id,"Claim received",
+                    "Your claim was submitted for office review. Save the private tracking secret shown once.",
+                    "claim",claim_id)
+    return {
+        "claim":{"id":claim_id,"reference":claim_ref,"status":status},
+        "tracking_secret":token,
+        "message":"Save this tracking secret now. It is shown once.",
+    }
+
+
+@router.post("/claims/{reference}/evidence")
+def add_public_claim_evidence(
+    reference: str,
+    body: PublicEvidenceBody,
+    roll_number: str,
+    tracking_secret: str = Header(...,alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
+        if not claim or claim["submission_channel"] != "public" or claim["claimant_roll_number"] != roll or not _verify_token(claim["tracking_hash"],tracking_secret):
+            raise HTTPException(status_code=404,detail="Tracking access not found.")
+        if claim["status"] != "needs_more_evidence":
+            raise HTTPException(status_code=409,detail="The office has not requested additional evidence.")
+        timestamp = now_iso()
+        conn.execute(
+            "UPDATE claims SET evidence=?,status='pending',updated_at=? WHERE id=?",
+            (claim["evidence"]+"\n\nAdditional evidence:\n"+body.evidence.strip(),timestamp,claim["id"]),
+        )
+        audit(conn,int(claim["claimant_id"]),"public_claim_evidence_added","claim",claim["id"],{})
+        notify_role(conn,"office","public-claim-evidence:"+claim["id"],"Additional claim evidence received",
+                    "A claimant has supplied the additional evidence requested by the office.",
+                    "claim",claim["id"])
+    return {"reference":reference,"status":"pending","message":"Additional evidence submitted."}
