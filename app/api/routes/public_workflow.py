@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import secrets
 import uuid
@@ -300,7 +301,12 @@ async def submit_public_report(body: PublicReportBody, request: Request):
             notify_user(conn,actor_id,"public-report:"+report_id,"Lost report received",
                         "Your Lost report is open. Track it with the private reference and one-time secret.",
                         "report",report_id)
-    matches = await _rank_public_matches_async(report_id) if body.report_type == "lost" else []
+    matches = []
+    if body.report_type == "lost":
+        try:
+            matches = await _rank_public_matches_async(report_id)
+        except Exception:
+            logging.exception("Public lost-report matching failed for %s", public_ref)
     return {
         "case": {"id": report_id, "reference": public_ref, "status": status},
         "tracking_secret": token,
@@ -397,8 +403,12 @@ def close_public_case(
         if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
         if row["report_type"] == "lost" and row["status"] == "open":
+            if body.reason == "found_report_withdrawn":
+                raise HTTPException(status_code=422,detail="Choose a Lost-report closure reason.")
             new_status = "closed"
         elif row["report_type"] == "found" and row["status"] == "awaiting_intake":
+            if body.reason != "found_report_withdrawn":
+                raise HTTPException(status_code=422,detail="Choose the Found-report withdrawal reason.")
             new_status = "cancelled"
         else:
             raise HTTPException(status_code=409,detail="This report can no longer be withdrawn.")
@@ -407,6 +417,8 @@ def close_public_case(
             (new_status,body.reason,body.note,now_iso(),row["id"]),
         )
         audit(conn,int(row["created_by"]),"public_report_closed","report",row["id"],{"reason":body.reason})
+        notify_user(conn,int(row["created_by"]),"public-report-closed:"+row["id"],"Report closed",
+                    "Your LostLink report status was updated to "+new_status+".","report",row["id"])
         if row["report_type"] == "found":
             notify_role(conn,"office","public-withdrawal:"+row["id"],"Found report withdrawn",
                         "A public Found report was withdrawn before physical intake.","report",row["id"])
