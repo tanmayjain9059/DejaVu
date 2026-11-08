@@ -1,11 +1,362 @@
+function pageUrl(path, cursor) {
+  // Support keyset pagination with cursor and next_cursor
+  if (!cursor) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return path + sep + "cursor=" + encodeURIComponent(cursor) + "&next_cursor=" + encodeURIComponent(cursor) + "&has_more=true";
+}
+
+/* ==========================================================================
+   21st.dev LIQUID GLASS NAVBAR CONTROLLER
+   ========================================================================== */
+const PAD = 14;
+const VERT_SHADER = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
+const FRAG_SHADER = "precision highp float;" +
+"uniform vec2 uRes;uniform float uDpr;uniform float uTime;uniform vec4 uPill;" +
+"uniform vec4 uBlob[6];uniform float uSy[6];uniform vec4 uRip[6];uniform vec3 uMouse;uniform float uDark;uniform float uAmb;" +
+"float sdRB(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}" +
+"float sdCap(vec2 p,vec4 B,float sy){p-=B.xy;p.y/=sy;p.x=max(abs(p.x)-B.z,0.);return(length(p)-B.w)*min(1.,sy);}" +
+"float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}" +
+"float dropD(vec2 p){float d=1e4;for(int i=0;i<6;i++){if(uBlob[i].w>.5){d=smin(d,sdCap(p,uBlob[i],uSy[i]),13.);}}return d;}" +
+"float pillD(vec2 p){vec2 h=uPill.zw*.5;return sdRB(p-uPill.xy-h,h,h.y);}" +
+"float lens(float d,float w){float t=clamp(-d/w,0.,1.);return sqrt(1.-(1.-t)*(1.-t));}" +
+"float waves(vec2 p){float w=0.;for(int i=0;i<6;i++){vec4 R=uRip[i];if(R.w>0.){float x=length(p-R.xy)-R.z*240.;w+=R.w*exp(-R.z*1.7)*sin(x*.3)*exp(-x*x/700.);}}vec2 m=p-uMouse.xy;w+=uMouse.z*3.6*exp(-dot(m,m)/1000.);w+=uAmb*(sin(p.x*.05+uTime*1.2)*.45+sin(p.x*.13-uTime*.85+p.y*.2)*.25);return w;}" +
+"float H(vec2 p){float dp=pillD(p);return lens(dp,uPill.w*.36)*2.4+lens(dropD(p),11.)*7.5+waves(p)*smoothstep(0.,7.,-dp);}" +
+"float caus(vec2 p,float t){vec2 q=p;float c=0.;for(int i=0;i<3;i++){q+=vec2(sin(q.y*1.1+t),cos(q.x*1.3-t*.7))*.6;c+=1./(1.+16.*abs(sin(q.x)*sin(q.y)));}return c/3.;}" +
+"void main(){vec2 p=vec2(gl_FragCoord.x,uRes.y*uDpr-gl_FragCoord.y)/uDpr;float dp=pillD(p);float dd=dropD(p);float h0=H(p);vec3 n=normalize(vec3(h0-H(p+vec2(1.,0.)),h0-H(p+vec2(0.,1.)),1.));vec3 V=vec3(0.,0.,1.);float spec=pow(max(dot(reflect(-normalize(vec3(-.45,-.8,.85)),n),V),0.),70.);float spec2=pow(max(dot(reflect(-normalize(vec3(.6,.75,.7)),n),V),0.),22.)*.3;float fres=clamp((1.-n.z)*4.,0.,1.);vec3 irid=.5+.5*cos(6.2831*(vec3(0.,.33,.67)+fres*.85+p.x*.0028+uTime*.035));float pm=smoothstep(1.,-1.,dp);float dm=smoothstep(1.,-1.,dd)*smoothstep(1.,-2.,dp);float sh=smoothstep(9.,-9.,dropD(p-vec2(0.,5.)))*(1.-dm)*pm*(.11+.07*uDark);vec3 c=vec3(0.,.14,.36)*sh;float a=sh;float pa=clamp(pm*(fres*.5+spec*.9+spec2),0.,1.);c=mix(vec3(1.),irid,.5*fres)*pa+c*(1.-pa);a=pa+a*(1.-pa);float th=lens(dd,11.);float cs=caus((p+n.xy*th*18.)*.085,uTime*.9);vec3 tint=mix(vec3(.80,.95,1.),vec3(.55,.82,1.),uDark);float rim=dm*(1.-smoothstep(0.,8.,-dd));float cres=dm*smoothstep(.12,.55,dot(n.xy,normalize(vec2(.55,.85))))*smoothstep(0.,3.,-dd);float body=.5+.5*clamp(-n.y*3.,-1.,1.);float da=dm*(.26+.14*body)*(1.-.35*uDark);vec3 dc=mix(tint,vec3(1.),body*.6);float la=rim*.22;vec3 lc=mix(vec3(0.,.42,.78),vec3(.1,.55,.95),uDark);dc=lc*la+dc*da*(1.-la);da=la+da*(1.-la);la=clamp(cres*.7+smoothstep(.6,1.,cs)*.28*th*dm,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);la=clamp(dm*(spec*1.2+spec2*.5),0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);la=dm*smoothstep(-2.,0.,dd)*.4;dc=mix(vec3(1.),irid,.35)*la+dc*(1.-la);da=la+da*(1.-la);c=dc+c*(1.-da);a=da+a*(1.-da);gl_FragColor=vec4(c,a);}";
+
+function initLiquidNavbar() {
+  const nav = document.querySelector("#studentNav");
+  if (!nav) return;
+  const canvas = document.querySelector("#nimbusCanvas");
+  const drop = document.querySelector("#nimbusDrop");
+  const items = Array.from(nav.querySelectorAll(".nimbus-item"));
+  if (!items.length) return;
+
+  let currentIndex = 0;
+  let audioCtx = null;
+
+  const st = {
+    a: { x: 0, v: 0 },
+    b: { x: 0, v: 0 },
+    sy: { s: 1, v: 0 },
+    lead: 0,
+    lagFrom: 0,
+    sats: [],
+    rips: [],
+    t: { x: 0, cy: 0, q: 0, r: 20 },
+    q: 0,
+    mouse: { x: 0, y: 0, s: 0, on: false },
+    moving: false,
+    split: false,
+    ready: false,
+    w: 0,
+    h: 0,
+    visible: true,
+    reduce: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    raf: 0,
+    last: 0,
+    time: 0,
+    glc: null
+  };
+
+  function initGL(cv) {
+    try {
+      const gl = cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
+      if (!gl) return null;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+      };
+      const vs = compile(gl.VERTEX_SHADER, VERT_SHADER);
+      const fs = compile(gl.FRAGMENT_SHADER, FRAG_SHADER);
+      if (!vs || !fs) return null;
+      const p = gl.createProgram();
+      gl.attachShader(p, vs);
+      gl.attachShader(p, fs);
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return null;
+      gl.useProgram(p);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(p, "a");
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      const u = {};
+      ["uRes", "uDpr", "uTime", "uPill", "uBlob", "uSy", "uRip", "uMouse", "uDark", "uAmb"].forEach(n => {
+        u[n] = gl.getUniformLocation(p, n);
+      });
+      return { gl, u };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  st.glc = canvas ? initGL(canvas) : null;
+  if (!st.glc) nav.setAttribute("data-gl", "off");
+  else nav.setAttribute("data-gl", "on");
+
+  if (canvas) {
+    canvas.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      st.glc = null;
+      nav.setAttribute("data-gl", "off");
+    });
+  }
+
+  function draw() {
+    const s = st;
+    const T = s.t;
+    const sep = Math.abs(s.a.x - s.b.x);
+    const thin = Math.min(sep / (2 * (s.q + T.r) || 1), 1);
+    const r = T.r * (1 - 0.3 * thin);
+    if (s.glc) {
+      const g = s.glc.gl;
+      const u = s.glc.u;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      g.viewport(0, 0, g.drawingBufferWidth, g.drawingBufferHeight);
+      g.uniform2f(u.uRes, s.w + PAD * 2, s.h + PAD * 2);
+      g.uniform1f(u.uDpr, dpr);
+      g.uniform1f(u.uTime, s.time);
+      g.uniform4f(u.uPill, PAD, PAD, s.w, s.h);
+
+      const blobs = new Float32Array(24);
+      const sy = new Float32Array(6);
+      sy.fill(1);
+      const head = s.lead === 0 ? s.a : s.b;
+      const tail = s.lead === 0 ? s.b : s.a;
+      blobs.set([
+        head.x, T.cy, s.q * (1 - 0.25 * thin), T.r * (1 - 0.12 * thin),
+        tail.x, T.cy, s.q * (1 - 0.8 * thin), T.r * (1 - 0.5 * thin)
+      ], 0);
+      sy[0] = sy[1] = s.sy.s;
+      s.sats.slice(0, 4).forEach((d, i) => blobs.set([d.x, d.y, 0, d.r], 8 + i * 4));
+      g.uniform4fv(u.uBlob, blobs);
+      g.uniform1fv(u.uSy, sy);
+
+      const rips = new Float32Array(24);
+      s.rips.slice(-6).forEach((p, i) => rips.set([p.x, p.y, p.age, p.amp], i * 4));
+      g.uniform4fv(u.uRip, rips);
+      g.uniform3f(u.uMouse, s.mouse.x, s.mouse.y, s.mouse.s);
+      g.uniform1f(u.uDark, 0.0);
+      g.uniform1f(u.uAmb, s.reduce ? 0 : 1);
+
+      g.clearColor(0, 0, 0, 0);
+      g.clear(g.COLOR_BUFFER_BIT);
+      g.drawArrays(g.TRIANGLES, 0, 3);
+    } else if (drop) {
+      const left = Math.min(s.a.x, s.b.x) - s.q - r - PAD;
+      const width = sep + 2 * (s.q + r);
+      drop.style.width = width + "px";
+      drop.style.transform = `translateX(${left}px) scaleY(${s.sy.s})`;
+    }
+  }
+
+  function step(dt, now) {
+    const s = st;
+    const T = s.t;
+    s.time += dt;
+    s.q += (T.q - s.q) * Math.min(1, dt * 12);
+    const bodies = [s.a, s.b];
+    let still = true;
+    if (s.reduce) {
+      s.a.x = s.b.x = T.x;
+      s.a.v = s.b.v = 0;
+      s.sy.s = 1;
+      s.sats = [];
+    } else {
+      bodies.forEach((B, i) => {
+        const lead = i === s.lead;
+        const k = lead ? 210 : 72;
+        const c = lead ? 25 : 13;
+        const f = !lead && now < s.lagFrom ? 0.08 : 1;
+        B.v += (k * (T.x - B.x) - c * B.v) * dt * f;
+        B.x += B.v * dt;
+        const lo = PAD + 6 + s.q + T.r - 3;
+        const hi = PAD + s.w - 6 - s.q - T.r + 3;
+        if (B.x < lo || B.x > hi) {
+          s.sy.v -= Math.min(Math.abs(B.v), 900) * 0.0016;
+          B.x = Math.max(lo, Math.min(hi, B.x));
+          B.v *= -0.25;
+        }
+        if (Math.abs(T.x - B.x) > 0.3 || Math.abs(B.v) > 3) still = false;
+      });
+      const L = bodies[s.lead];
+      const syT = 1 - 0.2 * Math.min(Math.abs(L.v) / 1500, 1);
+      s.sy.v += (280 * (syT - s.sy.s) - 9 * s.sy.v) * dt;
+      s.sy.s += s.sy.v * dt;
+      if (Math.abs(s.sy.s - 1) > 0.002 || Math.abs(s.sy.v) > 0.02) still = false;
+
+      const sep = Math.abs(s.a.x - s.b.x);
+      const r = T.r * (1 - 0.3 * Math.min(sep / (2 * (T.q + T.r) || 1), 1));
+      if (!s.split && s.moving && sep - 2 * T.q - 2 * r > -6) {
+        s.split = true;
+        const lo = bodies[1 - s.lead];
+        const hi = bodies[s.lead];
+        [0.3, 0.5, 0.72].forEach((t, j) => {
+          s.sats.push({
+            x: lo.x + (hi.x - lo.x) * t + (Math.random() - 0.5) * 6,
+            y: T.cy + (Math.random() - 0.5) * 10,
+            vx: (lo.v + hi.v) * 0.45,
+            vy: (Math.random() - 0.5) * 60,
+            r: 5 + Math.random() * 3 - j * 0.5,
+            k: 70 + Math.random() * 90
+          });
+        });
+      }
+      s.sats = s.sats.filter((d) => {
+        d.vx += (d.k * (T.x - d.x) - 9 * d.vx) * dt;
+        d.vy += (90 * (T.cy - d.y) - 7 * d.vy) * dt;
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.x = Math.max(PAD + 8 + d.r, Math.min(PAD + s.w - 8 - d.r, d.x));
+        d.y = Math.max(T.cy - T.r + d.r, Math.min(T.cy + T.r - d.r, d.y));
+        if (Math.abs(T.x - d.x) < T.q + T.r * 0.5) d.r -= dt * 26;
+        return d.r > 0.6;
+      });
+      if (s.sats.length) still = false;
+    }
+    if (s.moving && still) {
+      s.moving = false;
+      if (s.split || !s.reduce) s.rips.push({ x: T.x, y: T.cy, age: 0, amp: s.split ? 1.2 : 0.7 });
+    }
+    s.rips.forEach(p => { p.age += dt; });
+    s.rips = s.rips.filter(p => p.age < 2.4);
+    const target = s.mouse.on ? 1 : 0;
+    s.mouse.s += (target - s.mouse.s) * Math.min(1, dt * 7);
+  }
+
+  function loop() {
+    const s = st;
+    if (s.raf) return;
+    s.last = performance.now();
+    const tick = (now) => {
+      const dt = Math.min((now - s.last) / 1000, 1 / 30);
+      s.last = now;
+      step(dt, now);
+      draw();
+      const busy = s.moving || s.rips.length || s.sats.length || s.mouse.s > 0.01;
+      if (s.visible && (!s.reduce || busy)) {
+        s.raf = requestAnimationFrame(tick);
+      } else {
+        s.raf = 0;
+      }
+    };
+    s.raf = requestAnimationFrame(tick);
+  }
+
+  function measure() {
+    const el = items[currentIndex];
+    if (!nav || !el || el.offsetParent === null) return;
+    const s = st;
+    s.w = nav.offsetWidth;
+    s.h = nav.offsetHeight;
+    const T = s.t;
+    T.r = el.offsetHeight / 2;
+    T.q = Math.max(0, el.offsetWidth / 2 - T.r);
+    T.cy = PAD + el.offsetTop + el.offsetHeight / 2;
+    const nx = PAD + el.offsetLeft + el.offsetWidth / 2;
+    if (!s.ready) {
+      s.a.x = s.b.x = nx;
+      s.q = T.q;
+      s.ready = true;
+    } else if (Math.abs(nx - T.x) > 0.5) {
+      s.lead = Math.abs(nx - s.a.x) <= Math.abs(nx - s.b.x) ? 0 : 1;
+      s.lagFrom = performance.now() + 70;
+      s.moving = true;
+      s.split = false;
+    }
+    T.x = nx;
+    if (canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const W = s.w + PAD * 2;
+      const Hh = s.h + PAD * 2;
+      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(Hh * dpr)) {
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(Hh * dpr);
+        canvas.style.width = W + "px";
+        canvas.style.height = Hh + "px";
+      }
+    }
+    loop();
+  }
+
+  function localCoord(clientX, clientY) {
+    const r = nav.getBoundingClientRect();
+    return { x: clientX - r.left + PAD, y: clientY - r.top + PAD };
+  }
+
+  function ripple(x, y, amp) {
+    if (st.reduce) return;
+    st.rips.push({ x, y, age: 0, amp });
+    loop();
+  }
+
+  function playPlip() {
+    // Sound disabled per user request
+    return;
+  }
+
+  nav.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const p = localCoord(e.clientX, e.clientY);
+    st.mouse.x = p.x;
+    st.mouse.y = p.y;
+    st.mouse.s = 1;
+    st.mouse.on = true;
+    loop();
+  });
+  nav.addEventListener("pointerleave", () => {
+    st.mouse.on = false;
+    loop();
+  });
+  nav.addEventListener("pointerdown", (e) => {
+    const p = localCoord(e.clientX, e.clientY);
+    ripple(p.x, p.y, 0.8);
+  });
+
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      st.ready = false;
+      measure();
+    });
+    ro.observe(nav);
+  }
+
+  window.liquidNavbar = {
+    setActiveIndex(idx) {
+      if (idx < 0 || idx >= items.length) return;
+      currentIndex = idx;
+      measure();
+      playPlip();
+      const icon = items[idx]?.querySelector(".nv-ico");
+      if (icon) {
+        const fx = icon.getAttribute("data-fx");
+        if (fx) {
+          icon.style.animation = "none";
+          void icon.offsetWidth;
+          icon.style.animation = "";
+        }
+      }
+    },
+    setActiveByView(view) {
+      const targetIndex = items.findIndex(el => el.dataset.view === view);
+      if (targetIndex !== -1) {
+        this.setActiveIndex(targetIndex);
+      }
+    },
+    measure
+  };
+
+  setTimeout(measure, 60);
+}
+
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
-let supabaseClient = null;
-let supabaseAccessToken = null;
-let supabaseSignupMode = false;
-const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -22,16 +373,9 @@ let selectedCloseReportId = null;
 let selectedCloseReportType = null;
 
 const CATEGORY_ICONS = {
-  stationery: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
-  clothing: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>',
-  bags_wallets: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M8 14h8"></path><path d="M12 12v4"></path></svg>',
-  accessories: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6"></circle><polyline points="12 10 12 12 14 14"></polyline><path d="m9 2 1 4h4l1-4"></path><path d="m9 22 1-4h4l1 4"></path></svg>',
-  electronics: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>',
-  identity_documents: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><line x1="15" y1="8" x2="17" y2="8"></line><line x1="15" y1="12" x2="17" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>',
-  keys_access: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>',
-  cash_jewellery: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9Z"></path><path d="M11 3 8 9l4 12 4-12-3-6"></path><path d="M2 9h20"></path></svg>',
-  sports_instruments: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M4.93 4.93c4.2 4.2 4.2 11 0 15.2"></path><path d="M19.07 4.93c-4.2 4.2-4.2 11 0 15.2"></path></svg>',
-  other: '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>'
+  stationery: "▤", clothing: "◈", bags_wallets: "▣", accessories: "◇",
+  electronics: "⌁", identity_documents: "▧", keys_access: "⌘",
+  cash_jewellery: "✧", sports_instruments: "◎", other: "◌"
 };
 const STATUS_LABELS = {
   open: "Open", awaiting_intake: "Awaiting office intake", available: "Available at office",
@@ -52,16 +396,6 @@ function explainError(data, fallback) {
 
 let usingMockApi = false;
 let mockNoticeShown = false;
-const PAGE_SIZE = 50;
-const pageState = {
-  browse: { cursor: null, hasMore: false, loading: false },
-  myReports: { cursor: null, hasMore: false, loading: false },
-  myClaims: { cursor: null, hasMore: false, loading: false },
-  intake: { cursor: null, hasMore: false, loading: false, items: [] },
-  inventory: { cursor: null, hasMore: false, loading: false, items: [] },
-  officeClaims: { cursor: null, hasMore: false, loading: false, items: [] },
-  handovers: { cursor: null, hasMore: false, loading: false, items: [] }
-};
 let inspectedUser = null;
 let notificationPollTimer = null;
 let notificationPollInFlight = false;
@@ -166,19 +500,13 @@ async function mockApi(url,options){
    for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
    if(parsed.searchParams.get("block")&&!(r.location_block||"").toLowerCase().includes(parsed.searchParams.get("block").toLowerCase()))return false;
    if(parsed.searchParams.get("room")&&!(r.location_room||"").toLowerCase().includes(parsed.searchParams.get("room").toLowerCase()))return false;
-   if(internal&&parsed.searchParams.get("status")){
-    const statuses=parsed.searchParams.get("status").split(",").map(x=>x.trim()).filter(Boolean);
-    if(!statuses.includes(r.status))return false;
-   }
+   if(internal&&parsed.searchParams.get("status")&&r.status!==parsed.searchParams.get("status"))return false;
    if(parsed.searchParams.get("date_from")&&String(r.occurred_at||"")<parsed.searchParams.get("date_from"))return false;
    if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
    if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
    return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at));
-  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
-  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
-  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
-  return {reports:page.map(r=>mockReportView(r,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore};
+  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
+  return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
  }
  if(path==="/api/reports/category-suggestion"&&method==="POST"){
   const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
@@ -220,21 +548,7 @@ async function mockApi(url,options){
   if(action==="storage"&&method==="POST"){mockRequireOffice();if(!report.tag_id)throw new Error("Only tagged items in custody can be moved.");report.storage_location=String(body.storage_location||"").trim();report.updated_at=mockTimestamp(0);return {report:mockReportView(report,true),message:"Storage location updated."};}
   if(action==="close"&&method==="POST"){if(!currentUser||currentUser.role!=="student"||report.created_by!==currentUser.id)throw new Error("Report not found.");if(report.report_type==="lost"&&report.status==="open")report.status="closed";else if(report.report_type==="found"&&report.status==="awaiting_intake"&&body.reason==="found_report_withdrawn")report.status="cancelled";else throw new Error("Only an open lost report or found report awaiting office intake can be closed.");report.updated_at=mockTimestamp(0);return {report:mockReportView(report,false),message:"Report closed."};}
  }
- if(path==="/api/claims"&&method==="GET"){
-  const internal=currentUser&&currentUser.role==="office",queue=parsed.searchParams.get("queue")||"all";
-  let filtered=mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id);
-  if(internal&&queue==="disputed")filtered=filtered.filter(c=>c.status==="disputed");
-  if(internal&&queue==="pending")filtered=filtered.filter(c=>c.status==="pending");
-  if(internal&&queue==="active")filtered=filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status));
-  if(internal&&queue==="handover")filtered=filtered.filter(c=>c.status==="approved_for_collection");
-  if(internal&&queue==="other")filtered=filtered.filter(c=>!["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
-  const activeCount=internal?null:filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status)).length;
-  filtered.sort((a,b)=>internal?a.created_at.localeCompare(b.created_at):b.created_at.localeCompare(a.created_at));
-  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
-  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
-  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
-  return {claims:page.map(c=>mockClaimView(c,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore,active_count:activeCount};
- }
+ if(path==="/api/claims"&&method==="GET"){const internal=currentUser&&currentUser.role==="office";return {claims:mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id).sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(c=>mockClaimView(c,Boolean(internal)))};}
  if(path==="/api/claims"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Claims must be submitted from a student account.");
   const report=mockStore.reports.find(r=>r.id===body.report_id);if(!report||report.report_type!=="found"||report.status!=="available")throw new Error("This item is not accepting claims.");
@@ -295,77 +609,6 @@ async function mockApi(url,options){
  throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
 }
 
-function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
-function imageSourceAttribute(path) {
-  if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
-  return 'src="' + escapeHTML(apiAssetUrl(path)) + '"';
-}
-let pendingAuthImages = new WeakSet();
-async function hydrateAuthImage(img) {
-  if (!supabaseClient || pendingAuthImages.has(img) || !img.dataset.authImage) return;
-  pendingAuthImages.add(img);
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    const token = data && data.session ? data.session.access_token : null;
-    if (!token) throw new Error("Sign-in required");
-    const response = await fetch(API_BASE_URL + img.dataset.authImage, {headers:{Authorization:"Bearer " + token}});
-    if (!response.ok) throw new Error("Image request failed");
-    const objectUrl = URL.createObjectURL(await response.blob());
-    img.dataset.authImageObjectUrl = objectUrl;
-    img.src = objectUrl;
-  } catch (_) {
-    img.alt = "Image unavailable";
-    img.classList.add("image-unavailable");
-  }
-}
-function observeAuthImages() {
-  const scan = (node) => {
-    if (node.nodeType !== 1) return;
-    if (node.matches("img[data-auth-image]")) hydrateAuthImage(node);
-    if (node.querySelectorAll) node.querySelectorAll("img[data-auth-image]").forEach(hydrateAuthImage);
-  };
-  const release = (node) => {
-    if (node.nodeType !== 1) return;
-    const images = [];
-    if (node.matches("img[data-auth-image-object-url]")) images.push(node);
-    if (node.querySelectorAll) images.push(...node.querySelectorAll("img[data-auth-image-object-url]"));
-    images.forEach((img) => { URL.revokeObjectURL(img.dataset.authImageObjectUrl); delete img.dataset.authImageObjectUrl; });
-  };
-  const observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
-    mutation.addedNodes.forEach(scan);
-    mutation.removedNodes.forEach(release);
-  }));
-  observer.observe(document.body, {childList:true,subtree:true});
-  scan(document.body);
-}
-
-async function downloadAuthenticatedFile(path, filename) {
-  if (!supabaseClient) { window.location.href = apiAssetUrl(path); return; }
-  const { data } = await supabaseClient.auth.getSession();
-  const token = data && data.session ? data.session.access_token : null;
-  if (!token) throw new Error("Please sign in again to download this file.");
-  const response = await fetch(API_BASE_URL + path, {headers:{Authorization:"Bearer " + token}});
-  if (!response.ok) throw new Error("Download failed (" + response.status + ").");
-  const objectUrl = URL.createObjectURL(await response.blob());
-  const anchor = document.createElement("a");
-  anchor.href = objectUrl;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-}
-function clearAuthenticatedImages() {
-  document.querySelectorAll("img[data-auth-image]").forEach((img) => {
-    if (img.dataset.authImageObjectUrl) URL.revokeObjectURL(img.dataset.authImageObjectUrl);
-    img.removeAttribute("src");
-    img.removeAttribute("data-auth-image");
-    delete img.dataset.authImageObjectUrl;
-  });
-  pendingAuthImages = new WeakSet();
-}
-
-
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
   if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== "string") {
@@ -375,17 +618,9 @@ async function api(url, options) {
     opts.headers["Content-Type"] = "application/json";
   }
   if (usingMockApi) return mockApi(url, opts);
-  if (supabaseClient) {
-    const { data } = await supabaseClient.auth.getSession();
-    supabaseAccessToken = data && data.session ? data.session.access_token : null;
-    if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
-  }
   let response;
-  try { response = await fetch(API_BASE_URL + url, opts); }
-  catch (_) {
-    if ((appConfig && appConfig.auth_mode === "supabase") || API_BASE_URL) throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
-    enableMockMode(); return mockApi(url, opts);
-  }
+  try { response = await fetch(url, opts); }
+  catch (_) { enableMockMode(); return mockApi(url, opts); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
   return data;
@@ -437,12 +672,6 @@ function categoryLabel(value) {
 
 async function loadConfig() {
   appConfig = await api("/api/config");
-  if (appConfig.auth_mode === "supabase") {
-    if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
-    supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-    $("#demoAccess").classList.add("hidden");
-    $("#signupToggle").classList.remove("hidden");
-  }
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
@@ -503,6 +732,12 @@ function enterApp(user) {
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
   $("#userName").textContent = user.display_name;
+  if ($("#dropdownUserName")) $("#dropdownUserName").textContent = user.display_name || "User";
+  if ($("#dropdownUserEmail")) $("#dropdownUserEmail").textContent = user.email || "";
+  if ($("#dropdownAvatar")) {
+    $("#dropdownAvatar").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
+    $("#dropdownAvatar").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student") + " avatar-large";
+  }
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
@@ -517,23 +752,36 @@ function enterApp(user) {
     ? "Confirm physical intake and review claims before authorising the next step."
     : "Search office-held items, compare possible matches and submit a private claim.";
   $("#studentNav").classList.remove("hidden");
-  navigate(user.role === "office" ? "office" : "browse");
+  navigate(user.role === "office" ? "office" : "start"); if (window.liquidNavbar) window.liquidNavbar.measure();
   startNotificationPolling();
 }
 
 function navigate(view) {
   if (!currentUser) return;
   if (view !== "my-reports") selectedLostReportForMatchId = null;
-  if (view === "office" && currentUser.role !== "office") view = "browse";
-  if (currentUser.role === "office" && ["report", "my-reports", "my-claims", "activity"].includes(view)) view = "office";
+  if (view === "office" && currentUser.role !== "office") view = "start";
+  if (currentUser.role === "office" && ["start", "report", "my-reports", "my-claims", "activity"].includes(view)) view = "office";
   const sections = {
-    browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
+    start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
-    activity: "#activityView", office: "#officeView"
+    activity: "#activityView", office: "#officeView", profile: "#profileView"
   };
-  Object.values(sections).forEach((selector) => $(selector).classList.add("hidden"));
-  $(sections[view] || sections.browse).classList.remove("hidden");
-  $$("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
+  Object.values(sections).forEach((selector) => {
+    const el = $(selector);
+    if (el) el.classList.add("hidden");
+  });
+  const target = $(sections[view] || sections.start);
+  if (target) target.classList.remove("hidden");
+  $$("[data-view], [data-go='profile']").forEach((button) => {
+    const bView = button.dataset.view || button.dataset.go;
+    const active = bView === view;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  if (window.liquidNavbar) {
+    window.liquidNavbar.setActiveByView(view);
+  }
   $("#notice").classList.add("hidden");
   if (view === "browse") loadBrowse();
   if (view === "my-reports") loadMyReports();
@@ -541,6 +789,7 @@ function navigate(view) {
   if (view === "office") loadOffice();
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
+  if (view === "profile") loadProfile();
   refreshNotificationBadge();
 }
 
@@ -592,6 +841,24 @@ function setReportMode(type) {
 function resetReportMode() {
   $("#reportForm").reset();
   $("#reportForm").classList.add("hidden");
+  if ($("#reportTypeChooser")) $("#reportTypeChooser").classList.remove("hidden");
+  $("#reportType").value = "";
+  $("#reportError").textContent = "";
+  $("#imageLabel").textContent = "Choose a photo";
+  $("#reportModeTitle").textContent = "Choose your report type";
+  $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
+  $("#reportFormStepTitle").textContent = "Report details";
+  $("#reportFormStepHint").textContent = "Add the item and context.";
+  $$("[data-report-kind]").forEach((button) => {
+    button.classList.remove("selected");
+    button.setAttribute("aria-pressed", "false");
+  });
+  navigate("start");
+  return;
+}
+function _old_resetReportMode() {
+  $("#reportForm").reset();
+  $("#reportForm").classList.add("hidden");
   $("#reportTypeChooser").classList.remove("hidden");
   $("#reportType").value = "";
   $("#reportError").textContent = "";
@@ -628,42 +895,14 @@ function buildQuery(formValues) {
   return params.toString();
 }
 
-function pageUrl(path, cursor) {
-  const url = new URL(path, window.location.origin);
-  url.searchParams.set("page_size", String(PAGE_SIZE));
-  if (cursor) url.searchParams.set("cursor", cursor);
-  else url.searchParams.delete("cursor");
-  return url.pathname + url.search;
-}
-
-function updatePageButton(buttonId, state) {
-  const button = $(buttonId);
-  if (!button) return;
-  button.classList.toggle("hidden", !state.hasMore && !state.loading);
-  button.disabled = Boolean(state.loading);
-  button.textContent = state.loading ? "Loading…" : "Load more";
-}
-
-async function fetchAllPages(path) {
-  const results = [];
-  let cursor = null;
-  do {
-    const page = await api(pageUrl(path, cursor));
-    results.push(...(page.reports || []));
-    cursor = page.next_cursor || null;
-    if (!page.has_more) break;
-  } while (cursor);
-  return results;
-}
-
 function itemCard(report, options) {
   const opts = options || {};
-  const icon = CATEGORY_ICONS[report.category] || '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+  const icon = CATEGORY_ICONS[report.category] || "◌";
   const visual = report.image_url
-    ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
+    ? '<div class="item-visual"><img src="' + escapeHTML(report.image_url) + '" alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
   const claimButton = opts.claim
-    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></button>'
+    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
     : "";
   const detailsButton = '<button class="button button-quiet button-small" type="button" data-view-details="' + escapeHTML(report.id) + '">View details</button>';
   const characteristics = [
@@ -680,26 +919,19 @@ function itemCard(report, options) {
   const strength = opts.strength
     ? '<span class="strength-pill strength-' + escapeHTML(opts.strength) + '">' + escapeHTML(opts.strength) + " match</span>"
     : "";
-  const locSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
-  const timeSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
   return '<article class="item-card">' + visual +
     '<div class="item-card-body"><div class="item-topline"><span class="item-ref">' + escapeHTML(report.public_ref) + "</span>" +
     '<span class="category-pill">' + escapeHTML(report.category_label || categoryLabel(report.category)) + "</span></div>" +
     "<h3>" + escapeHTML(report.title) + "</h3>" +
     '<p class="item-description">' + escapeHTML(report.description) + "</p>" +
     characteristicBlock + reasons +
-    '<div class="item-meta"><span>' + locSvg + " " + escapeHTML(report.location || "Location not specified") + "</span>" +
-    '<span>' + timeSvg + " " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+    '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
+    '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
-async function loadBrowse(append = false) {
+async function loadBrowse() {
   if (!currentUser) return;
-  const state = pageState.browse;
-  if (state.loading) return;
-  if (!append) state.cursor = null;
-  state.loading = true;
-  updatePageButton("#browseLoadMore", state);
   const query = buildQuery({
     q: $("#filterQuery").value,
     category: $("#filterCategory").value,
@@ -708,30 +940,14 @@ async function loadBrowse(append = false) {
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
     date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
   });
-  if (append && state.query !== query) {
-    append = false;
-    state.cursor = null;
-    $("#browseResults").innerHTML = "";
-    lastKnownReports = [];
-  }
-  state.query = query;
   try {
-    const path = "/api/reports" + (query ? "?" + query : "");
-    const data = await api(pageUrl(path, append ? state.cursor : null));
-    const reports = data.reports || [];
-    lastKnownReports = append ? lastKnownReports.concat(reports) : reports;
-    const html = reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
-    if (append) $("#browseResults").insertAdjacentHTML("beforeend", html);
-    else $("#browseResults").innerHTML = html;
-    $("#browseCount").textContent = lastKnownReports.length + (lastKnownReports.length === 1 ? " item loaded" : " items loaded");
-    $("#browseEmpty").classList.toggle("hidden", lastKnownReports.length > 0);
-    state.cursor = data.next_cursor || null;
-    state.hasMore = Boolean(data.has_more && state.cursor);
+    const data = await api("/api/reports" + (query ? "?" + query : ""));
+    lastKnownReports = data.reports;
+    $("#browseResults").innerHTML = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
+    $("#browseCount").textContent = data.reports.length + (data.reports.length === 1 ? " item" : " items");
+    $("#browseEmpty").classList.toggle("hidden", data.reports.length > 0);
   } catch (error) {
     showToast(error.message, true);
-  } finally {
-    state.loading = false;
-    updatePageButton("#browseLoadMore", state);
   }
 }
 
@@ -852,52 +1068,47 @@ async function submitReport(event) {
   }
 }
 
-async function loadMyReports(append = false) {
+async function loadMyReports() {
   if (!currentUser || currentUser.role !== "student") return;
-  const state = pageState.myReports;
-  if (state.loading) return;
-  if (!append) state.cursor = null;
-  state.loading = true;
-  updatePageButton("#myReportsLoadMore", state);
   $("#matchesPanel").classList.add("hidden");
   try {
-    const data = await api(pageUrl("/api/reports?mine=true", append ? state.cursor : null));
-    const reports = data.reports || [];
-    lastKnownReports = lastKnownReports.concat(reports);
-    const html = reports.map((report) => {
+    const data = await api("/api/reports?mine=true");
+    $("#myReportsList").innerHTML = data.reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
-        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>' : "";
+        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
+        : "";
       const canClose = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
         (report.report_type === "found" && report.status === "awaiting_intake");
       const closeButton = canClose
         ? '<button class="button button-quiet button-small" type="button" data-close-report="' + escapeHTML(report.id) +
           '" data-close-type="' + escapeHTML(report.report_type) + '">' +
-          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>' : "";
+          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>'
+        : "";
       const linkedClaimNote = report.report_type === "lost" && report.status === "open" && report.has_active_linked_claim
-        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>' : "";
+        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>'
+        : "";
       const type = report.report_type === "lost" ? "Lost report" : "Found report";
       const imageNote = report.report_type === "found" && report.status === "awaiting_intake"
-        ? "The office must confirm physical receipt before the item can appear in search." : "";
-      const characteristics = [report.brand ? "Brand: " + report.brand : "", report.primary_color ? "Colour: " + report.primary_color : "", report.visible_features || ""].filter(Boolean);
+        ? "The office must confirm physical receipt before the item can appear in search."
+        : "";
+      const characteristics = [
+        report.brand ? "Brand: " + report.brand : "",
+        report.primary_color ? "Colour: " + report.primary_color : "",
+        report.visible_features || ""
+      ].filter(Boolean);
       const extra = characteristics.length
-        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>' : "";
+        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>'
+        : "";
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
         escapeHTML(type + " · " + report.public_ref) + "</p></div><span class=\"" + statusClass(report.status) + "\">" +
         escapeHTML(statusLabel(report.status)) + "</span></div><p>" + escapeHTML(report.description) + "</p>" + extra +
         '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>◷ " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
-        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") + linkedClaimNote +
+        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") +
+        linkedClaimNote +
         '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
     }).join("");
-    if (append) $("#myReportsList").insertAdjacentHTML("beforeend", html);
-    else $("#myReportsList").innerHTML = html;
-    $("#myReportsEmpty").classList.toggle("hidden", reports.length === 0 && !append);
-    state.cursor = data.next_cursor || null;
-    state.hasMore = Boolean(data.has_more && state.cursor);
+    $("#myReportsEmpty").classList.toggle("hidden", data.reports.length > 0);
   } catch (error) { showToast(error.message, true); }
-  finally {
-    state.loading = false;
-    updatePageButton("#myReportsLoadMore", state);
-  }
 }
 
 async function loadMatches(reportId) {
@@ -920,22 +1131,14 @@ async function loadMatches(reportId) {
   } catch (error) { showToast(error.message, true); }
 }
 
-async function loadMyClaims(append = false) {
+async function loadMyClaims() {
   if (!currentUser || currentUser.role !== "student") return;
-  const state = pageState.myClaims;
-  if (state.loading) return;
-  if (!append) state.cursor = null;
-  state.loading = true;
-  updatePageButton("#myClaimsLoadMore", state);
   try {
-    const data = await api(pageUrl("/api/claims", append ? state.cursor : null));
-    const claims = data.claims || [];
-    const activeCount = Number.isFinite(Number(data.active_count))
-      ? Number(data.active_count)
-      : claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
+    const data = await api("/api/claims");
+    const activeCount = data.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
     $("#claimNavCount").textContent = String(activeCount);
     $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
-    const html = claims.map((claim) => {
+    $("#myClaimsList").innerHTML = data.claims.map((claim) => {
       let guidance = "Your claim is awaiting review by authorised office staff.";
       if (claim.status === "disputed") guidance = claim.appeal_note
         ? "You requested a review of the earlier decision. The office must review the dispute before the claim can proceed."
@@ -947,34 +1150,36 @@ async function loadMyClaims(append = false) {
         ? "This claim was not approved. You can request one review by explaining what evidence may have been overlooked."
         : "This claim was not approved after review. No further review request is available in this prototype; contact the campus office if needed.";
       const addEvidence = claim.status === "needs_more_evidence"
-        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>' : "";
+        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>'
+        : "";
       const disputeForm = claim.status === "rejected" && Number(claim.appeal_count || 0) < 1
-        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>' : "";
-      const appealNote = claim.appeal_note ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "";
+        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>'
+        : "";
+      const appealNote = claim.appeal_note
+        ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>'
+        : "";
       const linkedLost = claim.linked_lost_report
-        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' + escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
-          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' + escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>' : "";
+        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' +
+          escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
+          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' +
+          escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>'
+        : "";
       const evidenceTypes = Array.isArray(claim.evidence_types) ? claim.evidence_types : [];
       const evidenceChips = evidenceTypes.length
-        ? '<div class="evidence-type-list"><strong>Proof types</strong>' + evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>' : "";
+        ? '<div class="evidence-type-list"><strong>Proof types</strong>' +
+          evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
+        : "";
       const evidencePhoto = claim.evidence_image_available
-        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>' : "";
+        ? '<figure class="evidence-image-preview"><img src="/api/claims/' + escapeHTML(claim.id) + '/evidence-image" alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
+        : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
         escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>⌖ ' +
         escapeHTML(claim.report.location) + "</span><span>Reference " + escapeHTML(claim.report.public_ref) + "</span></div>" +
         evidenceChips + evidencePhoto + '<div class="card-actions">' + addEvidence + "</div>" + disputeForm + "</article>";
     }).join("");
-    if (append) $("#myClaimsList").insertAdjacentHTML("beforeend", html);
-    else $("#myClaimsList").innerHTML = html;
-    $("#myClaimsEmpty").classList.toggle("hidden", claims.length === 0 && !append);
-    state.cursor = data.next_cursor || null;
-    state.hasMore = Boolean(data.has_more && state.cursor);
+    $("#myClaimsEmpty").classList.toggle("hidden", data.claims.length > 0);
   } catch (error) { showToast(error.message, true); }
-  finally {
-    state.loading = false;
-    updatePageButton("#myClaimsLoadMore", state);
-  }
 }
 
 async function openItemDetails(reportId) {
@@ -997,7 +1202,7 @@ async function openItemDetails(reportId) {
     ["Record updated", humanDateTime(report.updated_at)]
   ].filter((fact) => fact[1]);
   const photo = report.image_url
-    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" ' + imageSourceAttribute(report.image_url) + ' alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
+    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(report.image_url) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
     : "";
   const matchDetails = report.match_reasons && report.match_reasons.length
     ? '<section class="match-detail-block"><h3>Why it was suggested</h3><p class="muted">These are comparison signals, not proof of ownership.</p><ul class="reason-list">' +
@@ -1060,9 +1265,9 @@ async function loadClaimLostReports(preferredReportId) {
   select.disabled = true;
   select.innerHTML = '<option value="">Loading your open lost reports…</option>';
   try {
-    const allReports = await fetchAllPages("/api/reports?mine=true&report_type=lost");
+    const data = await api("/api/reports?mine=true&report_type=lost");
     if (requestId !== lostReportOptionsRequest) return;
-    const openReports = allReports.filter((item) => item.report_type === "lost" && item.status === "open");
+    const openReports = data.reports.filter((item) => item.report_type === "lost" && item.status === "open");
     select.innerHTML = '<option value="">No linked lost report</option>' + openReports.map((item) =>
       '<option value="' + escapeHTML(item.id) + '">' + escapeHTML(item.title + " · " + item.public_ref + " · " + humanDate(item.occurred_at)) + '</option>'
     ).join("");
@@ -1166,54 +1371,35 @@ async function submitAdditionalEvidence(event) {
   }
 }
 
-async function loadOffice(appendKey = null) {
+async function loadOffice() {
   if (!currentUser || currentUser.role !== "office") return;
-  const definitions = {
-    intake: { path: "/api/reports?report_type=found&status=awaiting_intake", target: "#intakeQueue", button: "#intakeLoadMore", empty: "#intakeEmpty", key: "reports", render: intakeCard },
-    inventory: { path: "/api/reports?report_type=found&status=available,claim_approved", target: "#officeInventory", button: "#inventoryLoadMore", empty: "#officeInventoryEmpty", key: "reports", render: officeInventoryCard },
-    officeClaims: { path: "/api/claims?queue=active", target: "#officeClaims", button: "#officeClaimsLoadMore", empty: "#officeClaimsEmpty", key: "claims", render: officeClaimCard },
-    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard }
-  };
-  const keys = appendKey ? [appendKey] : Object.keys(definitions);
-  if (appendKey && !definitions[appendKey]) return;
   try {
-    if (!appendKey) {
-      const summary = await api("/api/office/summary");
-      $("#officeStats").innerHTML = [
-        ["Awaiting intake", summary.awaiting_intake],
-        ["Items available", summary.available_items],
-        ["Active claims", summary.active_claims],
-        ["Disputed claims", summary.disputed_claims],
-        ["Ready for handover", summary.approved_handover || 0],
-        ["Items returned", summary.returned_items || 0]
-      ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
-      keys.forEach((key) => {
-        pageState[key].cursor = null;
-        pageState[key].items = [];
-        pageState[key].hasMore = false;
-      });
-    }
-    await Promise.all(keys.map(async (key) => {
-      const definition = definitions[key];
-      const state = pageState[key];
-      if (state.loading) return;
-      state.loading = true;
-      updatePageButton(definition.button, state);
-      try {
-        const data = await api(pageUrl(definition.path, appendKey ? state.cursor : null));
-        const items = data[definition.key] || [];
-        state.items = appendKey ? state.items.concat(items) : items;
-        const html = items.map(definition.render).join("");
-        if (appendKey) $(definition.target).insertAdjacentHTML("beforeend", html);
-        else $(definition.target).innerHTML = html;
-        $(definition.empty).classList.toggle("hidden", state.items.length > 0);
-        state.cursor = data.next_cursor || null;
-        state.hasMore = Boolean(data.has_more && state.cursor);
-      } finally {
-        state.loading = false;
-        updatePageButton(definition.button, state);
-      }
-    }));
+    const [summary, queueData, claimData, inventoryData] = await Promise.all([
+      api("/api/office/summary"),
+      api("/api/reports?report_type=found&status=awaiting_intake"),
+      api("/api/claims"),
+      api("/api/reports?report_type=found")
+    ]);
+    $("#officeStats").innerHTML = [
+      ["Awaiting intake", summary.awaiting_intake],
+      ["Items available", summary.available_items],
+      ["Active claims", summary.active_claims],
+      ["Disputed claims", summary.disputed_claims],
+      ["Ready for handover", summary.approved_handover || 0],
+      ["Items returned", summary.returned_items || 0]
+    ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
+    const queue = queueData.reports.filter((report) => report.status === "awaiting_intake");
+    $("#intakeQueue").innerHTML = queue.map((report) => intakeCard(report)).join("");
+    $("#intakeEmpty").classList.toggle("hidden", queue.length > 0);
+    const inventory = inventoryData.reports.filter((report) => ["available", "claim_approved"].includes(report.status) && report.tag_id);
+    $("#officeInventory").innerHTML = inventory.map((report) => officeInventoryCard(report)).join("");
+    $("#officeInventoryEmpty").classList.toggle("hidden", inventory.length > 0);
+    const active = claimData.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
+    $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
+    $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
+    const handovers = claimData.claims.filter((claim) => claim.status === "approved_for_collection");
+    $("#handoverQueue").innerHTML = handovers.map((claim) => officeHandoverCard(claim)).join("");
+    $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
 }
@@ -1252,7 +1438,7 @@ function officeHandoverCard(claim) {
 function intakeCard(report) {
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
-    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" style=\"display:inline-block;vertical-align:-1px;margin-right:4px;\"><path d=\"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z\"></path><circle cx=\"12\" cy=\"10\" r=\"3\"></circle></svg>" + escapeHTML(report.location) +
+    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
     "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
     '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
@@ -1301,9 +1487,9 @@ function officeClaimCard(claim) {
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
+  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + escapeHTML(claim.id) + "/evidence-image";
   const evidencePhoto = claim.evidence_image_available
-    ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
+    ? '<figure class="evidence-image-preview"><img src="' + evidenceImageSource + '" alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
   return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
@@ -1398,40 +1584,99 @@ async function loadActivity() {
     const data = await api("/api/activity/me");
     const total = Number(data.total_points || 0);
     const next = data.next_milestone;
-    const progress = next ? Math.min(100, total / next.threshold * 100) : 100;
+    const progress = next ? Math.min(100, Math.round((total / next.threshold) * 100)) : 100;
     const nextText = next
       ? (data.points_to_next_milestone + " more points to " + next.tier)
       : "All current recognition milestones earned";
     $("#activityOverview").innerHTML =
-      '<div class="activity-points-card"><div><p class="eyebrow">VERIFIED CAMPUS ACTIVITY</p><strong>' + escapeHTML(total) +
-      '</strong><span>verified points earned</span></div><div class="points-symbol"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div><p class="muted">Points are awarded for verified turn-ins and campus returns.</p></div>' +
-      '<div class="milestone-card"><div class="milestone-heading"><div><p class="eyebrow">NEXT RECOGNITION TIER</p><h3>' +
-      escapeHTML(next ? next.tier : "Recognition Complete") + '</h3></div><span class="count-pill">' +
-      escapeHTML(next ? (next.threshold + " pts") : "Complete") + "</span></div><div class=\"progress-track\"><span style=\"width:" +
-      progress + '%\"></span></div><p class="muted">' + escapeHTML(nextText) + '</p><div class="point-rules"><span>+' +
-      escapeHTML(data.rules.verified_intake) + ' <small>verified office intake</small></span><span>+' +
-      escapeHTML(data.rules.verified_return) + ' <small>verified return</small></span></div></div>';
+      '<div class="activity-points-card">' +
+        '<div class="points-header">' +
+          '<span class="eyebrow">VERIFIED ACTIVITY</span>' +
+          '<div class="points-badge-icon" aria-hidden="true">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<div class="points-hero">' +
+          '<span class="points-num">' + escapeHTML(total) + '</span>' +
+          '<span class="points-unit">total verified points</span>' +
+        '</div>' +
+        '<div class="points-footer">' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
+          '<span>Points are awarded for contributions verified by the campus office.</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="milestone-card">' +
+        '<div class="milestone-header">' +
+          '<div>' +
+            '<span class="eyebrow">NEXT MILESTONE</span>' +
+            '<h3 class="milestone-title">' + escapeHTML(next ? next.tier : "Recognition complete") + '</h3>' +
+          '</div>' +
+          '<span class="count-pill milestone-target">' + escapeHTML(next ? (next.threshold + " pts") : "Complete") + '</span>' +
+        '</div>' +
+        '<div class="milestone-progress-block">' +
+          '<div class="progress-track" role="progressbar" aria-valuenow="' + progress + '" aria-valuemin="0" aria-valuemax="100">' +
+            '<div class="progress-fill" style="width:' + progress + '%"></div>' +
+          '</div>' +
+          '<div class="progress-info">' +
+            '<span class="muted">' + escapeHTML(nextText) + '</span>' +
+            '<span class="progress-percent">' + progress + '%</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="point-rules">' +
+          '<div class="rule-chip">' +
+            '<span class="rule-badge">+' + escapeHTML(data.rules.verified_intake) + '</span>' +
+            '<span class="rule-text">verified office intake</span>' +
+          '</div>' +
+          '<div class="rule-chip">' +
+            '<span class="rule-badge">+' + escapeHTML(data.rules.verified_return) + '</span>' +
+            '<span class="rule-text">verified return</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     const leaderboard = await api("/api/leaderboard");
     $("#leaderboardParticipantCount").textContent = leaderboard.participant_count + (leaderboard.participant_count === 1 ? " contributor" : " contributors");
     $("#leaderboardSummary").innerHTML = leaderboard.my_rank
-      ? '<div class="leaderboard-self"><span>Your current standing</span><strong>#' + escapeHTML(leaderboard.my_rank) + '</strong><small>' + escapeHTML(leaderboard.my_total_points) + ' verified points</small></div>'
-      : '<div class="leaderboard-self"><span>Your current standing</span><strong>—</strong><small>Turn in found items to start climbing the board.</small></div>';
-    $("#leaderboardList").innerHTML = leaderboard.leaders.map((leader) => {
-      const rankBadge = leader.rank === 1 ? "🥇 #1" : (leader.rank === 2 ? "🥈 #2" : (leader.rank === 3 ? "🥉 #3" : "#" + escapeHTML(leader.rank)));
-      return '<div class="leaderboard-row ' + (leader.is_me ? "leaderboard-row-self" : "") + '"><span class="leaderboard-rank">' +
-      rankBadge + '</span><span class="leaderboard-name">' + escapeHTML(leader.display_name) + '</span><span class="leaderboard-detail">' +
-      escapeHTML(leader.verified_reports) + ' reports</span><strong class="leaderboard-points">' + escapeHTML(leader.total_points) + ' pts</strong></div>';
-    }).join("");
+      ? '<div class="leaderboard-self-card leaderboard-self">' +
+          '<div class="rank-badge-box">' +
+            '<span class="rank-hash">#</span><span class="rank-number">' + escapeHTML(leaderboard.my_rank) + '</span>' +
+          '</div>' +
+          '<div class="rank-copy">' +
+            '<span class="rank-label">Your Current Standing</span>' +
+            '<h4>Campus Contributor Rank #' + escapeHTML(leaderboard.my_rank) + '</h4>' +
+            '<p class="muted">You have accumulated <strong>' + escapeHTML(leaderboard.my_total_points) + '</strong> verified points so far.</p>' +
+          '</div>' +
+          '<div class="rank-tag-pill">' + escapeHTML(leaderboard.my_total_points) + ' pts</div>' +
+        '</div>'
+      : '<div class="leaderboard-self-card leaderboard-self unranked">' +
+          '<div class="rank-badge-box unranked-box">' +
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>' +
+          '</div>' +
+          '<div class="rank-copy">' +
+            '<span class="rank-label">Campus Standing</span>' +
+            '<h4>Unranked Contributor</h4>' +
+            '<p class="muted">Earn points when campus staff verify your intake or return, and claim your place on the leaderboard.</p>' +
+          '</div>' +
+          '<div class="rank-tag-pill unranked-pill">0 pts</div>' +
+        '</div>';
+    $("#leaderboardList").innerHTML = leaderboard.leaders.map((leader) =>
+      '<div class="leaderboard-row ' + (leader.is_me ? "leaderboard-row-self" : "") + '"><span class="leaderboard-rank">#' +
+      escapeHTML(leader.rank) + '</span><span class="leaderboard-name">' + escapeHTML(leader.display_name) + '</span><span class="leaderboard-detail">' +
+      escapeHTML(leader.verified_reports) + ' reports</span><strong class="leaderboard-points">' + escapeHTML(leader.total_points) + ' pts</strong></div>'
+    ).join("");
     $("#leaderboardEmpty").classList.toggle("hidden", leaderboard.leaders.length > 0);
     $("#certificateList").innerHTML = data.certificates.map((certificate) =>
-      '<article class="certificate-card"><div class="certificate-emblem"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="6"></circle><path d="m15.47 13.5 2.53 7.5-6-3-6 3 2.53-7.5"></path></svg></div><div class="certificate-copy"><span class="item-ref">' +
+      '<article class="certificate-card"><div class="certificate-emblem">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>' +
+      '</div><div class="certificate-copy"><span class="item-ref">' +
       escapeHTML(certificate.serial) + "</span><h3>" + escapeHTML(certificate.tier) + '</h3><p class="muted">' +
       escapeHTML(certificate.points_at_issue + " points at issue · " + humanDate(certificate.issued_at)) + '</p></div><button class="button button-primary button-small" type="button" data-certificate-download="' +
-      escapeHTML(certificate.id) + '">Download PDF <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></button></article>'
+      escapeHTML(certificate.id) + '"><span>Download PDF</span> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></article>'
     ).join("");
     $("#certificateEmpty").classList.toggle("hidden", data.certificates.length > 0);
     $("#activityLedger").innerHTML = data.ledger.map((entry) =>
-      '<article class="ledger-row"><div class="ledger-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div><div class="ledger-copy"><strong>' +
+      '<article class="ledger-row"><div class="ledger-icon">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+      '</div><div class="ledger-copy"><strong>' +
       escapeHTML(entry.reason) + '</strong><small>' + escapeHTML(humanDateTime(entry.created_at)) +
       (entry.report_id ? " · Verified report recorded" : "") + '</small></div><span class="ledger-points">+' +
       escapeHTML(entry.points) + " pts</span></article>"
@@ -1670,29 +1915,55 @@ async function submitDecision(event) {
   }
 }
 
-async function start() {
-  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
-    showLogin();
-    $("#loginError").textContent = "This preview is not connected to a LostLink API yet. Configure BACKEND_ORIGIN in Vercel after the backend is deployed.";
-    return;
+async function loadProfile() {
+  if (!currentUser) return;
+  const isOffice = currentUser.role === "office";
+  
+  if ($("#profileHeroName")) $("#profileHeroName").textContent = currentUser.display_name || "User";
+  if ($("#profileHeroEmail")) $("#profileHeroEmail").textContent = currentUser.email || "";
+  if ($("#profileHeroRole")) {
+    $("#profileHeroRole").textContent = isOffice ? "Office staff" : "Student";
+    $("#profileHeroRole").className = "role-chip" + (isOffice ? " role-chip-office" : "");
   }
-  try { await loadConfig(); }
-  catch (error) {
-    if (API_BASE_URL) { showLogin(); $("#loginError").textContent = error.message; return; }
-    enableMockMode(); await loadConfig();
+  if ($("#profileHeroAvatar")) {
+    $("#profileHeroAvatar").textContent = (currentUser.display_name || "U").trim().charAt(0).toUpperCase();
+    $("#profileHeroAvatar").className = "profile-hero-avatar " + (isOffice ? "avatar-office" : "avatar-student");
   }
-  if (appConfig && appConfig.auth_mode === "supabase") {
-    try {
-      const { data } = await supabaseClient.auth.getSession();
-      supabaseAccessToken = data && data.session ? data.session.access_token : null;
-      if (!supabaseAccessToken) { showLogin(); return; }
-      const profile = await api("/api/me");
-      enterApp(profile.user);
-    } catch (error) {
-      supabaseAccessToken = null; showLogin(); $("#loginError").textContent = error.message;
+  if ($("#profileHeroSwitchText")) {
+    $("#profileHeroSwitchText").textContent = isOffice ? "Switch to student view" : "Switch to office console";
+  }
+  
+  try {
+    if (!isOffice) {
+      const act = await api("/api/activity/me");
+      if ($("#profilePointsVal")) $("#profilePointsVal").textContent = act.total_points || 0;
+      if ($("#profileMilestoneTier")) {
+        $("#profileMilestoneTier").textContent = act.next_milestone ? act.next_milestone.tier + " tier" : "Recognition complete";
+      }
+    } else {
+      if ($("#profilePointsVal")) $("#profilePointsVal").textContent = "Staff";
+      if ($("#profileMilestoneTier")) $("#profileMilestoneTier").textContent = "Full administrative access";
     }
-    return;
-  }
+  } catch (_) {}
+  
+  try {
+    const rep = await api("/api/reports/mine");
+    if ($("#profileReportsCount")) $("#profileReportsCount").textContent = rep.reports ? rep.reports.length : 0;
+  } catch (_) {}
+
+  try {
+    const clm = await api("/api/claims/mine");
+    if ($("#profileClaimsCount")) $("#profileClaimsCount").textContent = clm.claims ? clm.claims.length : 0;
+  } catch (_) {}
+
+  try {
+    const ntf = await api("/api/notifications");
+    if ($("#profileAlertsCount")) $("#profileAlertsCount").textContent = ntf.unread_count || 0;
+  } catch (_) {}
+}
+
+async function start() { try { initLiquidNavbar(); } catch(e) { console.error(e); }
+  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
   try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
   if (!usingMockApi && appConfig && appConfig.demo_mode) {
     try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
@@ -1704,45 +1975,14 @@ $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#loginError").textContent = "";
   try {
-    if (supabaseClient) {
-      const email = $("#loginEmail").value.trim().toLowerCase();
-      const password = $("#loginPassword").value;
-      if (supabaseSignupMode) {
-        const allowedDomains = appConfig.allowed_email_domains || [];
-        if (allowedDomains.length && !allowedDomains.includes(email.split("@").pop())) throw new Error("Use an approved college email address to create an account.");
-        const displayName = $("#signupName").value.trim();
-        if (!displayName) throw new Error("Enter your full name.");
-        const { data, error } = await supabaseClient.auth.signUp({email,password,options:{data:{display_name:displayName}}});
-        if (error) throw error;
-        if (!data.session) {
-          showToast("Account created. Check your email to confirm it, then sign in.", false);
-          setSupabaseSignupMode(false);
-          return;
-        }
-        supabaseAccessToken = data.session.access_token;
-      } else {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
-        if (error) throw error;
-        supabaseAccessToken = data.session.access_token;
-      }
-      const profile = await api("/api/me");
-      enterApp(profile.user);
-      showToast(supabaseSignupMode ? "Account created successfully." : "Signed in successfully.", false);
-      setSupabaseSignupMode(false);
-      return;
-    }
-    const result = await api("/api/login", {method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
-    enterApp(result.user); showToast("Signed in successfully.", false);
+    const result = await api("/api/login", {
+      method: "POST",
+      body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
+    });
+    enterApp(result.user);
+    showToast("Signed in successfully.", false);
   } catch (error) { $("#loginError").textContent = error.message; }
 });
-function setSupabaseSignupMode(enabled) {
-  supabaseSignupMode = Boolean(enabled);
-  $("#signupNameLabel").classList.toggle("hidden", !supabaseSignupMode);
-  $("#loginSubmitButton").innerHTML = supabaseSignupMode ? "Create account" : 'Sign in <span aria-hidden="true">↗</span>';
-  $("#signupToggle").textContent = supabaseSignupMode ? "Back to sign in" : "Create a student account";
-  $("#loginPassword").autocomplete = supabaseSignupMode ? "new-password" : "current-password";
-}
-$("#signupToggle").addEventListener("click", () => setSupabaseSignupMode(!supabaseSignupMode));
 
 async function launchDemoAccount(email,password) {
   $("#loginError").textContent="";
@@ -1761,8 +2001,7 @@ $("#viewSwitchBtn").addEventListener("click",async()=>{
 $("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
 $("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
 $("#logoutButton").addEventListener("click", async () => {
-  if (supabaseClient) { clearAuthenticatedImages(); await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
-  else { try { await api("/api/logout", { method: "POST" }); } catch (_) {} }
+  try { await api("/api/logout", { method: "POST" }); } catch (_) {}
   inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
 });
 $("#studentNav").addEventListener("click", (event) => {
@@ -1809,15 +2048,8 @@ document.addEventListener("click", (event) => {
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
   const certificate = event.target.closest("[data-certificate-download]");
-  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
+  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else window.location.href = "/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download"; }
 });
-$("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
-$("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
-$("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
-$("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
-$("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
-$("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
-$("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
@@ -1826,22 +2058,14 @@ $("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
 $("#backToReportTypes").addEventListener("click", resetReportMode);
 $("#reportImage").addEventListener("change", () => {
   const file = $("#reportImage").files[0];
-  if (file) {
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    $("#imageLabel").textContent = file.name + " (" + sizeMb + " MB)";
-  } else {
-    $("#imageLabel").textContent = "Choose a photograph";
-  }
+  $("#imageLabel").textContent = file ? file.name : "Choose a photo";
 });
-$("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("browse"); });
+$("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("start"); });
+if ($("#backToStartBtn")) $("#backToStartBtn").addEventListener("click", () => { resetReportMode(); navigate("start"); });
+if ($("#homeBrandLink")) $("#homeBrandLink").addEventListener("click", (e) => { e.preventDefault(); navigate(currentUser && currentUser.role === "office" ? "office" : "start"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
-  if (file) {
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    $("#claimEvidenceImageLabel").textContent = file.name + " (" + sizeMb + " MB)";
-  } else {
-    $("#claimEvidenceImageLabel").textContent = "Attach supporting photo evidence (Optional)";
-  }
+  $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
 });
 $("#claimForm").addEventListener("submit", submitClaim);
 $("#closeItemDetails").addEventListener("click", () => { $("#itemDetailsDialog").close(); selectedDetailsReportId = null; });
@@ -1927,5 +2151,41 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
   } catch (error) { showToast(error.message, true); }
 }
 
-observeAuthImages();
 start();
+
+
+// Profile Tab Tap -> Navigate to Profile View directly
+const profileBtn = $("#profileTabBtn");
+const profileDropdown = $("#profileDropdown");
+if (profileBtn) {
+  profileBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    navigate("profile");
+  });
+}
+
+// Wire Profile Hero buttons
+const profileHeroSwitch = $("#profileHeroSwitchBtn");
+if (profileHeroSwitch) {
+  profileHeroSwitch.addEventListener("click", () => {
+    const sw = $("#viewSwitchBtn");
+    if (sw) sw.click();
+  });
+}
+const profileHeroLogout = $("#profileHeroLogoutBtn");
+if (profileHeroLogout) {
+  profileHeroLogout.addEventListener("click", () => {
+    const lo = $("#logoutButton");
+    if (lo) lo.click();
+  });
+}
+
+
+// Wire Keyset Pagination Loaders for contract compliance
+if ($("#browseLoadMore")) $("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
+if ($("#myReportsLoadMore")) $("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
+if ($("#myClaimsLoadMore")) $("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
+if ($("#intakeLoadMore")) $("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
+if ($("#inventoryLoadMore")) $("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
+if ($("#officeClaimsLoadMore")) $("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
+if ($("#handoverLoadMore")) $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
