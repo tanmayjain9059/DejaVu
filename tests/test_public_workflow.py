@@ -91,17 +91,18 @@ class PublicWorkflowTests(unittest.TestCase):
         login=self.client.post("/api/login",json={
             "email":"office@test.invalid","password":"office-password"})
         self.assertEqual(login.status_code,200,login.text)
-        intake=self.client.post("/api/public/office/"+report.json()["case"]["reference"]+"/intake",
-            json={"confirmed_physical_receipt":True,"storage_location":"Cabinet A / Shelf 2",
-                  "tag_id":"LL-CVR-2026-0001","private_detail":"Small dent underneath."})
-        # Intake endpoint currently uses the internal UUID, not the public reference.
-        if intake.status_code == 404:
-            with main.connect_db() as conn:
-                case_id=conn.execute("SELECT id FROM public_cases WHERE public_ref=?",
-                    (report.json()["case"]["reference"],)).fetchone()["id"]
-            intake=self.client.post("/api/public/office/"+case_id+"/intake",
-                json={"confirmed_physical_receipt":True,"storage_location":"Cabinet A / Shelf 2",
-                      "tag_id":"LL-CVR-2026-0001","private_detail":"Small dent underneath."})
+        intake_url="/api/public/office/"+report.json()["case"]["reference"]+"/intake"
+        mismatch=self.client.post(intake_url,json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J9","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0001","private_detail":"Small dent underneath.",
+        })
+        self.assertEqual(mismatch.status_code,422,mismatch.text)
+        intake=self.client.post(intake_url,json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0001","private_detail":"Small dent underneath.",
+        })
         self.assertEqual(intake.status_code,200,intake.text)
         public=self.client.get("/api/public/found")
         self.assertEqual(len(public.json()["reports"]),1)
