@@ -61,6 +61,7 @@ class FrontendContractTests(unittest.TestCase):
 
     def test_navigation_views_have_matching_sections(self):
         expected = {
+            "start": "startView",
             "browse": "browseView",
             "report": "reportView",
             "my-reports": "myReportsView",
