@@ -160,7 +160,7 @@ The database uses explicit report and claim status values to enforce these trans
 
 LostLink uses a single FastAPI application composed of route groups, shared infrastructure utilities and domain services.
 
-    Browser: student and office interface
+    Browser: public student experience and office console
         HTML + CSS + vanilla JavaScript
                          │ HTTP / JSON
                          ▼
@@ -599,7 +599,7 @@ Values are loaded from environment variables and the local <code>.env</code> fil
 
 | Variable | Purpose | Example/default behaviour |
 |---|---|---|
-| <code>DEMO_MODE</code> | Seed demo accounts and sample records. | Example file sets <code>true</code>; set <code>false</code> outside local demonstrations. |
+| <code>DEMO_MODE</code> | Seed sample records and an office-only demo account. | Student demo credentials are not created; set <code>false</code> outside local demonstrations. |
 | <code>SESSION_SECRET</code> | Secret used to sign session cookies. | Required; startup rejects an empty/placeholder secret and secrets shorter than 32 characters. Use a unique random secret. |
 | <code>SESSION_HTTPS_ONLY</code> | Restrict session cookies to HTTPS. | <code>false</code> for localhost; set <code>true</code> for HTTPS deployment. |
 | <code>DATABASE_PATH</code> | SQLite database file path. | Defaults to <code>data/lostlink.db</code> when <code>DATABASE_URL</code> is unset. |
@@ -666,6 +666,8 @@ The default benchmark is <code>tests/data/matching_benchmark_v1.json</code>: 100
 
 ## Limitations and production considerations
 
+Students use the public workflow documented in [Public student workflow](docs/PUBLIC_STUDENT_WORKFLOW.md). Public image/evidence upload is intentionally disabled until token-scoped access to private object storage is implemented.
+
 The report form includes an optional category suggestion action. It analyses the item name, description and visible characteristics, returns up to three category candidates, and requires the student to explicitly apply a suggestion. It never changes a submitted report or makes ownership decisions. MiniLM category inference shares the existing `USE_SEMANTIC_MODEL` setting; without it, a deterministic keyword fallback is used.
 
 The current application is not a production deployment and has not been assigned a validated user-capacity or throughput claim.
@@ -674,7 +676,7 @@ The current application is not a production deployment and has not been assigned
 - **File storage:** local filesystem storage remains the default. An S3-compatible private object-storage adapter is available through `UPLOAD_STORAGE_BACKEND=s3`; report photos and claim evidence are read only through authenticated API routes, never public object URLs. Set bucket public access blocking and encryption policies at the provider, then use `scripts/migrate_uploads_to_s3.py` (dry-run by default, `--apply` to copy) before switching a populated deployment. Keep local source files until bucket integrity and coordinated backup/restore have been independently verified. Local backup scripts do not back up S3 objects; enable provider versioning/replication or an approved separate backup process.
 - **Matching scale:** retrieval ranks a bounded, indexed shortlist (default 2,000, configurable up to 10,000) rather than scanning the entire corpus in application memory. Same-category candidates receive 75% of the shortlist and cross-category/location candidates receive the remainder. This improves coverage beyond 500 records but does not establish exhaustive recall; tune shortlist composition and capacity from measured campus data. MiniLM text vectors are cached by content hash and model revision (20,000 most recently updated vectors per model). CLIP image and text vectors are cached separately by content hash and `CLIP_MODEL_REVISION` (20,000 vectors per model/modality namespace). Candidate ranking batches uncached CLIP photos in groups of 16 to bound inference memory.
 - **AI dependency:** optional model loading and image inference need memory/CPU/GPU planning. The default lexical mode should remain an explicit fallback.
-- **Institutional identity:** the current app provides standalone login and student/office roles. Institutional SSO and automated college role provisioning are not implemented.
+- **Student access:** students do not create accounts or sign in. A roll number is private attribution for a report/claim and must be checked against a physical college ID by office staff. It is not authentication. Supabase Auth is restricted to the exact campus-office allowlist; automated roster validation is not implemented.
 - **Security operations:** production requires HTTPS, secure secret management, a session/CSRF review, tested backups, data retention and deletion policy, monitoring, incident handling and a formal security review.
 - **Data governance:** private evidence and custody information need an institution-approved retention/access policy. Demonstration data should not be real student data.
 - **Matching validation:** test on a labelled, representative dataset and measure false matches and missed matches before using the system operationally.
@@ -693,10 +695,11 @@ For local development without creating a hosted database, see [Local PostgreSQL 
 
 ### Final split deployment (Supabase + Vercel + Render)
 
-- [Supabase deployment runbook](docs/SUPABASE_DEPLOYMENT.md) — Supabase Auth, PostgreSQL identity mapping, private S3-compatible Storage, Vercel static frontend and Render FastAPI API.
+- [Supabase deployment runbook](docs/SUPABASE_DEPLOYMENT.md) — office-only Supabase Auth, PostgreSQL, private S3-compatible Storage, Vercel static frontend and Render FastAPI API.
+- [Public student workflow contract](docs/PUBLIC_STUDENT_WORKFLOW.md) — no-login student reporting, token-scoped tracking, canonical report/claim integration and office verification.
 - `vercel.json` and `scripts/build_vercel_frontend.py` configure the independent static frontend build. Set `BACKEND_ORIGIN` in Vercel.
 - `render.yaml` defines the FastAPI service. Configure Supabase database, Auth, private Storage credentials and exact Vercel CORS origin in Render.
-- Supabase Auth is enabled with `AUTH_PROVIDER=supabase`; verified users default to student. Office access is granted only by the backend `OFFICE_USER_EMAILS` allowlist.
+- Supabase Auth is enabled with `AUTH_PROVIDER=supabase` for office staff only. Every accepted account must match the exact backend `OFFICE_USER_EMAILS` allowlist; student signup and student authentication are disabled.
 
 ### Production deployment and database operations
 
@@ -705,5 +708,5 @@ For local development without creating a hosted database, see [Local PostgreSQL 
 - [Database operations](docs/DATABASE_OPERATIONS.md) — explicit SQLite-to-PostgreSQL dry-run/migration, encrypted PostgreSQL backups, and guarded restore drills.
 - [Retention policy template](docs/RETENTION_POLICY_TEMPLATE.md) — institution approval is required before automated deletion can be enabled.
 - [Production Compose file](compose.production.yml) — binds the app only to localhost for a TLS reverse proxy; requires real `DATABASE_URL`, `SESSION_SECRET`, and `ALLOWED_HOSTS` environment values.
-- The interface has a deliberately small visual polish pass; no navigation or workflow redesign was intended.
+- The public-first landing page keeps students outside the authenticated office console; Lost/Found report actions open dedicated destination views.
 
