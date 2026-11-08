@@ -2177,3 +2177,44 @@ if ($("#intakeLoadMore")) $("#intakeLoadMore").addEventListener("click", () => l
 if ($("#inventoryLoadMore")) $("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
 if ($("#officeClaimsLoadMore")) $("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
 if ($("#handoverLoadMore")) $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
+
+// Wire Edit Profile Dialog
+if ($("#editProfileBtn")) {
+  $("#editProfileBtn").addEventListener("click", () => {
+    if (!currentUser) return;
+    if ($("#editProfileNameInput")) $("#editProfileNameInput").value = currentUser.display_name || "";
+    if ($("#editProfileEmailInput")) $("#editProfileEmailInput").value = currentUser.email || "";
+    if ($("#editProfilePhoneInput")) $("#editProfilePhoneInput").value = currentUser.phone || "";
+    if ($("#editProfileError")) $("#editProfileError").textContent = "";
+    if ($("#editProfileDialog")) $("#editProfileDialog").showModal();
+  });
+}
+if ($("#closeEditProfile")) $("#closeEditProfile").addEventListener("click", () => {
+  if ($("#editProfileDialog")) $("#editProfileDialog").close();
+});
+if ($("#cancelEditProfile")) $("#cancelEditProfile").addEventListener("click", () => {
+  if ($("#editProfileDialog")) $("#editProfileDialog").close();
+});
+if ($("#editProfileForm")) {
+  $("#editProfileForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const newName = $("#editProfileNameInput") ? $("#editProfileNameInput").value.trim() : "";
+    if (!newName) {
+      if ($("#editProfileError")) $("#editProfileError").textContent = "Please enter a valid display name.";
+      return;
+    }
+    if (currentUser) {
+      currentUser.display_name = newName;
+      if (usingMockApi && mockStore.session) mockStore.session.display_name = newName;
+      if ($("#userName")) $("#userName").textContent = newName;
+      if ($("#profileHeroName")) $("#profileHeroName").textContent = newName;
+      if ($("#dropdownUserName")) $("#dropdownUserName").textContent = newName;
+      const initial = newName.charAt(0).toUpperCase();
+      if ($("#userInitial")) $("#userInitial").textContent = initial;
+      if ($("#profileHeroAvatar")) $("#profileHeroAvatar").textContent = initial;
+      if ($("#dropdownAvatar")) $("#dropdownAvatar").textContent = initial;
+    }
+    if ($("#editProfileDialog")) $("#editProfileDialog").close();
+    showToast("Profile details updated successfully.", false);
+  });
+}
