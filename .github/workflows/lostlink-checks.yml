@@ -255,5 +255,16 @@ jobs:
           done
           cat /tmp/lostlink-browser.log
           exit 1
+      - name: Seed a local office account for the browser audit
+        run: |
+          python - <<'PY'
+          from app.main import connect_db, now_iso
+          from app.core.security import hash_password
+          with connect_db() as conn:
+              conn.execute(
+                  "INSERT INTO users(email,display_name,role,password_hash,created_at) VALUES (?,?,?,?,?)",
+                  ("layout-audit@lostlink.test", "Layout Audit Office", "office", hash_password("layout-audit-password"), now_iso()),
+              )
+          PY
       - name: Audit responsive layouts and interactive element overlap
         run: python scripts/audit_frontend_layout.py
