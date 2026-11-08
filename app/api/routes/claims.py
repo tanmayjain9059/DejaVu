@@ -310,6 +310,9 @@ async def list_claims(
                     "evidence": claim["evidence"],
                     "claimant_name": claim["claimant_name"],
                     "claimant_email": claim["claimant_email"],
+                    "claimant_roll_number": claim["claimant_roll_number"],
+                    "submission_channel": claim["submission_channel"],
+                    "public_ref": claim["public_ref"],
                     "reviewer_note": claim["reviewer_note"],
                 })
             output.append(entry)
@@ -415,6 +418,10 @@ async def decide_claim(
         if claim["status"] in {"rejected", "approved_for_collection", "returned"}:
             raise HTTPException(status_code=409, detail="This claim has already reached a final review state.")
         if body.action == "approve":
+            if claim["submission_channel"] == "public":
+                verified_roll = (body.verified_roll_number or "").strip().upper()
+                if not body.identity_verified_in_person or verified_roll != (claim["claimant_roll_number"] or "").strip().upper():
+                    raise HTTPException(status_code=422, detail="Physically verify the claimant's college ID and matching roll number before approving this public claim.")
             # A linked lost report must remain open until the claim is approved.
             # The transaction lock makes this check atomic with report closure.
             if claim["lost_report_id"]:
@@ -517,6 +524,10 @@ async def record_handover(
         if claim["status"] != "approved_for_collection":
             raise HTTPException(status_code=409, detail="Only an office-verified claim can proceed to handover.")
         report = read_report(conn, claim["report_id"])
+        if claim["submission_channel"] == "public":
+            verified_roll = (body.verified_roll_number or "").strip().upper()
+            if not body.claimant_identity_checked or verified_roll != (claim["claimant_roll_number"] or "").strip().upper():
+                raise HTTPException(status_code=422, detail="Physically verify the claimant's college ID and matching roll number before handover.")
         if report["status"] != "claim_approved" or not report["tag_id"]:
             raise HTTPException(status_code=409, detail="The item is not in the approved handover state.")
         if not secrets.compare_digest(str(body.tag_id).strip(), str(report["tag_id"])):
