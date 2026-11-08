@@ -1522,11 +1522,26 @@ class LostLinkWorkflowTests(unittest.TestCase):
                         name TEXT NOT NULL,
                         applied_at TEXT NOT NULL
                     );
+                    CREATE TABLE users (
+                        id INTEGER PRIMARY KEY,
+                        email TEXT NOT NULL UNIQUE,
+                        display_name TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
                     CREATE TABLE reports (
                         id TEXT PRIMARY KEY,
                         report_type TEXT NOT NULL,
                         status TEXT NOT NULL,
                         category TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                    CREATE TABLE claims (
+                        id TEXT PRIMARY KEY,
+                        report_id TEXT NOT NULL,
+                        claimant_id INTEGER NOT NULL,
+                        status TEXT NOT NULL,
                         created_at TEXT NOT NULL
                     );
                     """
