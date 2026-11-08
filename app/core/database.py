@@ -200,6 +200,22 @@ def close_database_pool() -> None:
 
 
 @contextmanager
+def lock_public_image_upload(conn, report_id: str) -> None:
+    """Serialize public-image deduplication without blocking unrelated writes.
+
+    PostgreSQL uses an image-workflow-only advisory transaction lock plus a
+    row lock for the report being replaced. SQLite uses its local write lock.
+    """
+    if isinstance(conn, PostgresCompatConnection):
+        # This lock is intentionally scoped to image uploads only. It protects
+        # exact and perceptual duplicate checks across reports.
+        conn.execute("SELECT pg_advisory_xact_lock(?)", (730022,))
+        conn.execute("SELECT id FROM reports WHERE id=? FOR UPDATE", (report_id,)).fetchone()
+        return
+    conn.execute("BEGIN IMMEDIATE")
+    conn.execute("SELECT id FROM reports WHERE id=?", (report_id,)).fetchone()
+
+
 def connect_db():
     if DATABASE_URL:
         pool = _get_postgres_pool()
