@@ -90,6 +90,7 @@
           <h1 class="public-title">Let's find<br><span>what's missing.</span></h1>
           <p class="public-lede">Submit a report using your college roll number. No student account or password is needed.</p>
           <div data-finn-slot class="public-finn-slot"></div>
+          <div class="report-kind-guidance"><span class="report-guidance-kicker">LOST ITEM · HELP US RETRACE IT</span><h3>Think back to the last moment you had the item.</h3><p>Share what you remember and where you last saw or used it. Keep unique ownership clues private for verification.</p></div>
           <form id="publicReportForm" class="form-card form-stack liquid-glass-panel">
             <input id="publicReportType" type="hidden" value="lost">
             <label><span>College roll number · Required</span><input id="publicRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
@@ -107,6 +108,33 @@
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportError" class="form-error" role="alert"></p>
             <button class="button button-liquid" type="submit">Submit lost report ↗</button>
+          </form>
+        </section>
+
+<section id="publicFoundPage" class="public-destination hidden">
+          <button class="public-back" type="button" data-public-home>← Back to home</button>
+          <p class="eyebrow">PUBLIC REPORT · FOUND</p>
+          <h1 class="public-title">You found it.<br><span>Let's reunite it.</span></h1>
+          <p class="public-lede">Tell us what you found and where. The campus office must confirm physical receipt before the item appears in search.</p>
+          <div data-finn-slot class="public-finn-slot"></div>
+          <div class="report-kind-guidance"><span class="report-guidance-kicker">FOUND ITEM · HELP RETURN IT SAFELY</span><h3>Describe only what you observed when you discovered the item.</h3><p>Record the visible condition and exact discovery spot. Do not publish names, IDs, serial numbers, contents or hidden identifying marks.</p></div>
+          <form id="publicFoundReportForm" class="form-card form-stack liquid-glass-panel">
+            <input id="publicReportTypeFound" type="hidden" value="found">
+            <label><span>College roll number · Required</span><input id="publicRollNumberFound" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
+            <label><span>Item found · Required</span><input id="publicTitleFound" required minlength="4" maxlength="100" placeholder="e.g. Silver water bottle I found"></label>
+            <label><span>Category · Required</span><select id="publicCategoryFound" required><option value="">Loading categories…</option></select></label>
+            <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrandFound" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColorFound" maxlength="60" placeholder="e.g. Matte black"></label></div>
+            <label><span>Visible condition and features · Optional</span><textarea id="publicFeaturesFound" rows="2" maxlength="400" placeholder="Scratches, damage, colour, brand or visible exterior details"></textarea></label>
+            <label><span>Describe the found item · Required</span><textarea id="publicDescriptionFound" required minlength="10" maxlength="1200" rows="4" placeholder="Describe only observable details. Do not publish names, student IDs, serial numbers, contents or hidden identifying marks."></textarea></label>
+            <div class="two-columns">
+              <label><span>Found at block / building</span><select id="publicBlockFound"><option value="">Choose block</option></select></label>
+              <label><span>Found near / specific spot</span><input id="publicAreaFound" maxlength="120" placeholder="Outside Lab 3, under a library desk…"></label>
+            </div>
+            <label><span>When did you find it?</span><input id="publicDateFound" type="datetime-local"></label>
+            <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImageFound" type="file" accept="image/jpeg,image/png,image/webp"></label>
+            <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
+            <p id="publicReportErrorFound" class="form-error" role="alert"></p>
+            <button class="button button-liquid" type="submit">Submit found report ↗</button>
           </form>
         </section>
         <section id="publicBrowsePage" class="public-destination hidden">
