@@ -1984,6 +1984,7 @@ let finnRepeatTimer = null;
 let finnAnchorObserver = null;
 let finnAutoTimer = null;
 let finnTipsHidden = false;
+let finnLastCategoryTipAt = 0;
 const finnCharacter = $("#finnCharacter");
 const finnDock = $("#finnDock");
 const finnMessage = $("#mascotMessage");
@@ -2027,7 +2028,7 @@ function placeFinnForView(view) {
   const targets = {
     home: "#publicActionPanel", lost: "#publicLostPage", found: "#publicFoundPage",
     start: "#startView .start-hero", browse: "#browseView .section-heading",
-    report: "#reportView .report-intro", "my-reports": "#myReportsView .section-heading",
+    report: "#reportView .side-guidance", "my-reports": "#myReportsView .section-heading",
     "my-claims": "#myClaimsView .section-heading", notifications: "#notificationsView .section-heading",
     activity: "#activityView .activity-finn-anchor", office: "#officeView .section-heading"
   };
@@ -2039,6 +2040,7 @@ function placeFinnForView(view) {
   finnVisitKey = view;
   delete finnDock.dataset.pageMessageShown;
   finnDock.classList.remove("has-tip");
+  delete finnDock.dataset.categoryTipPrimed;
   clearTimeout(finnAutoTimer);
   if (finnAnchorObserver) finnAnchorObserver.disconnect();
   if (typeof ResizeObserver !== "undefined") {
@@ -2050,7 +2052,29 @@ function placeFinnForView(view) {
   }
   const width = host.getBoundingClientRect().width;
   host.dataset.finnLayout = width < 390 ? "small" : width < 560 ? "mobile" : "desktop";
-  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 900);
+  finnAutoTimer = setTimeout(() => { if (view !== "report") finnDock.classList.remove("has-tip"); else updateFinnCategoryTip(true); finnBubble(finnMode()); }, 900);
+}
+function updateFinnCategoryTip(force = false) {
+  if (!finnDock || !finnMessage || finnVisitKey !== "report" || finnTipsHidden) return;
+  const now = Date.now();
+  if (!force && now - finnLastCategoryTipAt < 12000) return;
+  const category = $("#reportCategory")?.value || "";
+  const title = $("#reportTitle")?.value.trim() || "";
+  const copy = {
+    stationery: "Stationery: note the brand and markings.",
+    clothing: "Clothing: add colour, size and style.",
+    bags_wallets: "Bags: mention pockets, straps and contents.",
+    accessories: "Accessories: describe shape and distinctive details.",
+    electronics: "Electronics: note model, colour and case.",
+    identity_documents: "ID cards: keep numbers and personal data private.",
+    keys_access: "Keys: describe the keychain, not key cuts.",
+    cash_jewellery: "Jewellery: describe material and unique marks.",
+    sports_instruments: "Sports gear: add brand and identifying marks.",
+    other: "Add the details that make it recognisable."
+  };
+  finnMessage.textContent = category ? (copy[category] || copy.other) : (title ? "Choose the closest category for this item." : "Start with the item name, then choose its category.");
+  finnDock.classList.add("has-tip");
+  finnLastCategoryTipAt = now;
 }
 function finnEvent() { /* Page guidance stays stable; events do not replace it. */ }
 function initFinn() {
@@ -2064,6 +2088,9 @@ function initFinn() {
   });
   finnCharacter.addEventListener("focus", () => wakeFinn());
   finnCharacter.addEventListener("click", () => wakeFinn());
+  const categorySelect = $("#reportCategory");
+  if (categorySelect) categorySelect.addEventListener("change", () => updateFinnCategoryTip(true));
+  ["reportTitle","reportDescription","reportBrand","reportColor","reportFeatures"].forEach(id => { const field = $("#"+id); if(field) field.addEventListener("input", () => { if (!finnDock.dataset.categoryTipPrimed) { finnDock.dataset.categoryTipPrimed="1"; updateFinnCategoryTip(); } }); });
   const toggle = $("#finnTipsToggle");
   if (toggle) toggle.addEventListener("click", () => {
     finnTipsHidden = !finnTipsHidden;
@@ -2153,7 +2180,7 @@ document.addEventListener("click", (event) => {
   const useCategory = event.target.closest("[data-use-category]");
   if (useCategory) {
     $("#reportCategory").value = useCategory.dataset.useCategory;
-    $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
+    $("#categorySuggestion").textContent = "Category selected.";
   }
   const reportKind = event.target.closest("[data-report-kind]");
   if (reportKind) setReportMode(reportKind.dataset.reportKind);
