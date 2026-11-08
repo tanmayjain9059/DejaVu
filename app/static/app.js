@@ -1872,7 +1872,7 @@ $("#publicTrackForm").addEventListener("submit",async event => {
   const resultNode = $("#publicTrackResult");
   resultNode.textContent = "Checking private case access…";
   try {
-    const data = await publicApi("/api/public/track/"+ref+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
+    const data = await publicApi("/api/public/track/"+ref,{headers:{"X-LostLink-Roll-Number":roll,"X-LostLink-Tracking-Secret":secret}});
     const record = data.case || data.claim || {};
     const item = data.case || data.item || {};
     const events = (data.events || []).map(entry => '<article class="list-card"><strong>' + escapeHTML(entry.title) + '</strong><p>' + escapeHTML(entry.message) + '</p><small>' + escapeHTML(humanDateTime(entry.created_at)) + '</small></article>').join("");
