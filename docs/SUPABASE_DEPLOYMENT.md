@@ -179,4 +179,4 @@ Before launch, verify:
 
 ## 8. Remaining launch gates
 
-The public workflow is a backend/frontend integration baseline, not yet a complete production launch. Public image and evidence-image upload are pending; existing private image routes remain authenticated. Add CAPTCHA/bot controls, validate roll-number syntax with CVR, agree the in-person verification process, establish retention and deletion policies, tune rate limits, monitor abuse, and complete a security review before college-wide launch.
+The public workflow is a backend/frontend integration baseline, not yet a complete production launch. Public report-photo upload is available and requires the report's one-time tracking secret plus the matching roll number; the photo is stored privately and is never returned in public search. Public claim evidence-image upload is still pending; existing private evidence-image routes remain authenticated. Add CAPTCHA/bot controls, validate roll-number syntax with CVR, agree the in-person verification process, establish retention and deletion policies, tune rate limits, monitor abuse, and complete a security review before college-wide launch.
