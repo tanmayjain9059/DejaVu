@@ -96,7 +96,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["database"],"postgresql" if TEST_WITH_POSTGRES else "sqlite")
         self.assertEqual(payload["canonical_tables"],"ready")
         self.assertIn(payload["storage"],{"local","s3"})
-        self.assertGreaterEqual(payload["schema_version"],10)
+        self.assertGreaterEqual(payload["schema_version"],11)
 
     def test_students_cannot_sign_in_but_can_submit_public_reports(self):
         denied = self.client.post("/api/login",json={
