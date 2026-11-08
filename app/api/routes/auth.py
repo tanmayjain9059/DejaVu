@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.core.runtime import *
 from app.schemas import *
 from app.services.auth import clear_login_failures, login_lockout_remaining, record_failed_login
+from app.core.client_ip import get_client_ip
 
 router = APIRouter()
 
@@ -36,7 +37,7 @@ def login(body: LoginBody, request: Request):
     if AUTH_PROVIDER == "supabase":
         raise HTTPException(status_code=410, detail="Use Supabase Auth to sign in.")
     email = body.email.strip().lower()
-    ip_address = request.client.host if request.client else "unknown"
+    ip_address = get_client_ip(request)
     subjects = ["email:" + email, "ip:" + ip_address]
     locked_for = 0
     invalid_credentials = False
