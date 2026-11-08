@@ -447,6 +447,51 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
     )
 
 
+def _migration_add_public_roll_attribution(conn) -> None:
+    """Attach anonymous public submissions to canonical reports/claims without student accounts."""
+    for column, declaration in (
+        ("roll_number", "TEXT"),
+        ("tracking_hash", "TEXT"),
+        ("submission_channel", "TEXT NOT NULL DEFAULT 'account'"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+    for column, declaration in (
+        ("claimant_roll_number", "TEXT"),
+        ("tracking_hash", "TEXT"),
+        ("submission_channel", "TEXT NOT NULL DEFAULT 'account'"),
+    ):
+        if column not in table_columns(conn, "claims"):
+            conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS public_roll_identities (
+            roll_number TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS public_rate_limits (
+            id TEXT PRIMARY KEY,
+            ip_hash TEXT NOT NULL,
+            action TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_public_rate_limits_lookup "
+        "ON public_rate_limits(ip_hash, action, created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reports_public_roll_created "
+        "ON reports(roll_number, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_claims_public_roll_created "
+        "ON claims(claimant_roll_number, created_at DESC)"
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
 SCHEMA_MIGRATIONS = (
@@ -458,6 +503,7 @@ SCHEMA_MIGRATIONS = (
     (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
     (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
     (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
+    (10, "unified_public_roll_attribution_and_tracking", _migration_add_public_roll_attribution),
 )
 
 
