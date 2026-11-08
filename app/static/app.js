@@ -950,6 +950,7 @@ async function loadBrowse() {
     $("#browseResults").innerHTML = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
     $("#browseCount").textContent = data.reports.length + (data.reports.length === 1 ? " item" : " items");
     $("#browseEmpty").classList.toggle("hidden", data.reports.length > 0);
+    if (!data.reports.length) finnEvent("no_results");
   } catch (error) {
     showToast(error.message, true);
   }
@@ -1037,6 +1038,7 @@ async function submitReport(event) {
   try {
     const result = await api("/api/reports", { method: "POST", body });
     let successMessage = result.message;
+    finnEvent(reportType === "found" ? "post_found" : "post_lost");
     let photoFailed = false;
     if (image) {
       const fileBody = new FormData();
@@ -1316,6 +1318,7 @@ async function submitClaim(event) {
       }
     });
     let resultMessage = result.message + " Your evidence is private.";
+    finnEvent("claim_submitted");
     let imageFailed = false;
     if (evidenceImage) {
       const fileBody = new FormData();
@@ -1333,6 +1336,7 @@ async function submitClaim(event) {
     navigate("my-claims");
   } catch (error) {
     $("#claimError").textContent = error.message;
+    finnEvent("error");
   } finally {
     claimSubmitting = false;
     $("#claimSubmitButton").disabled = false;
