@@ -747,7 +747,7 @@ function enterApp(user) {
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
-  $("#roleChip").className = "role-chip" + (user.role === "office" ? " role-chip-office" : "");
+  $("#roleChip").className = "profile-role-chip" + (user.role === "office" ? " role-chip-office" : "");
   $("#officeNavButton").classList.toggle("hidden", user.role !== "office");
   $("#activityNavButton").classList.toggle("hidden", user.role === "office");
   $$('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
