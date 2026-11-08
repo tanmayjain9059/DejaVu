@@ -3033,3 +3033,39 @@ input:focus, select:focus, textarea:focus {
     display: none;
   }
 }
+
+
+/* Native select reliability: keep platform pickers interactive on iOS/Safari.
+   Backdrop filters and custom appearance on native select controls can prevent
+   the operating system picker from opening consistently on touch devices. */
+select,
+#reportForm select,
+.select-label select,
+#publicReportForm select,
+#publicBrowseCategory,
+#publicCategory,
+#publicBlock,
+#filterCategory,
+#filterBlock,
+#reportCategory,
+#reportBlock,
+#reportFloor {
+  -webkit-appearance: menulist !important;
+  appearance: auto !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+}
+label:has(> select),
+label:has(select) {
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+select:disabled {
+  pointer-events: none !important;
+  cursor: not-allowed;
+}
