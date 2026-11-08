@@ -1871,9 +1871,12 @@ function openPublicOfficeSignIn() {
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
 }
-$("#publicNav").addEventListener("click", event => {
+// One document-level handler owns all public navigation actions. This avoids
+// losing click behaviour when a public panel or navigation item is replaced.
+document.addEventListener("click", event => {
   const button = event.target.closest("[data-public-destination]");
   if (!button) return;
+  event.preventDefault();
   const destination = button.dataset.publicDestination;
   if (destination === "home") showPublicHome();
   else if (destination === "office") openPublicOfficeSignIn();
