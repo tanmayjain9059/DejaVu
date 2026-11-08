@@ -2391,3 +2391,20 @@ button:focus-visible,a:focus-visible { outline:3px solid rgba(168,94,50,.45); ou
     top:54px !important; right:48px !important;
   }
 }
+
+
+/* On public forms and lookup screens, keep Finn away from the input column. */
+@media (max-width: 340px) {
+  body:has(#publicLostPage:not(.hidden)) #finnDock,
+  body:has(#publicFoundPage:not(.hidden)) #finnDock,
+  body:has(#publicBrowsePage:not(.hidden)) #finnDock,
+  body:has(#publicTrackPage:not(.hidden)) #finnDock {
+    top:auto !important; bottom:6px !important; right:6px !important;
+  }
+  body:has(#publicLostPage:not(.hidden)) #finnDock .mascot-note,
+  body:has(#publicFoundPage:not(.hidden)) #finnDock .mascot-note,
+  body:has(#publicBrowsePage:not(.hidden)) #finnDock .mascot-note,
+  body:has(#publicTrackPage:not(.hidden)) #finnDock .mascot-note {
+    top:-18px !important; right:48px !important;
+  }
+}
