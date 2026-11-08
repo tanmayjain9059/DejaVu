@@ -89,7 +89,7 @@ Set the Vercel environment variable:
 BACKEND_ORIGIN=https://your-api.onrender.com
 ```
 
-The build emits `deployment-config.js` with the API origin and public Supabase client configuration. The Supabase anon key is not a service-role key. The browser must never receive the Supabase service-role key, database password, S3 secret access key or session secret.
+The build emits `deployment-config.js` with the API origin and a deployment-configured flag. The frontend fetches the public Supabase URL and anon key from `/api/config` on the backend. The anon key is not a service-role key. The browser must never receive the Supabase service-role key, database password, S3 secret access key or session secret.
 
 Deploy the static frontend. Copy its exact production origin into Render's `FRONTEND_ORIGINS`. Include preview origins only when they are deliberately approved.
 
