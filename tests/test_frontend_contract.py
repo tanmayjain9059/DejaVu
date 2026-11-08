@@ -111,7 +111,7 @@ class FrontendContractTests(unittest.TestCase):
             self.assertIn(f'data-public-destination="{destination}"', self.html)
         self.assertIn('$("#publicNav").addEventListener("click"', self.js)
         self.assertIn("function setPublicNavActive(destination)", self.js)
-        self.assertIn('$("#publicNav [data-public-destination]").forEach', self.js)
+        self.assertIn('nav.querySelectorAll("[data-public-destination]").forEach', self.js)
         self.assertNotIn('$("#publicNav [data-public-destination]").forEach', self.js)
 
     def test_public_browse_cards_do_not_expand_full_descriptions(self):
@@ -150,6 +150,16 @@ class FrontendContractTests(unittest.TestCase):
             '[data-certificate-download]',
         ):
             self.assertIn(selector, self.js, f"Missing delegated action handler: {selector}")
+
+    def test_public_navigation_selector_uses_a_collection(self):
+        self.assertIn('nav.querySelectorAll("[data-public-destination]").forEach', self.js)
+        self.assertNotIn('$("#publicNav [data-public-destination]").forEach', self.js)
+
+    def test_liquid_glass_interactions_respect_reduced_motion(self):
+        styles = (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn(".nimbus-item::before", styles)
+        self.assertIn(".nimbus-item:hover::before", styles)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", styles)
 
 
 if __name__ == "__main__":
