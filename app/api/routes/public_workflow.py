@@ -9,6 +9,7 @@ and reward services can be reused without exposing a student sign-in surface.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import re
@@ -25,6 +26,7 @@ from app.core.config import (
     ALLOWED_EVIDENCE_TYPES,
     CATEGORY_LABELS,
     MATCHING_CANDIDATE_LIMIT,
+    SESSION_SECRET,
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
@@ -91,7 +93,10 @@ def _public_actor_for_roll(conn, roll_number: str) -> int:
 def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
     """Rate-limit anonymous writes while storing only a one-way IP digest."""
     address = request.client.host if request.client else "unknown"
-    ip_hash = hashlib.sha256(address.encode("utf-8")).hexdigest()
+    hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")
+    ip_hash = hmac.new(hash_key, address.encode("utf-8"), hashlib.sha256).hexdigest()
+    retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
+    conn.execute("DELETE FROM public_rate_limits WHERE created_at < ?", (retention_cutoff,))
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
     count = conn.execute(
         "SELECT COUNT(*) AS n FROM public_rate_limits WHERE ip_hash=? AND action=? AND created_at>=?",
