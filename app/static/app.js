@@ -1791,7 +1791,7 @@ async function publicApi(path, options) {
   if (!response.ok) throw new Error(explainError(data,"Request failed ("+response.status+")."));
   return data;
 }
-async async function loadPublicFound() {
+async function loadPublicFound() {
   const q = $("#publicBrowseQuery").value.trim();
   const category = $("#publicBrowseCategory").value;
   const params = new URLSearchParams();
