@@ -115,22 +115,20 @@ def _identity_database():
     return connection
 
 
-def test_supabase_provisioning_defaults_to_student_and_ignores_metadata_role(monkeypatch):
+def test_supabase_student_identity_is_rejected_without_provisioning(monkeypatch):
     connection = _identity_database()
     identity = {
         "id": "auth-student-1",
         "email": "student@college.edu",
         "user_metadata": {"display_name": "Student User", "role": "office"},
     }
-    user = _run_supabase_profile(
-        monkeypatch, identity, allowed_domains={"college.edu"},
-        office_emails=set(), connection=connection,
-    )
-    assert user["role"] == "student"
-    assert user["display_name"] == "Student User"
-    stored = connection.execute("SELECT supabase_user_id, role FROM users WHERE email=?", (identity["email"],)).fetchone()
-    assert stored["supabase_user_id"] == identity["id"]
-    assert stored["role"] == "student"
+    with pytest.raises(HTTPException) as error:
+        _run_supabase_profile(
+            monkeypatch, identity, allowed_domains={"college.edu"},
+            office_emails=set(), connection=connection,
+        )
+    assert error.value.status_code == 403
+    assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
     connection.close()
 
 
@@ -146,11 +144,14 @@ def test_supabase_office_role_requires_exact_allowlist_and_can_be_revoked(monkey
         office_emails={"office@college.edu"}, connection=connection,
     )
     assert user["role"] == "office"
-    downgraded = _run_supabase_profile(
-        monkeypatch, identity, allowed_domains={"college.edu"},
-        office_emails=set(), connection=connection,
-    )
-    assert downgraded["role"] == "student"
+    with pytest.raises(HTTPException) as revoked:
+        _run_supabase_profile(
+            monkeypatch, identity, allowed_domains={"college.edu"},
+            office_emails=set(), connection=connection,
+        )
+    assert revoked.value.status_code == 403
+    stored = connection.execute("SELECT role FROM users WHERE email=?", (identity["email"],)).fetchone()
+    assert stored["role"] == "office"
     connection.close()
 
 
