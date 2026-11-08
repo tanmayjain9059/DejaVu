@@ -2072,7 +2072,10 @@ function updateFinnCategoryTip(force = false) {
     sports_instruments: "Sports gear: add brand and identifying marks.",
     other: "Add the details that make it recognisable."
   };
-  finnMessage.textContent = category ? (copy[category] || copy.other) : (title ? "Choose the closest category for this item." : "Start with the item name, then choose its category.");
+  const line = category ? (copy[category] || copy.other) : (title ? "Choose the closest category for this item." : "Start with the item name, then choose its category.");
+  finnMessage.textContent = line;
+  const inlineTip = $("#finnCategoryHeading");
+  if (inlineTip) inlineTip.textContent = line;
   finnDock.classList.add("has-tip");
   finnLastCategoryTipAt = now;
 }
@@ -2089,7 +2092,7 @@ function initFinn() {
   finnCharacter.addEventListener("focus", () => wakeFinn());
   finnCharacter.addEventListener("click", () => wakeFinn());
   const categorySelect = $("#reportCategory");
-  if (categorySelect) categorySelect.addEventListener("change", () => updateFinnCategoryTip(true));
+  if (categorySelect) categorySelect.addEventListener("change", () => updateFinnCategoryTip());
   ["reportTitle","reportDescription","reportBrand","reportColor","reportFeatures"].forEach(id => { const field = $("#"+id); if(field) field.addEventListener("input", () => { if (!finnDock.dataset.categoryTipPrimed) { finnDock.dataset.categoryTipPrimed="1"; updateFinnCategoryTip(); } }); });
   const toggle = $("#finnTipsToggle");
   if (toggle) toggle.addEventListener("click", () => {
