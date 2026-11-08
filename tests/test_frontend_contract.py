@@ -192,5 +192,17 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('const form = useCategory.closest("form");', self.js)
         self.assertIn('reportField("reportCategory", form).value', self.js)
 
+    def test_public_lost_and_found_have_separate_report_pages_and_forms(self):
+        self.assertIn('id="publicLostPage"', self.html)
+        self.assertIn('id="publicFoundPage"', self.html)
+        self.assertIn('id="publicReportForm"', self.html)
+        self.assertIn('id="publicFoundReportForm"', self.html)
+        self.assertIn('id="publicReportTypeFound" type="hidden" value="found"', self.html)
+        self.assertIn("FOUND ITEM · HELP RETURN IT SAFELY", self.html)
+        self.assertIn("Do not publish names, student IDs, serial numbers", self.html)
+        self.assertIn('type === "found" ? "publicFoundPage" : "publicLostPage"', self.js)
+        self.assertIn('document.querySelectorAll("#publicReportForm, #publicFoundReportForm").forEach((form) => {', self.js)
+        self.assertIn('const field = (id) => publicReportField(form, id);', self.js)
+
 if __name__ == "__main__":
     unittest.main()
