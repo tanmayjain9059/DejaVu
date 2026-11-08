@@ -433,7 +433,7 @@ function applyDateInputBounds() {
   const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   const maxDateTime = localNow.toISOString().slice(0, 16);
   const maxDate = maxDateTime.slice(0, 10);
-  ["#publicDate", "#reportDate", "#reportDateFound"].forEach((selector) => {
+  ["#publicDate", "#publicDateFound", "#reportDate", "#reportDateFound"].forEach((selector) => {
     const input = $(selector);
     if (!input) return;
     input.min = minDate + "T00:00";
@@ -459,7 +459,7 @@ async function loadConfig() {
   ).join("");
   ["#reportCategory", "#reportCategoryFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a category</option>' + categoryOptions; });
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
-  $("#publicCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
+  ["#publicCategory", "#publicCategoryFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a category</option>' + categoryOptions; });
   $("#publicBrowseCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
 
   const locations = appConfig.locations || {};
@@ -469,7 +469,7 @@ async function loadConfig() {
   ).join("");
   ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
-  $("#publicBlock").innerHTML = '<option value="">Choose block</option>' + blockOptions;
+  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose block</option>' + blockOptions; });
   ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + (Array.isArray(locations.floors) ? locations.floors : [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join(""); });
 
@@ -1889,7 +1889,7 @@ function showPublicHome() {
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.remove("hidden");
   placeFinnIn("#publicHomeContent [data-finn-slot]");
-  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showPublicDestination(type) {
@@ -1899,15 +1899,18 @@ function showPublicDestination(type) {
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.add("hidden");
-  const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : "publicLostPage";
+  const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "found" ? "publicFoundPage" : "publicLostPage";
   ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
   placeFinnIn("#"+destination+" [data-finn-slot]");
   if (type === "lost" || type === "found") {
     $("#publicReportType").value = type;
-    const title = $("#publicLostPage .public-title");
-    const eyebrow = $("#publicLostPage .eyebrow");
-    const lede = $("#publicLostPage .public-lede");
-    const submit = $("#publicReportForm button[type=submit]");
+    const reportPage = $("#" + destination);
+    const hiddenType = reportPage.querySelector("input[type=hidden]");
+    if (hiddenType) hiddenType.value = type;
+    const title = reportPage.querySelector(".public-title");
+    const eyebrow = reportPage.querySelector(".eyebrow");
+    const lede = reportPage.querySelector(".public-lede");
+    const submit = reportPage.querySelector("form button[type=submit]");
     if (type === "found") {
       eyebrow.textContent = "PUBLIC REPORT · FOUND";
       title.innerHTML = 'You found it.<br><span>Let’s reunite it.</span>';
@@ -1992,7 +1995,7 @@ document.addEventListener("click", event => {
   if (reportButton) {
     event.preventDefault();
     showPublicDestination(reportButton.dataset.publicReport);
-    $("#publicLostPage .public-title").scrollIntoView({behavior:"smooth",block:"start"});
+    (reportButton.dataset.publicReport === "found" ? $("#publicFoundPage .public-title") : $("#publicLostPage .public-title")).scrollIntoView({behavior:"smooth",block:"start"});
     return;
   }
   const homeButton = event.target.closest("[data-public-home]");
@@ -2043,41 +2046,54 @@ $("#publicClaimForm").addEventListener("submit", async event => {
   } catch(error) { errorNode.textContent = error.message; }
   finally { claimSubmitting = false; button.disabled = false; }
 });
-$("#publicReportForm").addEventListener("submit",async event => {
+function publicReportField(form, id) {
+  return form.querySelector("#" + id + (form.id === "publicFoundReportForm" ? "Found" : ""));
+}
+async function submitPublicReport(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const type = $("#publicReportType").value;
+  const field = (id) => publicReportField(form, id);
+  const type = field("publicReportType").value;
   const body = {
-    report_type:type,roll_number:$("#publicRollNumber").value.trim(),
-    title:$("#publicTitle").value.trim(),category:$("#publicCategory").value,
-    description:$("#publicDescription").value.trim(),
-    brand:$("#publicBrand").value.trim() || null,
-    primary_color:$("#publicColor").value.trim() || null,
-    visible_features:$("#publicFeatures").value.trim() || null,
-    location_block:$("#publicBlock").value || null,
-    location_area:$("#publicArea").value.trim() || null,
-    occurred_at:$("#publicDate").value || null
+    report_type: type,
+    roll_number: field("publicRollNumber").value.trim(),
+    title: field("publicTitle").value.trim(),
+    category: field("publicCategory").value,
+    description: field("publicDescription").value.trim(),
+    brand: field("publicBrand").value.trim() || null,
+    primary_color: field("publicColor").value.trim() || null,
+    visible_features: field("publicFeatures").value.trim() || null,
+    location_block: field("publicBlock").value || null,
+    location_area: field("publicArea").value.trim() || null,
+    occurred_at: field("publicDate").value || null
   };
-  const errorNode = $("#publicReportError");
-  const button = event.currentTarget.querySelector('button[type="submit"]');
+  const errorNode = field("publicReportError");
+  const button = form.querySelector('button[type="submit"]');
   errorNode.textContent = "";
   if (!body.location_block && !body.location_area) {
-    errorNode.textContent = "Choose a campus block or enter a nearby area.";
+    errorNode.textContent = type === "found"
+      ? "Choose the block or exact area where you found the item."
+      : "Choose a campus block or enter the area where you last had the item.";
     return;
   }
+  if (!button || button.disabled) return;
   button.disabled = true;
   try {
-    const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const result = await publicApi("/api/public/reports", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
     let photoStatus = "";
-    const photo = $("#publicImage").files && $("#publicImage").files[0];
+    const photo = field("publicImage").files && field("publicImage").files[0];
     if (photo) {
       const photoBody = new FormData();
       photoBody.append("file", photo);
       try {
-        await publicApi("/api/public/reports/"+encodeURIComponent(result.case.reference)+"/image", {
-          method:"POST",
-          headers:{"X-LostLink-Roll-Number":body.roll_number,"X-LostLink-Tracking-Secret":result.tracking_secret},
-          body:photoBody
+        await publicApi("/api/public/reports/" + encodeURIComponent(result.case.reference) + "/image", {
+          method: "POST",
+          headers: {"X-LostLink-Roll-Number": body.roll_number, "X-LostLink-Tracking-Secret": result.tracking_secret},
+          body: photoBody
         });
         photoStatus = " Your photo was saved privately for office review.";
       } catch (photoError) {
@@ -2097,12 +2113,18 @@ $("#publicReportForm").addEventListener("submit",async event => {
     $("#publicTrackResult").innerHTML = '<p>' + escapeHTML((result.message || "Report submitted.") + " Reference: " + result.case.reference + ". Save the tracking secret now; it is shown once.") + '</p>' +
       (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again using this tracking secret.</p>') +
       (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
+    form.reset();
     showPublicDestination("track");
     setFinnMessage("Case opened! Keep your reference and one-time secret safe.", true);
-    showToast("Report submitted. Save the tracking secret shown here.",false);
-    form.reset();
-  } catch(error) { errorNode.textContent = error.message; }
-  finally { button.disabled = false; }
+    showToast("Report submitted. Save the tracking secret shown here.", false);
+  } catch (error) {
+    errorNode.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+document.querySelectorAll("#publicReportForm, #publicFoundReportForm").forEach((form) => {
+  form.addEventListener("submit", submitPublicReport);
 });
 let lastPublicTracking = null;
 async function refreshPublicMatches(reference, credentials, target) {
