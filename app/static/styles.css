@@ -2965,3 +2965,29 @@ input:focus, select:focus, textarea:focus {
   .public-destination #publicBrowseResults { grid-template-columns:1fr; }
   .public-destination .public-finn-slot { justify-content:center; }
 }
+
+
+/* Constrain the public capsule to the available mobile viewport.
+   Its buttons remain horizontally scrollable without widening the page. */
+@media (max-width: 560px) {
+  .public-topbar {
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+  }
+  .public-topbar .public-nav {
+    display: flex;
+    flex: 0 1 auto;
+    align-self: center;
+    width: calc(100vw - 36px) !important;
+    max-width: calc(100vw - 36px) !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-content: flex-start !important;
+  }
+  .public-topbar .public-nav .public-nav-item {
+    flex: 0 0 auto;
+  }
+}
