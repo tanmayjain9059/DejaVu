@@ -14,6 +14,7 @@ let claimSubmitting = false;
 let selectedEvidenceClaimId = null;
 let selectedStorageReportId = null;
 let selectedHandoverClaimId = null;
+let selectedHandoverRollNumber = null;
 let selectedDecisionClaimId = null;
 let selectedDecisionAction = null;
 let claimDecisionSubmitting = false;
@@ -1224,6 +1225,7 @@ function officeInventoryCard(report) {
 
 function officeHandoverCard(claim) {
   const report = claim.report;
+  const claimantRoll = claim.claimant_roll_number || "";
   const linkedLostMeta = claim.linked_lost_report
     ? '<div class="linked-report-line office-linked-report"><strong>Linked lost report</strong><span>' +
       escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
@@ -1232,21 +1234,26 @@ function officeHandoverCard(claim) {
     : "";
   return '<article class="list-card"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title + " · " + report.public_ref) + '</h3><p>Claimant: ' +
-    escapeHTML(claim.claimant_name) + " · " + escapeHTML(claim.claimant_email) +
+    escapeHTML(claim.claimant_name) + (claimantRoll ? " · Roll no. " + escapeHTML(claimantRoll) : " · " + escapeHTML(claim.claimant_email)) +
     "</p></div><span class=\"" + statusClass(claim.status) + "\">Verified claim</span></div>" +
     '<div class="internal-meta"><span>Physical tag: ' + escapeHTML(report.tag_id || "Not assigned") +
     "</span><span>Verification level: " + escapeHTML(report.verification_level ? "L" + report.verification_level : "Not assigned") +
     "</span><span>Stored at: " + escapeHTML(report.storage_location || "Location needs confirmation") + "</span></div>" + linkedLostMeta + "<p>Before release, compare the physical item with the tag and verify the claimant under campus policy.</p>" +
     '<div class="card-actions"><button class="button button-primary button-small" type="button" data-handover="' +
-    escapeHTML(claim.id) + '" data-tag="' + escapeHTML(report.tag_id || "") + '">Confirm physical handover</button></div></article>';
+    escapeHTML(claim.id) + '" data-tag="' + escapeHTML(report.tag_id || "") + '" data-roll="' + escapeHTML(claimantRoll) + '">Confirm physical handover</button></div></article>';
 }
 
 function intakeCard(report) {
+  const publicIdentity = report.submission_channel === "public"
+    ? '<div class="internal-meta"><strong>Public submission · Roll number: ' + escapeHTML(report.roll_number || "Not supplied") + '</strong></div>' +
+      '<label class="wide">Verified roll number<input name="verified_roll_number" required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the physical college ID"></label>' +
+      '<label class="checkbox-line wide"><input type="checkbox" name="identity_verified_in_person" required> I physically checked the reporter’s college ID and confirmed the roll number.</label>'
+    : "";
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
     "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
     "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
-    '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' +
+    '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' + publicIdentity +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
     '<label class="wide">Private identifying detail / approved verification method<textarea name="private_detail" maxlength="1200" placeholder="Not shown to students. For restricted items, describe the authorised verification method without copying unnecessary sensitive data."></textarea></label>' +
     '<label>Estimated value band<select name="value_band"><option value="unknown">Unknown</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>' +
@@ -1276,6 +1283,11 @@ function officeClaimCard(claim) {
     '<div class="verification-check-grid">' + checks.map(([value, label]) =>
       '<label class="verify-check"><input type="checkbox" data-verification-check="true" value="' + escapeHTML(value) + '"><span>' + escapeHTML(label) + '</span></label>'
     ).join("") + '</div></div>';
+  const publicIdentity = claim.submission_channel === "public"
+    ? '<div class="internal-meta"><strong>Public claim · Roll number: ' + escapeHTML(claim.claimant_roll_number || "Not supplied") + '</strong></div>' +
+      '<label class="wide">Verified roll number<input type="text" data-verified-roll required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the claimant’s college ID"></label>' +
+      '<label class="checkbox-line wide"><input type="checkbox" data-identity-verified> I physically checked the claimant’s college ID and confirmed the roll number.</label>'
+    : "";
   const actions = '<div class="decision-note"><input type="text" maxlength="800" data-note-for="' + escapeHTML(claim.id) +
     '" placeholder="Internal review note (optional)"></div><div class="card-actions">' +
     '<button class="button button-primary button-small" type="button" data-decision="approve" data-claim-id="' + escapeHTML(claim.id) + '">Verify claim</button>' +
@@ -1297,9 +1309,9 @@ function officeClaimCard(claim) {
   const evidencePhoto = claim.evidence_image_available
     ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
-  return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '"><div class="list-card-head"><div><h3>' +
+  return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '" data-public-claim="' + (claim.submission_channel === "public" ? "true" : "false") + '" data-expected-roll="' + escapeHTML(claim.claimant_roll_number || "") + '"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
-    '</h3><p>Claimant: ' + escapeHTML(claim.claimant_name) + " · " + escapeHTML(claim.claimant_email) + "</p></div><span class=\"" + statusClass(claim.status) +
+    '</h3><p>Claimant: ' + escapeHTML(claim.claimant_name) + (claim.claimant_roll_number ? " · Roll no. " + escapeHTML(claim.claimant_roll_number) : " · " + escapeHTML(claim.claimant_email)) + "</p></div><span class=\"" + statusClass(claim.status) +
     "\">" + escapeHTML(statusLabel(claim.status)) + "</span></div>" +
     '<div class="internal-meta"><span>Physical tag: ' + escapeHTML(report.tag_id || "Not assigned") + "</span><span>Verification: " + escapeHTML(level) +
     "</span><span>Value band: " + escapeHTML(report.value_band || "unknown") + "</span><span>Sensitivity: " + escapeHTML(report.sensitivity_level) + "</span></div>" +
@@ -1312,7 +1324,7 @@ function officeClaimCard(claim) {
     (claim.status === "disputed" ? '<p class="field-hint">' + escapeHTML(claim.appeal_note
       ? "This is a claimant-requested review of a previous rejection. Review the appeal note and evidence again."
       : "Resolve all competing active claims before approving any one claim.") + '</p>' : "") +
-    checklist + actions + "</article>";
+    publicIdentity + checklist + actions + "</article>";
 }
 
 async function submitIntake(event) {
@@ -1322,6 +1334,8 @@ async function submitIntake(event) {
   const values = new FormData(form);
   const body = {
     confirmed_physical_receipt: values.get("confirmed_physical_receipt") === "on",
+    identity_verified_in_person: values.get("identity_verified_in_person") === "on",
+    verified_roll_number: String(values.get("verified_roll_number") || "").trim() || null,
     storage_location: String(values.get("storage_location") || "").trim(),
     private_detail: String(values.get("private_detail") || "").trim() || null,
     value_band: values.get("value_band"),
@@ -1522,10 +1536,13 @@ async function submitClaimDispute(claimId) {
   } catch (error) { showToast(error.message, true); }
 }
 
-function openHandoverDialog(claimId, itemTitle) {
+function openHandoverDialog(claimId, itemTitle, rollNumber = "") {
   selectedHandoverClaimId = claimId;
+  selectedHandoverRollNumber = rollNumber || null;
   $("#handoverSummary").textContent = "Before releasing " + itemTitle + ", read the physical label and compare it with the Tag ID in the office record.";
   $("#handoverTag").value = "";
+  $("#handoverVerifiedRoll").value = "";
+  $("#handoverRollVerificationGroup").classList.toggle("hidden", !selectedHandoverRollNumber);
   $("#handoverIdentityChecked").checked = false;
   $("#handoverPhysicalChecked").checked = false;
   $("#handoverNote").value = "";
@@ -1548,6 +1565,11 @@ async function submitHandover(event) {
     $("#handoverError").textContent = "Confirm both the identity check and actual physical handover.";
     return;
   }
+  if (selectedHandoverRollNumber && $("#handoverVerifiedRoll").value.trim().toUpperCase() !== selectedHandoverRollNumber.toUpperCase()) {
+    $("#handoverError").textContent = "The verified college roll number must match the public claim record.";
+    $("#handoverVerifiedRoll").focus();
+    return;
+  }
   $("#handoverError").textContent = "";
   $("#confirmHandoverButton").disabled = true;
   try {
@@ -1557,11 +1579,13 @@ async function submitHandover(event) {
         tag_id: tagId,
         confirmed_physical_handover: $("#handoverPhysicalChecked").checked,
         claimant_identity_checked: $("#handoverIdentityChecked").checked,
+        verified_roll_number: $("#handoverVerifiedRoll").value.trim() || null,
         note: $("#handoverNote").value.trim() || null
       }
     });
     $("#handoverDialog").close();
     selectedHandoverClaimId = null;
+    selectedHandoverRollNumber = null;
     showToast(result.message, false);
     await loadOffice();
   } catch (error) {
@@ -1581,6 +1605,10 @@ function openDecisionConfirmation(claimId, action) {
     let reason = "";
     if (checked.length < minimum) reason = "Select at least " + minimum + " distinct verification checks before verifying this claim.";
     else if (!checked.includes("claimant_identity")) reason = "Confirm the claimant's identity before verifying this claim.";
+    else if (card && card.dataset.publicClaim === "true" &&
+      (!card.querySelector("[data-identity-verified]")?.checked ||
+       card.querySelector("[data-verified-roll]")?.value.trim().toUpperCase() !== (card.dataset.expectedRoll || "").toUpperCase()))
+      reason = "Physically verify the claimant's college ID and enter the matching roll number before approving this public claim.";
     else if (level >= 4 && !checked.includes("authorised_record")) reason = "Restricted items require the authorised-record / custodian check.";
     if (reason) {
       let message = card && card.querySelector(".field-error-note");
@@ -1646,7 +1674,11 @@ async function submitDecision(event) {
   try {
     const result = await api("/api/claims/" + encodeURIComponent(claimId) + "/decision", {
       method: "POST",
-      body: { action, note: note || null, verification_checks: verificationChecks }
+      body: {
+        action, note: note || null, verification_checks: verificationChecks,
+        identity_verified_in_person: Boolean(card && card.querySelector("[data-identity-verified]")?.checked),
+        verified_roll_number: card && card.querySelector("[data-verified-roll]")?.value.trim() || null
+      }
     });
     $("#decisionConfirmDialog").close();
     selectedDecisionClaimId = null;
@@ -1941,7 +1973,7 @@ document.addEventListener("click", (event) => {
   const handover = event.target.closest("[data-handover]");
   if (handover) {
     const itemTitle = handover.closest(".list-card")?.querySelector("h3")?.textContent || "this item";
-    openHandoverDialog(handover.dataset.handover, itemTitle);
+    openHandoverDialog(handover.dataset.handover, itemTitle, handover.dataset.roll || "");
   }
   const storageUpdate = event.target.closest("[data-storage-update]");
   if (storageUpdate) {
