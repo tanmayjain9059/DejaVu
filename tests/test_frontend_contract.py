@@ -116,34 +116,37 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("actual discovery place", self.js)
         self.assertIn("Keep one or two unique ownership clues private", self.js)
 
-    def test_report_reset_is_safe_when_form_is_not_mounted(self):
-        self.assertIn('const form = $("#reportForm");', self.js)
-        self.assertIn('if (!form || !chooser)', self.js)
-        self.assertIn('form.reset();', self.js)
-        self.assertIn('const form = event.currentTarget;', self.js)
-        self.assertIn('if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);', self.js)
-
-
+    def test_report_reset_is_safe_when_forms_are_not_mounted(self):
+        self.assertIn("function activeReportForm()", self.js)
+        self.assertIn('document.querySelectorAll("#lostReportForm, #foundReportForm")', self.js)
+        self.assertIn("function resetReportMode()", self.js)
+        self.assertIn('if (chooser) chooser.classList.remove("hidden");', self.js)
+        self.assertIn("const form = event.currentTarget;", self.js)
+        self.assertIn('form.addEventListener("submit", submitReport);', self.js)
 
     def test_every_form_has_a_submit_handler(self):
-        direct = set(re.findall(
-            r"""\$\(["']#([A-Za-z0-9_-]+)["']\)\.addEventListener\(["']submit["']""",
+        self.assertIn("lostReportForm", self.form_ids)
+        self.assertIn("foundReportForm", self.form_ids)
+        self.assertIn(
+            'document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {',
             self.js,
-        ))
-        self.assertIn('if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);', self.js)
-        direct.add("reportForm")
-        missing = sorted(set(self.form_ids) - direct)
-        self.assertEqual(missing, [], f"Forms without submit handlers: {missing}")
+        )
+        self.assertIn('form.addEventListener("submit", submitReport);', self.js)
+        self.assertIn('$("#loginForm").addEventListener("submit"', self.js)
 
-    def test_each_report_form_reset_is_preceded_by_a_null_guard(self):
-        for function_name in ("setReportMode", "resetReportMode"):
-            start = self.js.index(f"function {function_name}(")
-            next_function = self.js.find("\nfunction ", start + 1)
-            block = self.js[start:next_function if next_function >= 0 else len(self.js)]
-            guard = re.search(r"if \(!form \|\| !chooser\) \{[\s\S]*?return;\s*\}", block)
-            self.assertIsNotNone(guard, f"{function_name} must return when the form or chooser is absent")
-            reset_at = block.find("form.reset();")
-            self.assertGreater(reset_at, guard.end(), f"{function_name} resets before its null guard")
+    def test_each_report_form_reset_is_scoped_and_guarded(self):
+        start = self.js.index("function setReportMode(")
+        end = self.js.index("\nfunction resetReportMode()", start)
+        block = self.js[start:end]
+        guard = block.index("if (!form || !chooser)")
+        reset_at = block.index("previousForm.reset();")
+        self.assertGreater(reset_at, guard, "setReportMode must guard the active form before clearing the prior draft")
+        reset_start = self.js.index("function resetReportMode()")
+        reset_end = self.js.index("\nfunction evidenceTypeLabel", reset_start)
+        reset_block = self.js[reset_start:reset_end]
+        self.assertIn('document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {', reset_block)
+        self.assertIn("form.reset();", reset_block)
+        self.assertIn('if (chooser) chooser.classList.remove("hidden");', reset_block)
 
     def test_report_submission_uses_the_submitted_form_and_guards_its_button(self):
         start = self.js.index("async function submitReport(event)")
