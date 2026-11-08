@@ -196,168 +196,40 @@
 
   <!-- ==================== MAIN APP VIEW ==================== -->
   <main id="appView" class="app-shell hidden">
-    <!-- Uncluttered Top Navigation Bar -->
     <header class="app-header">
-      <!-- Redesigned Top-Left Liquid Glass Logo (NO ugly subtitle) -->
-      <div class="header-left">
-        <a class="brand-liquid-pill" href="#" id="homeBrandLink" aria-label="LostLink Home">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <span class="liquid-logo-bubble">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
-            </svg>
-          </span>
-          <span class="brand-text">LostLink</span>
-          <span class="brand-live-dot" title="Active Campus Desk"></span>
-        </a>
-      </div>
-
-      <!-- 21st.dev Liquid Glass Navbar Floating Center Component (UNMODIFIED) -->
-      <div class="header-center">
-        <nav id="studentNav" class="nimbus-nav" data-tone="light" data-gl="on" data-refract="on" aria-label="Campus Navigation">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <canvas id="nimbusCanvas" class="nimbus-water" aria-hidden="true"></canvas>
-          <span id="nimbusDrop" class="nimbus-drop" aria-hidden="true"></span>
-
-          <!-- Start / Home view -->
-          <button class="nimbus-item tab-button active" type="button" data-view="start" aria-label="Start" aria-current="page">
-            <span class="nv-ico" data-fx="glow">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3.5 11.2 12 4l8.5 7.2" /><path d="M6 9.6V20h12V9.6" /><path class="nv-door" d="M10 20v-5h4v5Z" />
-              </svg>
-            </span>
-            <span class="nimbus-label">Start</span>
-          </button>
-
-          <!-- Browse items -->
-          <button class="nimbus-item tab-button" type="button" data-view="browse" aria-label="Browse items">
-            <span class="nv-ico" data-fx="spin">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17" />
-              </svg>
-            </span>
-            <span class="nimbus-label">Browse</span>
-          </button>
-
-          <!-- Submit Report -->
-          <button class="nimbus-item tab-button" type="button" data-view="report" aria-label="New report">
-            <span class="nv-ico" data-fx="drop">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Report</span>
-          </button>
-
-          <!-- My reports -->
-          <button class="nimbus-item tab-button" type="button" data-view="my-reports" aria-label="My reports">
-            <span class="nv-ico" data-fx="plane">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 12.2 3.6 5.4l2.7 6.8-2.7 6.4L21 12.2Zm-14.7 0H13" />
-              </svg>
-            </span>
-            <span class="nimbus-label">My Reports</span>
-          </button>
-
-          <!-- My claims -->
-          <button class="nimbus-item tab-button" type="button" data-view="my-claims" aria-label="My claims">
-            <span class="nv-ico" data-fx="wave">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Claims</span>
-            <span id="claimNavCount" class="nav-count hidden">0</span>
-          </button>
-
-          <!-- Notifications -->
-          <button class="nimbus-item tab-button" type="button" data-view="notifications" aria-label="Notifications">
-            <span class="nv-ico" data-fx="pop">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Alerts</span>
-            <span id="notificationNavCount" class="nav-count hidden">0</span>
-          </button>
-
-          <!-- Activity & certificates -->
-          <button id="activityNavButton" class="nimbus-item tab-button" type="button" data-view="activity" aria-label="Activity & certificates">
-            <span class="nv-ico" data-fx="glow">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path>
-              </svg>
-            </span>
-            <span class="nimbus-label">Activity</span>
-          </button>
-
-          <!-- Office console (office only) -->
-          <button id="officeNavButton" class="nimbus-item tab-button office-tab hidden" type="button" data-view="office" aria-label="Office Console">
-            <span class="nv-ico" data-fx="spin">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-              </svg>
-            </span>
-            <span class="nimbus-label">Console</span>
-          </button>
-        </nav>
-      </div>
-
-      <!-- Redesigned Single Liquid Glass Profile Tab (matching navbar size & glassmorphism) -->
+      <a class="brand-lockup compact" id="homeBrandLink" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost & found</small></span></a>
       <div class="header-right">
-        <div class="profile-tab-wrapper">
-          <button id="profileTabBtn" class="profile-liquid-pill" type="button" aria-expanded="false" aria-haspopup="true" aria-label="Profile and account actions">
-            <span class="nimbus-glass" aria-hidden="true"></span>
-            <span id="userInitial" class="avatar avatar-student">A</span>
-            <span id="userName" class="profile-pill-name">Alex Chen</span>
-            <span id="roleChip" class="profile-role-chip">Student</span>
-            <svg class="profile-pill-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </button>
-
-          <!-- Liquid Glass Dropdown Menu -->
-          <div id="profileDropdown" class="profile-dropdown-menu liquid-glass-panel hidden" role="menu">
-            <div class="profile-dropdown-header">
-              <span id="dropdownAvatar" class="avatar avatar-student avatar-large">A</span>
-              <div class="profile-dropdown-userinfo">
-                <strong id="dropdownUserName">Alex Chen</strong>
-                <small id="dropdownUserEmail" class="muted">student@lostlink.local</small>
-              </div>
-            </div>
-            <div class="profile-dropdown-divider"></div>
-            <div class="profile-dropdown-actions">
-              <button id="viewSwitchBtn" class="profile-dropdown-item button-quiet" type="button">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
-                <span id="switchViewLabel">Switch view</span>
-              </button>
-              <button id="showLoginButton" class="profile-dropdown-item button-quiet hidden" type="button">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                <span>Login screen</span>
-              </button>
-            </div>
-            <div class="profile-dropdown-divider"></div>
-            <button id="finnTipsToggle" class="profile-dropdown-item button-quiet" type="button" aria-pressed="false">Hide Finn's tips</button>
-            <div class="profile-dropdown-divider"></div>
-            <button id="logoutButton" class="profile-dropdown-item profile-logout-action" type="button">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              <span>Sign out</span>
-            </button>
-          </div>
-        </div>
+        <span id="roleChip" class="role-chip">Student</span>
+        <div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Alex Chen</span></div>
+        <button id="viewSwitchBtn" class="button button-primary button-small" type="button">Switch to office</button>
+        <button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button>
+        <button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button>
       </div>
     </header>
 
-    <!-- Hidden titles maintained for app.js status compatibility -->
-    <div class="sr-only">
-      <h1 id="welcomeTitle">LostLink</h1>
-      <p id="welcomeSubtitle">Campus lost and found</p>
-    </div>
+    <section class="welcome-row">
+      <div>
+        <p class="eyebrow">CAMPUS PROPERTY, MADE EASIER</p>
+        <h1 id="welcomeTitle">Find what you are looking for.</h1>
+        <p id="welcomeSubtitle" class="muted">Search reports and explore possible matches.</p>
+      </div>
+      <div class="welcome-mark" aria-hidden="true"><span>LL</span><i>↗</i></div>
+    </section>
+
+    <nav id="studentNav" class="tab-nav" aria-label="LostLink sections">
+      <button class="tab-button" type="button" data-view="start">Home</button>
+      <button class="tab-button active" type="button" data-view="browse"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.5 4.5"></path></svg> Browse items</button>
+      <button class="tab-button" type="button" data-view="report"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg> New report</button>
+      <button class="tab-button" type="button" data-view="my-reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.8h7l4 4V20H7z"></path><path d="M14 4v4h4M10 13h5M10 16.5h5"></path></svg> My reports</button>
+      <button class="tab-button" type="button" data-view="my-claims"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg> My claims <span id="claimNavCount" class="nav-count hidden">0</span></button>
+      <button class="tab-button" type="button" data-view="notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg> Notifications <span id="notificationNavCount" class="nav-count hidden">0</span></button>
+      <button id="activityNavButton" class="tab-button" type="button" data-view="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path></svg> Activity & certificates</button>
+      <button id="officeNavButton" class="tab-button office-tab hidden" type="button" data-view="office"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> Office console</button>
+    </nav>
 
     <section id="notice" class="notice hidden" role="status"></section>
-    <div id="appModeNote" class="app-mode-note hidden" role="status">Interactive offline preview: changes stay in this browser session.</div>
+    <div id="appModeNote" class="app-mode-note hidden" role="status">Offline preview: changes stay in this browser session and are not saved to the campus database.</div>
 
-    <!-- ==================== 1. STARTING VIEW (CLEAN, FOCUSED: LOST VS FOUND ONLY) ==================== -->
     <section id="startView" class="content-view start-view">
       <div class="start-hero">
         <div class="start-badge">
