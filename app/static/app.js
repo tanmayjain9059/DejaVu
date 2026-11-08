@@ -1787,7 +1787,7 @@ $("#publicBrowseResults").addEventListener("click",async event => {
   try {
     const result = await publicApi("/api/public/found/"+encodeURIComponent(button.dataset.publicClaim)+"/claims",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({roll_number:roll,evidence,evidence_types:["owner_specific_detail","distinctive_features"]})
+      body:JSON.stringify({roll_number:roll,evidence,evidence_types:["distinctive_features","other"]})
     });
     $("#publicTrackReference").value = result.claim.reference;
     $("#publicTrackRoll").value = roll;
