@@ -140,7 +140,7 @@ class FrontendContractTests(unittest.TestCase):
             start = self.js.index(f"function {function_name}(")
             next_function = self.js.find("\nfunction ", start + 1)
             block = self.js[start:next_function if next_function >= 0 else len(self.js)]
-            guard = re.search(r"if \(!form \\|\\| !chooser\) \\{[\\s\\S]*?return;\\s*\\}", block)
+            guard = re.search(r"if \(!form \|\| !chooser\) \{[\s\S]*?return;\s*\}", block)
             self.assertIsNotNone(guard, f"{function_name} must return when the form or chooser is absent")
             reset_at = block.find("form.reset();")
             self.assertGreater(reset_at, guard.end(), f"{function_name} resets before its null guard")
@@ -150,9 +150,8 @@ class FrontendContractTests(unittest.TestCase):
         end = self.js.find("\nasync function ", start + 1)
         block = self.js[start:end if end >= 0 else len(self.js)]
         self.assertIn("const form = event.currentTarget;", block)
-        self.assertRegex(block, r"if \(!form \\|\\| !errorNode\) \\{[\\s\\S]*?return;")
-        self.assertRegex(block, r"if \(!submitButton\) \\{[\\s\\S]*?return;")
-
+        self.assertRegex(block, r"if \(!form \|\| !errorNode\) \{[\s\S]*?return;")
+        self.assertRegex(block, r"if \(!submitButton\) \{[\s\S]*?return;")
 
 
 if __name__ == "__main__":
