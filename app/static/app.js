@@ -1831,7 +1831,7 @@ function showPublicDestination(type) {
   if (type === "browse") loadPublicFound();
   window.scrollTo({top:0,behavior:"smooth"});
 }
-async async function publicApi(path, options) {
+async function publicApi(path, options) {
   const opts = Object.assign({method:"GET",credentials:"omit",headers:{}},options || {});
   const response = await fetch(API_BASE_URL + path,opts);
   const data = await response.json().catch(() => ({}));
