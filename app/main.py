@@ -148,13 +148,23 @@ def health_live():
 
 @app.get("/health/ready", include_in_schema=False)
 def health_ready():
-    """Readiness endpoint that verifies a usable database connection."""
+    """Verify the configured database and required canonical schema without exposing secrets."""
     try:
         with connect_db() as conn:
             conn.execute("SELECT 1 AS ready").fetchone()
+            conn.execute("SELECT id FROM reports LIMIT 0")
+            conn.execute("SELECT id FROM claims LIMIT 0")
+            version = conn.execute(
+                "SELECT COALESCE(MAX(version),1) AS schema_version FROM schema_migrations"
+            ).fetchone()["schema_version"]
     except Exception:
         return JSONResponse(status_code=503, content={"status": "not_ready"})
-    return {"status": "ready"}
+    return {
+        "status": "ready",
+        "database": "postgresql" if DATABASE_URL else "sqlite",
+        "schema_version": int(version),
+        "canonical_tables": "ready",
+    }
 
 
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
