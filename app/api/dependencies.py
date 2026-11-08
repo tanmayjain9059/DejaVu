@@ -23,6 +23,8 @@ async def authenticated_user(
         identity = await run_in_threadpool(verify_supabase_access_token, token)
         auth_id = str(identity["id"])
         email = str(identity["email"]).strip().lower()
+        if email not in OFFICE_USER_EMAILS:
+            raise HTTPException(status_code=403, detail="Only explicitly authorised campus office accounts can sign in.")
         if ALLOWED_EMAIL_DOMAINS and email.rsplit("@", 1)[-1] not in ALLOWED_EMAIL_DOMAINS:
             raise HTTPException(status_code=403, detail="Use an approved college email address to access LostLink.")
         metadata = identity.get("user_metadata") or {}
@@ -37,7 +39,7 @@ async def authenticated_user(
                     conn.execute("UPDATE users SET supabase_user_id=? WHERE id=?", (auth_id, existing["id"]))
                     row = conn.execute("SELECT * FROM users WHERE id=?", (existing["id"],)).fetchone()
                 else:
-                    role = "office" if email in OFFICE_USER_EMAILS else "student"
+                    role = "office"
                     conn.execute(
                         """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at, supabase_user_id)
                            VALUES (?, ?, ?, ?, ?, ?)""",
@@ -55,7 +57,7 @@ async def authenticated_user(
                 elif display_name and row["display_name"] != display_name:
                     conn.execute("UPDATE users SET display_name=? WHERE id=?", (display_name, row["id"]))
                 # The server-side allowlist is authoritative on every request.
-                expected_role = "office" if email in OFFICE_USER_EMAILS else "student"
+                expected_role = "office"
                 if row["role"] != expected_role:
                     conn.execute("UPDATE users SET role=? WHERE id=?", (expected_role, row["id"]))
                 row = conn.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
@@ -71,6 +73,9 @@ async def authenticated_user(
     if not row:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+    if row["role"] != "office":
+        request.session.clear()
+        raise HTTPException(status_code=403, detail="Student sign-in is disabled. Public reporting does not require an account.")
     return user_payload(row)
 
 def require_office(user: dict[str, Any]) -> None:
