@@ -491,8 +491,6 @@ function enterApp(user) {
   }
   currentUser = user;
   if (usingMockApi) mockStore.session = mockCopy(user);
-  const switchButton = $("#viewSwitchBtn");
-  if (switchButton) switchButton.classList.add("hidden");
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
