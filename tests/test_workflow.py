@@ -37,7 +37,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.modules = [main, app_config, app_database, app_runtime, app_notifications,
-                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes]
+                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes, public_workflow_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
                         "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
