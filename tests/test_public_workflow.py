@@ -80,6 +80,53 @@ class PublicWorkflowTests(unittest.TestCase):
                     headers={"X-LostLink-Tracking-Secret":token})
         self.assertEqual(denied.status_code,404)
 
+    def test_claim_approval_requires_matching_physical_id_and_verification_checks(self):
+        report=self.client.post("/api/public/reports",json={
+            "report_type":"found","roll_number":"25B81A66J8",
+            "title":"Black calculator","description":"Black scientific calculator with a cracked protective cover.",
+            "category":"electronics","location_block":"Block A",
+        })
+        self.assertEqual(report.status_code,201,report.text)
+        reference=report.json()["case"]["reference"]
+        intake=self.client.post("/api/public/office/"+reference+"/intake",json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0002","private_detail":"Blue mark beneath the cover.",
+        })
+        self.assertEqual(intake.status_code,401,intake.text)
+
+        login=self.client.post("/api/login",json={
+            "email":"office@test.invalid","password":"office-password"})
+        self.assertEqual(login.status_code,200,login.text)
+        intake=self.client.post("/api/public/office/"+reference+"/intake",json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0002","private_detail":"Blue mark beneath the cover.",
+        })
+        self.assertEqual(intake.status_code,200,intake.text)
+        with main.connect_db() as conn:
+            case=conn.execute("SELECT id FROM public_cases WHERE public_ref=?",(reference,)).fetchone()
+        claim=self.client.post("/api/public/found/"+case["id"]+"/claims",json={
+            "roll_number":"25B81A66J9",
+            "evidence":"There is a small scratch on the lower-right corner that I can identify.",
+            "evidence_types":["distinctive_features","date_location"],
+        })
+        self.assertEqual(claim.status_code,201,claim.text)
+        with main.connect_db() as conn:
+            claim_row=conn.execute("SELECT id FROM public_claims WHERE public_ref=?",
+                (claim.json()["claim"]["reference"],)).fetchone()
+        mismatch=self.client.post("/api/public/office/claims/"+claim_row["id"]+"/decision",json={
+            "action":"approve","identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8",
+            "verification_checks":["distinctive_features","date_location","physical_inspection","supporting_evidence"],
+        })
+        self.assertEqual(mismatch.status_code,422,mismatch.text)
+        missing_checks=self.client.post("/api/public/office/claims/"+claim_row["id"]+"/decision",json={
+            "action":"approve","identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J9",
+        })
+        self.assertEqual(missing_checks.status_code,422,missing_checks.text)
+
     def test_found_item_hidden_until_staff_confirms_intake(self):
         report=self.client.post("/api/public/reports",json={
             "report_type":"found","roll_number":"25B81A66J8",
