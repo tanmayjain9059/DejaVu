@@ -426,6 +426,26 @@ function categoryLabel(value) {
   return found ? found.label : (value || "Item");
 }
 
+function applyDateInputBounds() {
+  const minDate = "2012-01-01";
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  const maxDateTime = localNow.toISOString().slice(0, 16);
+  const maxDate = maxDateTime.slice(0, 10);
+  ["#publicDate", "#reportDate"].forEach((selector) => {
+    const input = $(selector);
+    if (!input) return;
+    input.min = minDate + "T00:00";
+    input.max = maxDateTime;
+  });
+  ["#filterDateFrom", "#filterDateTo"].forEach((selector) => {
+    const input = $(selector);
+    if (!input) return;
+    input.min = minDate;
+    input.max = maxDate;
+  });
+}
+
 async function loadConfig() {
   appConfig = await api("/api/config");
 
@@ -482,6 +502,7 @@ async function loadConfig() {
 
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
   $("#reportDate").value = localNow.toISOString().slice(0, 16);
+  applyDateInputBounds();
 }
 
 function stopNotificationPolling() {
@@ -635,6 +656,7 @@ function setReportMode(type) {
     const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
     $("#reportDate").value = localNow.toISOString().slice(0, 16);
   }
+  applyDateInputBounds();
 }
 
 function resetReportMode() {
@@ -1861,11 +1883,22 @@ $("#publicBrowseButton").addEventListener("click",() => showPublicDestination("b
 $("#publicTrackButton").addEventListener("click",() => showPublicDestination("track"));
 $("#publicOfficeButton").addEventListener("click",openPublicOfficeSignIn);
 $("#closeOfficeAccess").addEventListener("click",showPublicHome);
-document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click",() => {
-  showPublicDestination(button.dataset.publicReport);
-  $("#publicLostPage .public-title").scrollIntoView({behavior:"smooth",block:"start"});
-}));
-document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click",showPublicHome));
+// Delegate public actions from the document so they continue working if
+// public panels are re-rendered or their buttons are replaced.
+document.addEventListener("click", event => {
+  const reportButton = event.target.closest("[data-public-report]");
+  if (reportButton) {
+    event.preventDefault();
+    showPublicDestination(reportButton.dataset.publicReport);
+    $("#publicLostPage .public-title").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  const homeButton = event.target.closest("[data-public-home]");
+  if (homeButton) {
+    event.preventDefault();
+    showPublicHome();
+  }
+});
 $("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
 $("#publicBrowseResults").addEventListener("click",async event => {
   const button = event.target.closest("[data-public-claim]");
