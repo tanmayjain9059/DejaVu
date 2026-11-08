@@ -719,7 +719,6 @@ function showLogin() {
   $("#publicFoundPage").classList.add("hidden");
   currentUser = null;
   placeFinnForView("home");
-  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 
 function enterApp(user) {
@@ -789,7 +788,6 @@ function navigate(view) {
   if (view === "activity") loadActivity();
   refreshNotificationBadge();
   placeFinnForView(view);
-  if (typeof wakeFinn === "function") wakeFinn(finnMode());
 }
 
 
@@ -1026,6 +1024,7 @@ async function submitReport(event) {
     location_area: $("#reportArea").value.trim() || null
   };
   const image = $("#reportImage").files[0];
+  if (finnUrgentTerms.test(body.title + " " + body.category)) finnEvent("urgent");
   if (!body.location_block && !body.location_area) {
     $("#reportError").textContent = "Choose a campus block/building or enter a nearby area.";
     $("#reportArea").focus();
@@ -1038,6 +1037,7 @@ async function submitReport(event) {
   try {
     const result = await api("/api/reports", { method: "POST", body });
     let successMessage = result.message;
+    finnEvent("claim_submitted");
     let photoFailed = false;
     if (image) {
       const fileBody = new FormData();
@@ -1885,7 +1885,6 @@ function showPublicDestination(type) {
   $("#publicLostPage").classList.toggle("hidden", type !== "lost");
   $("#publicFoundPage").classList.toggle("hidden", type !== "found");
   placeFinnForView(type);
-  if (typeof wakeFinn === "function") wakeFinn(type);
 }
 function openPublicSignIn(mode = "student") {
   const office = mode === "office";
@@ -1916,70 +1915,193 @@ const finnDock = $("#finnDock");
 const finnCharacter = $("#finnCharacter");
 const finnMessage = $("#mascotMessage");
 const finnLines = {
-  home: [
-    "Psst… welcome to the campus side quest. What went missing?",
-    "Main character energy. Let's reunite some belongings.",
-    "Lost something? Drop the lore, I'll help with the clues.",
-    "Detective Finn reporting for duty. Magnifying glass: ready."
+  "home": [
+    "Lost something? Finn's got you 👀",
+    "Let's find your stuff."
   ],
-  lost: [
-    "Okay detective, where did you last spot it? 👀",
-    "Give me the details. We’re not letting that item ghost you.",
-    "Tiny clue, big lead. Tell us what went missing.",
-    "Let's retrace those steps. Campus mysteries don't solve themselves."
+  "search_lost": [
+    "Describe it, I'll sniff it out.",
+    "Colour + place = faster match."
   ],
-  found: [
-    "W find. Let's get this item back to its person.",
-    "You're the plot twist in someone's lost-item story. ✨",
-    "Where did you find it? Location is the real MVP.",
-    "Found something? Be the reason someone's day gets better."
+  "search_found": [
+    "Found something? Be a hero 🙌",
+    "Drop it here, help a stranger."
   ],
-  start: [
-    "Your campus, your quests. What are we solving today?",
-    "Low-key, returning a lost item is a legendary move.",
-    "Need a hand? I'm basically the sidekick with the search skills."
+  "search_focused": [
+    "Try 'black wallet library'.",
+    "Keep it simple, I got it."
   ],
-  browse: [
-    "Let's scan the clues. One of these could be your missing item.",
-    "Scroll smart, detective. Similar doesn't always mean same.",
-    "Found a possible match? Check the details before making a claim."
+  "results": [
+    "Ooh, this could be it!",
+    "Check these out 👇"
   ],
-  report: [
-    "Drop the details, not your whole life story. Keep it clear.",
-    "A good description is basically a cheat code for matching.",
-    "Photos and location clues can make your report more useful."
+  "no_results": [
+    "Nothing yet, still looking.",
+    "New stuff drops daily, check back."
   ],
-  "my-reports": [
-    "Your reports, your paper trail. Let's see what's happening.",
-    "Status check time. Fingers crossed for a solid lead.",
-    "Your item isn't forgotten. Let's check the latest update."
+  "item_detail": [
+    "Is this yours? Claim it!",
+    "Add proof to speed things up."
   ],
-  "my-claims": [
-    "Claim submitted? Keep your proof details ready for the office.",
-    "Ownership clues matter. The office team will verify before handover.",
-    "We're close. Just remember: a match is a lead, not proof."
+  "post_lost": [
+    "Clear photo helps a lot.",
+    "More details = better luck."
   ],
-  notifications: [
-    "Fresh updates just dropped. Let's see what changed.",
-    "Notification check. Hopefully it's the good kind of ping.",
-    "Don't leave a useful update on read, detective."
+  "post_found": [
+    "Clear photo helps a lot.",
+    "Add where you found it."
   ],
-  activity: [
-    "Good deeds look good on your campus record. Keep going.",
-    "Community points? That's a side quest worth doing.",
-    "Helping reunite stuff is the real campus flex."
+  "claim_submitted": [
+    "Done! Fingers crossed 🤞",
+    "Sit tight, we'll ping you."
   ],
-  office: [
-    "Office mode activated. Accuracy over speed, always.",
-    "Verify the details before a claim moves forward. You got this.",
-    "Every handover needs a proper check. No guesswork, boss."
+  "item_returned": [
+    "Reunited!! Love to see it 🎉"
   ],
-  help: [
-    "I'm Finn. Tap around and I'll give you the campus lowdown.",
-    "Lost it? Report it. Found it? Log it. Then let the office verify.",
-    "Need a clue? I'm small, but my detective energy is huge."
+  "notifications": [
+    "New match! Come look.",
+    "You're all caught up."
+  ],
+  "history": [
+    "Your finds so far. Legend.",
+    "Nothing here yet, go be useful 😌"
+  ],
+  "urgent": [
+    "Your item matters. Add clear details.",
+    "We'll help you verify it safely."
+  ],
+  "error": [
+    "Oops, something broke. Try again?",
+    "No signal, I'll wait with you."
   ]
-};;
+};
+let finnIndex = Object.create(null);
+let finnLastBubbleAt = 0;
+let finnBubbleCount = 0;
+let finnVisitKey = "";
+let finnIdleTimer = null;
+let finnHideTimer = null;
+let finnRepeatTimer = null;
+let finnAnchorObserver = null;
+let finnAutoTimer = null;
+let finnTipsHidden = false;
+const finnCharacter = $("#finnCharacter");
+const finnDock = $("#finnDock");
+const finnMessage = $("#mascotMessage");
+const finnReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const finnUrgentTerms = /wallet|phone|mobile|id card|identity|keys|passport|laptop/i;
+function finnPick(key) {
+  const lines = finnLines[key] || finnLines.home;
+  const last = finnIndex[key];
+  let index = Math.floor(Math.random() * lines.length);
+  if (lines.length > 1 && index === last) index = (index + 1) % lines.length;
+  finnIndex[key] = index;
+  return lines[index];
+}
+function finnMode() {
+  if ($("#publicLostPage") && !$("#publicLostPage").classList.contains("hidden")) return "search_lost";
+  if ($("#publicFoundPage") && !$("#publicFoundPage").classList.contains("hidden")) return "search_found";
+  if (currentUser) {
+    const active = document.querySelector("#studentNav [data-view].active");
+    const view = active?.dataset.view || "start";
+    if (view === "browse") return "results";
+    if (view === "report") return $("#reportType")?.value === "found" ? "post_found" : "post_lost";
+    if (view === "my-reports" || view === "my-claims" || view === "activity") return "history";
+    if (view === "notifications") return "notifications";
+    return view === "office" ? "history" : "home";
+  }
+  return "home";
+}
+function finnBubble(key, force = false) {
+  if (!finnDock || !finnMessage || finnTipsHidden || finnBubbleCount >= 2 && !force) return;
+  const now = Date.now();
+  if (!force && now - finnLastBubbleAt < 18000) return;
+  const line = finnPick(key);
+  finnMessage.textContent = line;
+  finnDock.dataset.messageState = key;
+  finnDock.classList.remove("is-awake","has-tip");
+  void finnDock.offsetWidth;
+  finnDock.classList.add("is-awake","has-tip");
+  finnLastBubbleAt = now;
+  finnBubbleCount++;
+  clearTimeout(finnHideTimer);
+  finnHideTimer = setTimeout(() => finnDock.classList.remove("has-tip"), 3600);
+}
+function wakeFinn(mode = finnMode(), tapped = false) {
+  if (!finnDock) return;
+  finnDock.classList.remove("is-awake");
+  void finnDock.offsetWidth;
+  finnDock.classList.add("is-awake");
+  if (tapped) finnBubble(mode === "help" ? finnMode() : mode, true);
+}
+function placeFinnForView(view) {
+  if (!finnDock) return;
+  const targets = {
+    home:"#publicActionPanel .public-action-heading",
+    lost:"#publicLostPage .public-destination-heading, #publicLostPage",
+    found:"#publicFoundPage .public-destination-heading, #publicFoundPage",
+    start:"#startView .start-hero",
+    browse:"#browseView > .section-heading",
+    report:"#reportView > .section-heading",
+    "my-reports":"#myReportsView > .section-heading",
+    "my-claims":"#myClaimsView > .section-heading",
+    notifications:"#notificationsView > .section-heading",
+    activity:"#activityView > .section-heading",
+    office:"#officeView > .section-heading"
+  };
+  const host = document.querySelector(targets[view] || targets.home);
+  if (!host) return;
+  host.classList.add("finn-anchor");
+  if (finnDock.parentElement !== host) host.appendChild(finnDock);
+  const updateLayout = () => {
+    const width = host.getBoundingClientRect().width;
+    host.dataset.finnLayout = width < 440 ? "stacked" : width < 700 ? "compact" : "wide";
+  };
+  updateLayout();
+  if (typeof ResizeObserver !== "undefined") {
+    if (finnAnchorObserver) finnAnchorObserver.disconnect();
+    finnAnchorObserver = new ResizeObserver(updateLayout);
+    finnAnchorObserver.observe(host);
+  }
+  clearTimeout(finnAutoTimer);
+  clearTimeout(finnRepeatTimer);
+  finnVisitKey = view + ":" + (currentUser?.id || "public");
+  finnBubbleCount = 0;
+  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 1900 + Math.random()*900);
+  const scheduleRepeat = () => {
+    finnRepeatTimer = setTimeout(() => {
+      if (document.visibilityState === "visible") wakeFinn(finnMode());
+      scheduleRepeat();
+    }, 8000 + Math.random()*4000);
+  };
+  scheduleRepeat();
+}
+function finnEvent(state) {
+  finnBubble(state, true);
+}
+function initFinn() {
+  if (!finnDock || !finnCharacter) return;
+  const touchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  finnCharacter.addEventListener("pointerenter", () => {
+    if (!touchDevice && !finnReducedMotion.matches) wakeFinn(finnMode());
+  });
+  finnCharacter.addEventListener("focus", () => wakeFinn(finnMode()));
+  finnCharacter.addEventListener("click", () => {
+    finnDock.classList.add("is-tapped");
+    setTimeout(() => finnDock.classList.remove("is-tapped"), 420);
+    wakeFinn(finnMode(), true);
+  });
+  const toggle = $("#finnTipsToggle");
+  if (toggle) toggle.addEventListener("click", () => {
+    finnTipsHidden = !finnTipsHidden;
+    toggle.textContent = finnTipsHidden ? "Show Finn's tips" : "Hide Finn's tips";
+    toggle.setAttribute("aria-pressed", String(finnTipsHidden));
+    finnDock.classList.toggle("tips-disabled", finnTipsHidden);
+    if (finnTipsHidden) finnDock.classList.remove("has-tip");
+  });
+}
+initFinn();
+
 let finnIndex = 0;
 let finnTapIndex = 0;
 let finnIdleTimer = null;
