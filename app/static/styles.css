@@ -2355,3 +2355,20 @@ button:focus-visible,a:focus-visible { outline:3px solid rgba(168,94,50,.45); ou
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
+
+
+/* Flat, calm surfaces: retain the warm fox palette without glassmorphism. */
+.form-card,.glass-card,.liquid-glass-panel,.start-glass-card,.public-action-panel,
+.public-action-card,.destination-card,.notification-card,.matches-panel,.empty-state,
+.dialog-card,.activity-points-card,.milestone-card,.leaderboard-section,.office-section,
+.upload-box,.filter-panel,.list-card,.item-card,.leaderboard-row,.ledger-row,.certificate-card,
+.finn-guidance {
+  background:#FFFCF7 !important;
+  border:1px solid #E4D6C6 !important;
+  box-shadow:0 8px 22px rgba(73,48,31,.06) !important;
+}
+.public-action-panel,.finn-guidance { background:#F7EFE5 !important; }
+.public-action-card:hover,.list-card:hover,.item-card:hover {
+  border-color:#C9A985 !important;
+  box-shadow:0 10px 26px rgba(73,48,31,.1) !important;
+}
