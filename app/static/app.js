@@ -1900,10 +1900,9 @@ function showPublicDestination(type) {
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.add("hidden");
   const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "found" ? "publicFoundPage" : "publicLostPage";
-  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
   placeFinnIn("#"+destination+" [data-finn-slot]");
   if (type === "lost" || type === "found") {
-    $("#publicReportType").value = type;
     const reportPage = $("#" + destination);
     const hiddenType = reportPage.querySelector("input[type=hidden]");
     if (hiddenType) hiddenType.value = type;
@@ -1916,17 +1915,17 @@ function showPublicDestination(type) {
       title.innerHTML = 'You found it.<br><span>Let’s reunite it.</span>';
       lede.textContent = "Tell us what you found. The campus office will verify your college ID when you hand in the item.";
       submit.textContent = "Submit found report ↗";
-      $("#publicDescription").placeholder = "Describe the item as you found it: type, size, material, condition and visible details. Do not guess who owns it.";
-      $("#publicFeatures").placeholder = "Visible exterior details only. Keep contents, serial numbers and hidden identifying marks private.";
-      $("#publicArea").placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
+      reportPage.querySelector("#publicDescriptionFound").placeholder = "Describe the item as you found it: type, size, material, condition and visible details. Do not guess who owns it.";
+      reportPage.querySelector("#publicFeaturesFound").placeholder = "Visible exterior details only. Keep contents, serial numbers and hidden identifying marks private.";
+      reportPage.querySelector("#publicAreaFound").placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
     } else {
       eyebrow.textContent = "PUBLIC REPORT · LOST";
       title.innerHTML = 'Let’s find<br><span>what’s missing.</span>';
       lede.textContent = "Submit a report using your college roll number. No student account or password is needed.";
       submit.textContent = "Submit lost report ↗";
-      $("#publicDescription").placeholder = "Describe the item you lost and the details that could help you recognise it. Keep unique ownership clues private.";
-      $("#publicFeatures").placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
-      $("#publicArea").placeholder = "e.g. Library reading room, canteen counter, bus bay";
+      reportPage.querySelector("#publicDescription").placeholder = "Describe the item you lost and the details that could help you recognise it. Keep unique ownership clues private.";
+      reportPage.querySelector("#publicFeatures").placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
+      reportPage.querySelector("#publicArea").placeholder = "e.g. Library reading room, canteen counter, bus bay";
     }
   }
   if (type === "browse") loadPublicFound();
@@ -1968,7 +1967,7 @@ function openPublicOfficeSignIn() {
   $("#loginError").textContent = "";
   $("#loginForm").reset();
   $("#publicHomeContent").classList.add("hidden");
-  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
   placeFinnIn("#officeLoginPanel [data-finn-slot]");
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
