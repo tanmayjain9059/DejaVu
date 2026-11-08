@@ -127,12 +127,12 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
     def test_found_items_are_hidden_until_office_physically_verifies_intake(self):
         created = self.create_public_report("found")
         self.assertEqual(created.status_code,201,created.text)
-        reference = created.json()["case"]["reference"]
+        report_id = created.json()["case"]["id"]
         self.assertEqual(self.client.get("/api/public/found").json()["reports"],[])
         self.office_login()
-        wrong_identity = self.intake(reference,roll="25B81A66J9")
+        wrong_identity = self.intake(report_id,roll="25B81A66J9")
         self.assertEqual(wrong_identity.status_code,422,wrong_identity.text)
-        accepted = self.intake(reference)
+        accepted = self.intake(report_id)
         self.assertEqual(accepted.status_code,200,accepted.text)
         public = self.client.get("/api/public/found")
         self.assertEqual(public.status_code,200,public.text)
@@ -145,9 +145,9 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
     def test_public_claim_flows_through_canonical_review_and_physical_handover(self):
         found = self.create_public_report("found")
         self.assertEqual(found.status_code,201,found.text)
-        report_ref = found.json()["case"]["reference"]
+        report_id = found.json()["case"]["id"]
         self.office_login()
-        intake = self.intake(report_ref)
+        intake = self.intake(report_id)
         self.assertEqual(intake.status_code,200,intake.text)
         report_id = intake.json()["report"]["id"]
 
