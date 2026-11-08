@@ -1881,7 +1881,6 @@ function showPublicHome() {
   $("#publicLostPage").classList.add("hidden");
   $("#publicFoundPage").classList.add("hidden");
   placeFinnForView("home");
-  if (typeof wakeFinn === "function") wakeFinn("home");
 }
 function showPublicDestination(type) {
   $("#publicHomeContent").classList.add("hidden");
@@ -2013,49 +2012,55 @@ function finnMode() {
   return "home";
 }
 function finnBubble(key, force = false) {
-  if (!finnDock || !finnMessage || finnTipsHidden || finnBubbleCount >= 2 && !force) return;
+  if (!finnDock || !finnMessage || finnTipsHidden) return;
   const now = Date.now();
-  if (!force && now - finnLastBubbleAt < 18000) return;
+  if (!force && now - finnLastBubbleAt < 15000) return;
   const line = finnPick(key);
   finnMessage.textContent = line;
   finnDock.dataset.messageState = key;
-  finnDock.classList.remove("is-awake","has-tip");
+  finnDock.classList.remove("is-awake", "has-tip");
   void finnDock.offsetWidth;
-  finnDock.classList.add("is-awake","has-tip");
+  finnDock.classList.add("is-awake", "has-tip");
   finnLastBubbleAt = now;
-  finnBubbleCount++;
   clearTimeout(finnHideTimer);
-  finnHideTimer = setTimeout(() => finnDock.classList.remove("has-tip"), 3600);
+  finnHideTimer = setTimeout(() => finnDock.classList.remove("has-tip"), 3800);
 }
 function wakeFinn(mode = finnMode(), tapped = false) {
   if (!finnDock) return;
   finnDock.classList.remove("is-awake");
   void finnDock.offsetWidth;
   finnDock.classList.add("is-awake");
-  if (tapped) finnBubble(mode === "help" ? finnMode() : mode, true);
+  if (tapped) {
+    finnDock.classList.add("is-tapped");
+    setTimeout(() => finnDock.classList.remove("is-tapped"), 420);
+    finnBubble(mode === "help" ? finnMode() : mode, true);
+  }
 }
 function placeFinnForView(view) {
   if (!finnDock) return;
   const targets = {
-    home:"#publicActionPanel .public-action-heading",
-    lost:"#publicLostPage .public-destination-heading, #publicLostPage",
-    found:"#publicFoundPage .public-destination-heading, #publicFoundPage",
-    start:"#startView .start-hero",
-    browse:"#browseView > .section-heading",
-    report:"#reportView > .section-heading",
-    "my-reports":"#myReportsView > .section-heading",
-    "my-claims":"#myClaimsView > .section-heading",
-    notifications:"#notificationsView > .section-heading",
-    activity:"#activityView > .section-heading",
-    office:"#officeView > .section-heading"
+    home: "#publicActionPanel",
+    lost: "#publicLostPage",
+    found: "#publicFoundPage",
+    start: "#startView .start-hero",
+    browse: "#browseView .section-heading",
+    report: "#reportView #reportForm",
+    "my-reports": "#myReportsView .section-heading",
+    "my-claims": "#myClaimsView .section-heading",
+    notifications: "#notificationsView .section-heading",
+    activity: "#activityView .section-heading",
+    office: "#officeView .section-heading"
   };
-  const host = document.querySelector(targets[view] || targets.home);
+  let host = document.querySelector(targets[view] || targets.home);
+  if (!host || host.closest(".hidden")) {
+    host = document.querySelector(view === "report" ? "#reportView" : targets.home);
+  }
   if (!host) return;
-  host.classList.add("finn-anchor");
   if (finnDock.parentElement !== host) host.appendChild(finnDock);
+  host.classList.add("finn-perch-host");
   const updateLayout = () => {
     const width = host.getBoundingClientRect().width;
-    host.dataset.finnLayout = width < 440 ? "stacked" : width < 700 ? "compact" : "wide";
+    host.dataset.finnLayout = width < 390 ? "small" : width < 560 ? "mobile" : "desktop";
   };
   updateLayout();
   if (typeof ResizeObserver !== "undefined") {
@@ -2065,19 +2070,17 @@ function placeFinnForView(view) {
   }
   clearTimeout(finnAutoTimer);
   clearTimeout(finnRepeatTimer);
-  finnVisitKey = view + ":" + (currentUser?.id || "public");
   finnBubbleCount = 0;
-  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 1900 + Math.random()*900);
-  const scheduleRepeat = () => {
+  finnAutoTimer = setTimeout(() => finnBubble(finnMode()), 1700 + Math.random() * 1100);
+  const scheduleWake = () => {
     finnRepeatTimer = setTimeout(() => {
-      if (document.visibilityState === "visible") wakeFinn(finnMode());
-      scheduleRepeat();
-    }, 8000 + Math.random()*4000);
+      if (document.visibilityState === "visible" && !finnReducedMotion.matches) wakeFinn(finnMode());
+      scheduleWake();
+    }, 8000 + Math.random() * 4000);
   };
-  scheduleRepeat();
+  scheduleWake();
 }
 function finnEvent(state) {
-  if (Date.now() - finnLastBubbleAt < 18000 || finnBubbleCount >= 2) return;
   finnBubble(state, true);
 }
 function initFinn() {
