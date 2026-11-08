@@ -373,8 +373,9 @@
       
       <div class="report-intro"><p class="eyebrow">CAMPUS LOST &amp; FOUND</p><h2 id="reportExperienceHeading">Let's find what you've lost.</h2><p id="reportExperienceCopy">Tell us a little about the item. We'll help connect you with possible matches across campus.</p></div>
       <div class="form-layout">
-        <form id="reportForm" class="form-card form-stack liquid-glass-panel">
-          <input id="reportType" name="report_type" type="hidden" value="">
+        <form id="lostReportForm" class="form-card form-stack liquid-glass-panel hidden">
+          <input id="reportType" name="report_type" type="hidden" value="lost">
+          <section id="lostReportGuidance" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">LOST ITEM · HELP US RETRACE IT</span><h3>Think back to the last moment you had the item.</h3><p>Describe what you remember and where you last saw or used it. Keep one or two ownership clues private for claim verification.</p><ul><li>Use your best estimate for the last-seen time.</li><li>Keep unique marks or private proof out of the public description.</li></ul></section>
           
           <div class="form-section-heading">
             <span class="step-number">01</span>
@@ -386,7 +387,7 @@
 
           <div class="two-columns">
             <label>
-              <span>Item name <span class="field-required">Required</span></span>
+              <span id="reportItemNameLabel">Item name</span> <span class="field-required">Required</span>
               <input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy backpack">
             </label>
             <div>
@@ -400,9 +401,9 @@
           </div>
 
           <label>
-            <span>Description <span class="field-required">Required</span></span>
+            <span id="reportDescriptionLabel">Description</span> <span class="field-required">Required</span>
             <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
-            <small class="field-hint">Describe visible details only. Keep private proof of ownership, serial numbers, and passwords out of this description.</small>
+            <small id="reportDescriptionHelp" class="field-hint">Keep one or two unique ownership clues private. Share them later in a claim so the office can verify ownership.</small>
           </label>
 
           <div class="form-section-heading space-top">
@@ -425,7 +426,7 @@
           </div>
 
           <label>
-            <span>Visible characteristics <span class="field-optional">Optional</span></span>
+            <span id="reportFeaturesLabel">Visible characteristics</span> <span class="field-optional">Optional</span>
             <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two front pockets, black zip, small scratch on the outer flap"></textarea>
             <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
           </label>
@@ -446,7 +447,7 @@
 
           <div class="two-columns">
             <label>
-              <span>Campus location <span class="field-required">Required</span></span>
+              <span id="reportBlockLabel">Campus location</span> <span class="field-required">Required</span>
               <select id="reportBlock" name="location_block"><option value="">Choose a block or area</option></select>
             </label>
             <label>
@@ -461,7 +462,7 @@
               <input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. A-102">
             </label>
             <label>
-              <span>Nearby area / landmark <span class="field-optional">Optional</span></span>
+              <span id="reportAreaLabel">Nearby area / landmark</span> <span class="field-optional">Optional</span>
               <input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Library entrance, cafeteria">
             </label>
           </div>
@@ -495,7 +496,130 @@
           </div>
         </form>
 
-        <aside class="side-guidance finn-guidance" aria-label="Finn reporting helper"><h3>Finn is on the case.</h3><p id="finnCategoryHeading">Choose a category and I’ll help you describe it.</p></aside></aside>
+<form id="foundReportForm" class="form-card form-stack liquid-glass-panel hidden found-report-form">
+          <input id="reportTypeFound" name="report_type" type="hidden" value="found">
+          <section id="lostReportGuidanceFound" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">FOUND ITEM · HELP RETURN IT SAFELY</span><h3>Describe only what you observed when you discovered the item.</h3><p>Record the visible condition and exact discovery spot. Do not publish names, IDs, serial numbers, contents or hidden identifying marks.</p><ul><li>Record when and where you actually found it.</li><li>Hand the item to the campus office; staff confirm receipt and assign its LostLink Tag ID.</li></ul></section>
+          
+          <div class="form-section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <strong id="reportFormStepTitleFound">Report details</strong>
+              <small id="reportFormStepHintFound">Add the item and context.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span id="reportItemNameLabelFound">Item found</span> <span class="field-required">Required</span>
+              <input id="reportTitleFound" name="title" required minlength="4" maxlength="100" placeholder="e.g. Silver water bottle I found">
+            </label>
+            <div>
+              <label for="reportCategoryFound"><span>Category <span class="field-required">Required</span></span></label>
+              <select id="reportCategoryFound" name="category" required></select>
+              <div class="category-ai-control">
+                <button id="suggestCategoryButtonFound" class="button button-quiet button-small" type="button">Suggest category with Finn</button>
+                <small id="categorySuggestionFound" class="field-hint" role="status"></small>
+              </div>
+            </div>
+          </div>
+
+          <label>
+            <span id="reportDescriptionLabelFound">Describe the item you found</span> <span class="field-required">Required</span>
+            <textarea id="reportDescriptionFound" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Describe the item as found: type, size, material, condition and visible details. Do not guess who owns it."></textarea>
+            <small id="reportDescriptionHelpFound" class="field-hint">Share only safe, observable details. Do not include names, student IDs, serial numbers, contents or hidden identifying marks.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">02</span>
+            <div>
+              <strong>Additional item details</strong>
+              <small>Optional details improve search and candidate matching.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Brand / make <span class="field-optional">Optional</span></span>
+              <input id="reportBrandFound" name="brand" maxlength="80" placeholder="e.g. Wildcraft, Apple">
+            </label>
+            <label>
+              <span>Main colour <span class="field-optional">Optional</span></span>
+              <input id="reportColorFound" name="primary_color" maxlength="60" placeholder="e.g. Navy blue">
+            </label>
+          </div>
+
+          <label>
+            <span id="reportFeaturesLabelFound">Visible condition and features</span> <span class="field-optional">Optional</span>
+            <textarea id="reportFeaturesFound" name="visible_features" rows="2" maxlength="400" placeholder="Scratches, stickers, damage, colour, brand, visible exterior details…"></textarea>
+            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
+          </label>
+
+          <label>
+            <span id="reportDateLabelFound">When did you find it?</span> <span class="field-optional">Optional</span>
+            <input id="reportDateFound" name="occurred_at" type="datetime-local">
+            <small id="reportDateHelpFound" class="field-hint">Use your best estimate; leave blank if you are unsure.</small>
+          </label>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">03</span>
+            <div>
+              <strong id="reportLocationHeadingFound">Where exactly did you find it?</strong>
+              <small id="reportLocationHelpFound">Record the discovery spot, not the office handover or storage location.</small>
+            </div>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span id="reportBlockLabelFound">Found at block / building</span> <span class="field-required">Required</span>
+              <select id="reportBlockFound" name="location_block"><option value="">Choose a block or area</option></select>
+            </label>
+            <label>
+              <span>Floor <span class="field-optional">Optional</span></span>
+              <select id="reportFloorFound" name="location_floor"><option value="">Not sure</option></select>
+            </label>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Room <span class="field-optional">Optional</span></span>
+              <input id="reportRoomFound" name="location_room" maxlength="80" placeholder="e.g. A-102">
+            </label>
+            <label>
+              <span id="reportAreaLabelFound">Found near / specific spot</span> <span class="field-optional">Optional</span>
+              <input id="reportAreaFound" name="location_area" maxlength="120" placeholder="e.g. Outside Lab 3, under a library desk, near the stairs">
+            </label>
+          </div>
+
+          <div class="form-section-heading space-top">
+            <span class="step-number">04</span>
+            <div>
+              <strong>Photograph (optional)</strong>
+              <small>A photo helps staff and students identify the item.</small>
+            </div>
+          </div>
+
+          <label class="upload-box glass-card" for="reportImageFound">
+            <span class="upload-symbol">↥</span>
+            <span>
+              <strong id="imageLabelFound">Choose a photo</strong>
+              <small>JPG, PNG or WebP · up to 5 MB</small>
+            </span>
+            <input id="reportImageFound" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+          </label>
+          <p id="reportImageWarningFound" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
+          <p id="reportErrorFound" class="form-error" role="alert"></p>
+
+          <div class="form-actions">
+            <button id="reportSubmitButtonFound" class="button button-liquid" type="submit">
+              <span id="reportSubmitLabelFound">Submit found report</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <button id="backToReportTypesFound" class="button button-quiet" type="button">Change type</button>
+            <button id="cancelReportFound" class="button button-quiet" type="button">Cancel</button>
+          </div>
+        </form>
+
+        <aside class="side-guidance finn-guidance" aria-label="Report guidance"><h3>Help us retrace your steps.</h3><p>Accurate details about the item and its last known location help narrow possible matches.</p><div class="guidance-rule"><span>✓</span><span><strong>Rebuild the timeline</strong><small>Tell us when you last remember having the item.</small></span></div><div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save one or two distinctive ownership clues for the claim review.</small></span></div><div class="guidance-rule"><span>✓</span><span><strong>Narrow the search</strong><small>Add the block, floor, room or nearby place.</small></span></div></aside>
       </div>
     </section>
 
