@@ -16,6 +16,7 @@ class MarkupInventory(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.ids: list[str] = []
         self.view_names: list[str] = []
+        self.form_ids: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -23,6 +24,8 @@ class MarkupInventory(HTMLParser):
             self.ids.append(values["id"])
         if values.get("data-view"):
             self.view_names.append(values["data-view"])
+        if tag == "form" and values.get("id"):
+            self.form_ids.append(values["id"])
 
 
 class FrontendContractTests(unittest.TestCase):
@@ -35,6 +38,7 @@ class FrontendContractTests(unittest.TestCase):
         cls.ids = parser.ids
         cls.id_set = set(parser.ids)
         cls.views = set(parser.view_names)
+        cls.form_ids = parser.form_ids
 
     def test_html_ids_are_unique(self):
         duplicates = sorted({item for item in self.ids if self.ids.count(item) > 1})
@@ -167,6 +171,26 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn(".nimbus-item:hover::before", styles)
         self.assertIn("@media (prefers-reduced-motion: reduce)", styles)
 
+
+    def test_lost_and_found_report_forms_are_independent_and_contextual(self):
+        self.assertIn("lostReportForm", self.form_ids)
+        self.assertIn("foundReportForm", self.form_ids)
+        self.assertIn('id="lostReportGuidance"', self.html)
+        self.assertIn('id="foundReportGuidanceFound"', self.html)
+        self.assertIn("FOUND ITEM · HELP RETURN IT SAFELY", self.html)
+        self.assertIn("Where exactly did you find it?", self.html)
+        self.assertIn("function activeReportForm()", self.js)
+        self.assertIn("function reportField(id, form = activeReportForm())", self.js)
+        self.assertIn('document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {', self.js)
+        self.assertIn("Suggest found-item category with AI", self.js)
+        self.assertIn("actual discovery place", self.js)
+
+    def test_each_report_form_has_scoped_submission_and_ai_controls(self):
+        self.assertIn('form.addEventListener("submit", submitReport);', self.js)
+        self.assertIn("const form = event.currentTarget;", self.js)
+        self.assertIn('form.querySelector(\'button[type="submit"]\')', self.js)
+        self.assertIn('const form = useCategory.closest("form");', self.js)
+        self.assertIn('reportField("reportCategory", form).value', self.js)
 
 if __name__ == "__main__":
     unittest.main()
