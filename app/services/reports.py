@@ -54,6 +54,8 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
             "verification_level": row["verification_level"],
             "storage_location": row["storage_location"] if row["tag_id"] else None,
             "created_by": row["created_by"],
+            "roll_number": row["roll_number"],
+            "submission_channel": row["submission_channel"],
         })
     return result
 
