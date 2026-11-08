@@ -819,7 +819,7 @@ async function submitReport(event) {
   errorNode.textContent = "";
   const reportType = $("#reportType").value;
   if (!reportType) {
-    $("#reportError").textContent = "Choose whether you lost or found the item first.";
+    errorNode.textContent = "Choose whether you lost or found the item first.";
     return;
   }
   const body = {
@@ -838,13 +838,18 @@ async function submitReport(event) {
   };
   const image = $("#reportImage").files[0];
   if (!body.location_block && !body.location_area) {
-    $("#reportError").textContent = "Choose a campus block/building or enter a nearby area.";
+    errorNode.textContent = "Choose a campus block/building or enter a nearby area.";
     $("#reportArea").focus();
     return;
   }
   if (reportSubmitting) return;
   reportSubmitting = true;
   const submitButton = form.querySelector('button[type="submit"]');
+  if (!submitButton) {
+    reportSubmitting = false;
+    errorNode.textContent = "The report submit button is missing. Refresh the page and try again.";
+    return;
+  }
   submitButton.disabled = true;
   try {
     const result = await api("/api/reports", { method: "POST", body });
@@ -878,7 +883,7 @@ async function submitReport(event) {
     navigate("my-reports");
     showToast(successMessage, photoFailed);
   } catch (error) {
-    $("#reportError").textContent = error.message;
+    errorNode.textContent = error.message;
   } finally {
     reportSubmitting = false;
     submitButton.disabled = false;
