@@ -9,8 +9,10 @@ from fastapi.testclient import TestClient
 from app.core import config as app_config
 from app.core import database as app_database
 
-app_config.DATABASE_URL = ""
-app_database.DATABASE_URL = ""
+TEST_WITH_POSTGRES = os.getenv("TEST_WITH_POSTGRES", "").lower() == "true"
+if not TEST_WITH_POSTGRES:
+    app_config.DATABASE_URL = ""
+    app_database.DATABASE_URL = ""
 import app.main as main
 from app.api.routes import public_workflow as public_routes
 
@@ -19,17 +21,23 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
+        if TEST_WITH_POSTGRES:
+            app_database.close_database_pool()
+            with app_database.connect_db() as conn:
+                conn.execute("DROP SCHEMA public CASCADE")
+                conn.execute("CREATE SCHEMA public")
         modules = (main, app_config, app_database, public_routes)
         for module in modules:
             for name, value in {
                 "DATA_DIR": root,
                 "DB_PATH": root / "public-workflow.sqlite",
                 "UPLOAD_DIR": root / "uploads",
-                "DATABASE_URL": "",
+                "DATABASE_URL": app_config.DATABASE_URL if TEST_WITH_POSTGRES else "",
                 "DEMO_MODE": False,
             }.items():
                 if hasattr(module, name):
                     setattr(module, name, value)
+        main.app.dependency_overrides.clear()
         main.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         main.initialise_db()
         public_routes.ensure_public_schema()
@@ -45,6 +53,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.client = TestClient(main.app)
 
     def tearDown(self):
+        main.app.dependency_overrides.clear()
         self.client.close()
         self.temp.cleanup()
 
@@ -93,7 +102,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertEqual(row["submission_channel"],"public")
             self.assertEqual(row["roll_number"],"25B81A66J8")
-            self.assertIsNone(conn.execute("SELECT 1 FROM public_cases").fetchone() if "public_cases" in main.table_columns(conn,"public_cases") else None)
+            self.assertFalse(main.table_columns(conn,"public_cases"))
 
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
@@ -155,7 +164,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertIsNotNone(stored)
             self.assertEqual(stored["submission_channel"],"public")
             self.assertEqual(stored["claimant_roll_number"],"25B81A66J9")
-            self.assertIsNone(conn.execute("SELECT 1 FROM public_claims").fetchone() if "public_claims" in main.table_columns(conn,"public_claims") else None)
+            self.assertFalse(main.table_columns(conn,"public_claims"))
 
         duplicate = self.client.post("/api/public/found/"+report_id+"/claims",json={
             "roll_number":"25B81A66J9",
