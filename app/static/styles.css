@@ -2899,3 +2899,69 @@ input:focus, select:focus, textarea:focus {
     scroll-snap-align: center;
   }
 }
+
+
+/* Public destinations now use the same composed, warm glass language as the office workspace. */
+.login-shell:not(.office-access-open) .login-story.public-landing-shell {
+  width:100%; min-width:0; padding:clamp(22px,4vw,52px);
+}
+.login-shell:not(.office-access-open) .story-copy.public-story {
+  width:100%; max-width:1100px; margin-inline:auto;
+}
+.public-destination {
+  width:min(100%, 980px); min-width:0; margin:0 auto;
+  padding:clamp(20px,3.2vw,38px);
+  border:1px solid rgba(255,255,255,.84);
+  border-radius:30px;
+  background:linear-gradient(145deg,rgba(255,252,246,.91),rgba(239,226,209,.72));
+  box-shadow:0 22px 58px rgba(75,48,31,.11),inset 0 1px 0 rgba(255,255,255,.96);
+  -webkit-backdrop-filter:blur(22px) saturate(1.25);
+  backdrop-filter:blur(22px) saturate(1.25);
+}
+.public-destination > .public-title { max-width:760px; margin-top:10px; font-size:clamp(2.2rem,4.6vw,3.65rem); }
+.public-destination > .public-lede { max-width:720px; margin-bottom:22px; color:#705f52; line-height:1.7; }
+.public-destination .public-back {
+  display:inline-flex; align-items:center; gap:8px; margin:0 0 22px;
+  padding:10px 15px; border:1px solid rgba(255,255,255,.9); border-radius:999px;
+  color:#68442f; background:rgba(255,250,242,.72);
+  box-shadow:inset 0 1px rgba(255,255,255,.95),0 5px 14px rgba(73,48,31,.06);
+  font-weight:700; cursor:pointer; transition:transform .2s ease,box-shadow .2s ease;
+}
+.public-destination .public-back:hover { transform:translateY(-1px); box-shadow:0 9px 22px rgba(73,48,31,.1); }
+.public-destination .public-finn-slot { display:flex; justify-content:flex-end; min-height:0; margin:-12px 0 8px; }
+.public-destination .form-card,
+.public-destination #publicBrowseForm,
+.public-destination #publicTrackForm {
+  display:grid; gap:16px; width:100%; margin-top:20px; padding:clamp(18px,2.5vw,28px);
+  border:1px solid rgba(255,255,255,.88); border-radius:24px;
+  background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(244,233,218,.58));
+  box-shadow:0 14px 38px rgba(73,48,31,.08),inset 0 1px rgba(255,255,255,.95);
+}
+.public-destination .form-card label,
+.public-destination #publicTrackForm label { display:grid; gap:8px; color:#493b32; font-weight:650; }
+.public-destination #publicBrowseForm { grid-template-columns:minmax(0,1.6fr) minmax(180px,.8fr) auto; align-items:center; }
+.public-destination #publicBrowseForm input,
+.public-destination #publicBrowseForm select { min-width:0; width:100%; }
+.public-destination #publicBrowseForm .button { min-height:48px; white-space:nowrap; }
+.public-destination #publicBrowseResults { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:14px; margin-top:20px; }
+.public-destination #publicBrowseResults .list-card {
+  padding:20px; border-radius:20px; background:rgba(255,252,247,.72);
+}
+.public-destination #publicTrackResult { margin-top:18px; }
+.public-destination .form-error { color:#a33c31; }
+.public-destination .field-hint { color:#806e60; line-height:1.55; }
+.public-trust-row { max-width:900px; margin:24px auto 0; }
+.public-trust-row > div {
+  padding:14px 16px; border:1px solid rgba(255,255,255,.72); border-radius:16px;
+  background:rgba(255,250,242,.46); box-shadow:inset 0 1px rgba(255,255,255,.8);
+}
+.public-action-panel { max-width:900px; margin-inline:auto; }
+.public-actions .public-action-card { min-height:112px; border-radius:22px; }
+.public-story-footer { max-width:1100px; margin:26px auto 0; }
+@media(max-width:760px) {
+  .public-destination { padding:20px 16px; border-radius:23px; }
+  .public-destination #publicBrowseForm { grid-template-columns:1fr; }
+  .public-destination #publicBrowseForm .button { width:100%; }
+  .public-destination #publicBrowseResults { grid-template-columns:1fr; }
+  .public-destination .public-finn-slot { justify-content:center; }
+}
