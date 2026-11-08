@@ -12,7 +12,7 @@ import secrets
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.runtime import (
@@ -177,6 +177,13 @@ class StaffIntakeBody(BaseModel):
 class StaffClaimDecisionBody(BaseModel):
     action: Literal["approve", "reject", "request_more_evidence", "mark_disputed"]
     note: str | None = Field(default=None, max_length=800)
+    identity_verified_in_person: bool = False
+
+
+class StaffHandoverBody(BaseModel):
+    tag_id: str = Field(min_length=4, max_length=80)
+    confirmed_physical_handover: bool
+    claimant_identity_checked: bool
 
 
 @router.post("/reports", status_code=201)
@@ -288,6 +295,21 @@ def submit_public_claim(case_id: str, body: PublicClaimBody):
             "message": "Save this claim tracking secret now. It is shown once."}
 
 
+@router.get("/office/cases/{case_id}")
+def public_office_case_detail(case_id: str, user: dict[str, Any] = Depends(authenticated_user)):
+    require_office(user)
+    with connect_db() as conn:
+        row = conn.execute("SELECT * FROM public_cases WHERE id=?", (case_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Case not found.")
+        claims = conn.execute("SELECT id,public_ref,roll_number,evidence,evidence_types,status,created_at FROM public_claims WHERE case_id=? ORDER BY created_at", (case_id,)).fetchall()
+    data = _private_case(row)
+    data.update({"private_detail": row["private_detail"], "tag_id": row["tag_id"],
+                 "storage_location": row["storage_location"], "intake_at": row["intake_at"],
+                 "claims": [dict(c) for c in claims]})
+    return {"case": data}
+
+
 @router.get("/office/intake-queue")
 def public_intake_queue(user: dict[str, Any] = Depends(authenticated_user)):
     require_office(user)
@@ -344,8 +366,8 @@ def decide_public_claim(claim_id: str, body: StaffClaimDecisionBody, user: dict[
         others=conn.execute("SELECT COUNT(*) AS n FROM public_claims WHERE case_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",(claim["case_id"],claim_id)).fetchone()["n"]
         if body.action=="approve" and others:
             raise HTTPException(status_code=409,detail="Competing claims must be resolved before approval.")
-        if body.action=="approve" and "claimant_identity" not in __import__("json").loads(claim["evidence_types"]):
-            raise HTTPException(status_code=422,detail="Claimant identity must be verified in person before approval.")
+        if body.action=="approve" and not body.identity_verified_in_person:
+            raise HTTPException(status_code=422,detail="Office staff must confirm identity in person before approval.")
         status={"approve":"approved_for_collection","reject":"rejected",
                 "request_more_evidence":"needs_more_evidence","mark_disputed":"disputed"}[body.action]
         timestamp=now_iso()
@@ -360,16 +382,18 @@ def decide_public_claim(claim_id: str, body: StaffClaimDecisionBody, user: dict[
 
 
 @router.post("/office/claims/{claim_id}/handover")
-def record_public_handover(claim_id: str, tag_id: str = Header(..., alias="X-LostLink-Tag-ID"),
+def record_public_handover(claim_id: str, body: StaffHandoverBody,
                            user: dict[str, Any] = Depends(authenticated_user)):
     require_office(user)
+    if not body.confirmed_physical_handover or not body.claimant_identity_checked:
+        raise HTTPException(status_code=422, detail="Confirm claimant identity and physical handover.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         claim=conn.execute("SELECT * FROM public_claims WHERE id=?",(claim_id,)).fetchone()
         if not claim or claim["status"]!="approved_for_collection":
             raise HTTPException(status_code=409,detail="Only an approved claim can be handed over.")
         case=conn.execute("SELECT * FROM public_cases WHERE id=?",(claim["case_id"],)).fetchone()
-        if not secrets.compare_digest(str(tag_id).strip(),str(case["tag_id"] or "")):
+        if not secrets.compare_digest(str(body.tag_id).strip(),str(case["tag_id"] or "")):
             raise HTTPException(status_code=422,detail="Tag ID does not match the office record.")
         timestamp=now_iso()
         conn.execute("UPDATE public_claims SET status='returned',updated_at=? WHERE id=?",(timestamp,claim_id))
