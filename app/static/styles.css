@@ -2081,3 +2081,7 @@ button:disabled { opacity:.55; cursor:not-allowed; transform:none !important; }
 @media(prefers-reduced-motion:reduce) {
  button,.button,.public-action-card { transition:none !important; }
 }
+
+/* Keep Finn copy inline with the helper panel; no floating speech bubbles elsewhere. */
+#finnDock .mascot-note { display:none !important; }
+#reportView .finn-guidance #finnDock .mascot-note { display:none !important; }
