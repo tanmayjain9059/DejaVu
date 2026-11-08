@@ -96,3 +96,16 @@ See [Matching evaluation dataset guide](docs/MATCHING_EVALUATION_DATASET.md) for
 ## AI category suggestion
 
 The authenticated `POST /api/reports/category-suggestion` endpoint accepts only public item descriptors (title, description, brand, colour and visible characteristics). When `USE_SEMANTIC_MODEL=true`, the existing MiniLM model compares the report text with fixed category descriptions. If model loading or inference is unavailable, a deterministic keyword classifier is used. The response contains ranked suggestions and the inference engine; it is not persisted. The report form displays the result and requires an explicit student action to apply it. Low-information descriptions return an uncertain result instead of forcing a category. No private claim evidence is read by this service.
+
+
+## Public student access and office authentication
+
+The student experience is public and does not create an account or session. A roll number is private attribution used for office-side physical verification; it is not an authentication factor. Each public report and claim has an independent random tracking secret. Only the SHA-256 digest is stored, and a secret is scoped to its exact reference.
+
+Public reports and claims are written to the canonical `reports` and `claims` tables. The `public_roll_identities` table maps a roll number to a randomly named internal non-login principal so existing audit, notification and reward services can be reused without issuing student credentials. Public writes are rate-limited using one-way IP hashes.
+
+Supabase Auth is reserved for exact allowlisted campus-office identities. Local password login is also office-only. Office intake, public-claim approval and physical handover require staff to confirm the physical college ID and matching roll number; handover separately checks the Tag ID.
+
+The retired `public_cases` and `public_claims` tables are migration sources only. New requests do not write to them. Migration 10 adds roll attribution, per-case tracking hashes, public claim references and rate-limit storage without deleting historical records.
+
+Public serializers never return roll numbers, Tag IDs, storage locations or private verification details. Public image upload and image retrieval remain disabled until token-scoped access to the private object-storage backend is implemented.
