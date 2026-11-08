@@ -70,6 +70,7 @@
 
           <div class="public-trust-row"><div><strong>01</strong><span>Report in minutes</span></div><div><strong>02</strong><span>Discover found items</span></div><div><strong>03</strong><span>Verified campus handover</span></div></div>
           <p class="public-footnote">A match is a helpful lead — ownership is confirmed through the campus office.</p>
+          <p id="publicApiStatus" class="field-hint hidden" role="status"></p>
         </section>
 
         <section id="publicLostPage" class="public-destination hidden">
@@ -82,6 +83,8 @@
             <label><span>College roll number · Required</span><input id="publicRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
             <label><span>Item name · Required</span><input id="publicTitle" required minlength="4" maxlength="100" placeholder="e.g. Black water bottle"></label>
             <label><span>Category · Required</span><select id="publicCategory" required><option value="">Loading categories…</option></select></label>
+            <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrand" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColor" maxlength="60" placeholder="e.g. Matte black"></label></div>
+            <label><span>Distinctive visible features · Optional</span><textarea id="publicFeatures" rows="2" maxlength="400" placeholder="Stickers, scratches, patterns or other visible details"></textarea></label>
             <label><span>Description · Required</span><textarea id="publicDescription" required minlength="10" maxlength="1200" rows="4" placeholder="Describe visible details. Keep private proof of ownership out of this description."></textarea></label>
             <div class="two-columns">
               <label><span>Campus block</span><select id="publicBlock"><option value="">Choose block</option></select></label>
@@ -165,30 +168,6 @@
           <span></span>
         </div>
         <div class="demo-accounts-grid">
-          <button id="fillStudent" data-demo-role="student" class="demo-account glass-pill" type="button">
-            <span class="avatar avatar-student">S</span>
-            <div class="demo-info">
-              <strong>Student 1 · Demo</strong>
-              <small>student@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-role="student" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
-            <span class="avatar avatar-student">A</span>
-            <div class="demo-info">
-              <strong>Student 2 · Aarav</strong>
-              <small>student2@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-role="student" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
-            <span class="avatar avatar-student">R</span>
-            <div class="demo-info">
-              <strong>Student 3 · Riya</strong>
-              <small>student3@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
-          </button>
           <button id="fillOffice" data-demo-role="office" class="demo-account glass-pill demo-office" type="button">
             <span class="avatar avatar-office">O</span>
             <div class="demo-info">
@@ -198,7 +177,7 @@
             <span class="arrow">→</span>
           </button>
         </div>
-        <p class="demo-credentials">Demo mode enabled. Click any account above to sign in instantly.</p>
+        <p class="demo-credentials">Local demo mode: office staff access only. Student reporting is public and does not require an account.</p>
       </div>
 
       <div class="privacy-note">
