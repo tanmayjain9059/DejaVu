@@ -1941,7 +1941,10 @@ $("#publicTrackForm").addEventListener("submit",async event => {
 
 async function start() {
   showPublicHome();
-  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
+  // A blank API_BASE_URL means this page is served by the FastAPI backend itself.
+  // In that same-origin deployment, relative /api/* requests are valid even when
+  // the optional static-host deployment flag says no external backend is configured.
+  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false && API_BASE_URL) {
     $("#publicApiStatus").textContent = "This preview is not connected to the LostLink API yet. Configure BACKEND_ORIGIN in Vercel after deploying the backend.";
     $("#publicApiStatus").classList.remove("hidden");
     return;
