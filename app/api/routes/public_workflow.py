@@ -373,6 +373,15 @@ def submit_public_claim(case_id: str, body: PublicClaimBody, request: Request):
             raise HTTPException(status_code=404, detail="Found item is not available for claims.")
         if case["roll_number"] == roll:
             raise HTTPException(status_code=409, detail="A reporter cannot claim their own found-item report.")
+        previous_claim = conn.execute(
+            "SELECT status FROM public_claims WHERE case_id=? AND roll_number=? ORDER BY created_at DESC LIMIT 1",
+            (case_id, roll),
+        ).fetchone()
+        if previous_claim:
+            raise HTTPException(
+                status_code=409,
+                detail="A claim from this roll number already exists for this item. Use its tracking reference to provide follow-up evidence.",
+            )
         active = conn.execute("SELECT COUNT(*) AS n FROM public_claims WHERE case_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')", (case_id,)).fetchone()["n"]
         status = "disputed" if active else "pending"
         conn.execute(
