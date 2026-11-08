@@ -1865,11 +1865,18 @@ async function submitDecision(event) {
 }
 
 function enterPublicPreview() {
-  // UI-only public preview: all writes are routed to the in-memory mock store.
-  // No unauthenticated request is sent to the production reporting API.
+  // Replace the public landing screen with the student workspace. Preview writes
+  // remain in the in-memory mock store; no unauthenticated production write occurs.
   enableMockMode();
   inspectedUser = null;
-  enterApp(mockCopy(MOCK_USERS.student));
+  const previewUser = mockCopy(MOCK_USERS.student);
+  currentUser = previewUser;
+  if (mockStore) mockStore.session = mockCopy(previewUser);
+  $("#loginView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#appView").classList.remove("hidden");
+  enterApp(previewUser);
+  window.scrollTo({ top: 0, behavior: "instant" });
   showToast("Student preview opened. Demo changes are temporary and stay in this browser session.", false);
 }
 function showPublicHome() {
