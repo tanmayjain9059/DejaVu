@@ -2991,3 +2991,45 @@ input:focus, select:focus, textarea:focus {
     flex: 0 0 auto;
   }
 }
+
+
+/* Keep all six public destinations inside the viewport on narrow phones.
+   At 320px, use compact text-only tabs instead of an off-canvas scroll row. */
+@media (max-width: 560px) {
+  .public-topbar {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 16px;
+  }
+  .public-topbar .public-nav {
+    display: flex !important;
+    flex: 0 1 auto !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    overflow: hidden !important;
+    justify-content: space-between !important;
+  }
+  .public-topbar .public-nav .public-nav-item {
+    flex: 1 1 0 !important;
+    width: 0;
+    min-width: 0 !important;
+    padding-inline: 5px;
+    gap: 3px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 370px) {
+  .public-topbar .public-nav .public-nav-item {
+    padding-inline: 2px;
+    font-size: 10px;
+    gap: 0;
+  }
+  .public-topbar .public-nav .public-nav-item .nv-ico {
+    display: none;
+  }
+}
