@@ -346,7 +346,11 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(self.client.get("/health/live").json(), {"status": "ok"})
         ready = self.client.get("/health/ready")
         self.assertEqual(ready.status_code, 200)
-        self.assertEqual(ready.json(), {"status": "ready"})
+        payload = ready.json()
+        self.assertEqual(payload["status"], "ready")
+        self.assertIn(payload["database"], {"sqlite", "postgresql"})
+        self.assertEqual(payload["canonical_tables"], "ready")
+        self.assertGreaterEqual(payload["schema_version"], 10)
 
     def test_cross_origin_mutations_are_rejected(self):
         response = self.client.post(
