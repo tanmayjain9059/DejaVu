@@ -496,6 +496,7 @@ function enterApp(user) {
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
+  placeFinnIn("#appView");
   $("#userName").textContent = user.display_name;
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
@@ -1717,6 +1718,13 @@ async function submitDecision(event) {
   }
 }
 
+function placeFinnIn(selector) {
+  const dock = $("#finnDock");
+  const slot = selector ? $(selector) : null;
+  if (dock && slot) slot.appendChild(dock);
+  else if (dock) document.body.appendChild(dock);
+}
+
 function showPublicHome() {
   stopNotificationPolling();
   setFinnMessage("Welcome back to campus, detective. What are we looking for today?", false);
@@ -1725,7 +1733,8 @@ function showPublicHome() {
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.remove("hidden");
-  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  placeFinnIn("#publicHomeContent [data-finn-slot]");
+  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showPublicDestination(type) {
@@ -1735,7 +1744,8 @@ function showPublicDestination(type) {
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.add("hidden");
   const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : "publicLostPage";
-  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
+  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
+  placeFinnIn("#"+destination+" [data-finn-slot]");
   if (type === "lost" || type === "found") {
     $("#publicReportType").value = type;
     const title = $("#publicLostPage .public-title");
@@ -1789,7 +1799,8 @@ function openPublicOfficeSignIn() {
   $("#loginError").textContent = "";
   $("#loginForm").reset();
   $("#publicHomeContent").classList.add("hidden");
-  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  ["publicLostPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  placeFinnIn("#officeLoginPanel [data-finn-slot]");
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
 }
