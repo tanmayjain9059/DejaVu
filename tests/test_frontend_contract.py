@@ -115,9 +115,15 @@ class FrontendContractTests(unittest.TestCase):
         self.assertNotIn('$("#publicNav [data-public-destination]").forEach', self.js)
 
     def test_public_browse_cards_do_not_expand_full_descriptions(self):
-        self.assertIn('escapeHTML(item.title)', self.js)
-        self.assertIn('escapeHTML(item.location_area || item.location_block || "Campus location")', self.js)
-        self.assertNotIn("escapeHTML(item.description)", self.js)
+        start = self.js.index("async function loadPublicFound()")
+        end = self.js.index("\\nfunction openPublicOfficeSignIn()", start)
+        browse_renderer = self.js[start:end]
+        self.assertIn('escapeHTML(item.title)', browse_renderer)
+        self.assertIn('escapeHTML(item.location_area || item.location_block || "Campus location")', browse_renderer)
+        self.assertNotIn("escapeHTML(item.description)", browse_renderer)
+
+    def test_public_search_loader_is_async(self):
+        self.assertIn("async function loadPublicFound()", self.js)
 
     def test_public_navigation_is_centered_and_glass_styled(self):
         styles = (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8")
