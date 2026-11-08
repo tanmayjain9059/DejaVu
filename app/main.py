@@ -20,6 +20,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
+from app.api.routes.public_workflow import router as public_workflow_router, ensure_public_schema
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
@@ -108,7 +109,10 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                 valid_scheme = source_scheme in {"http", "https"}
                 if HTTPS_ONLY and source_scheme != "https":
                     valid_scheme = False
-                if not valid_scheme or not source_host or source_host != request_host:
+                source_origin = (source_url.scheme.lower() + "://" + source_host).rstrip("/")
+                allowed_frontend_origin = source_origin in FRONTEND_ORIGINS
+                same_origin = bool(source_host and source_host == request_host)
+                if not valid_scheme or not (same_origin or allowed_frontend_origin):
                     return _apply_security_headers(JSONResponse(
                         status_code=403,
                         content={"detail": "Cross-origin state-changing requests are not allowed."},
@@ -133,7 +137,7 @@ if FRONTEND_ORIGINS:
         allow_origins=FRONTEND_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-LostLink-Tracking-Secret"],
         max_age=600,
     )
 @app.get("/health/live", include_in_schema=False)
@@ -158,4 +162,6 @@ app.include_router(auth_router)
 app.include_router(reports_router)
 app.include_router(claims_router)
 app.include_router(engagement_router)
+app.include_router(public_workflow_router)
 initialise_db()
+ensure_public_schema()
