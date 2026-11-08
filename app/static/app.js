@@ -4,7 +4,6 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 let currentUser = null;
 let supabaseClient = null;
 let supabaseAccessToken = null;
-let supabaseSignupMode = false;
 const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
 let appConfig = null;
 let selectedClaimReport = null;
@@ -376,8 +375,7 @@ async function api(url, options) {
   let response;
   try { response = await fetch(API_BASE_URL + url, opts); }
   catch (_) {
-    if ((appConfig && appConfig.auth_mode === "supabase") || API_BASE_URL) throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
-    enableMockMode(); return mockApi(url, opts);
+    throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
@@ -434,19 +432,21 @@ async function loadConfig() {
     if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
     supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     $("#demoAccess").classList.add("hidden");
-    $("#signupToggle").classList.remove("hidden");
   }
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
   $("#reportCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
+  $("#publicCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
+  $("#publicBrowseCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
   const blocks = appConfig.locations.blocks || [];
   const blockOptions = blocks.map((block) =>
     '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
   ).join("");
   $("#reportBlock").innerHTML = '<option value="">Choose a block or area</option>' + blockOptions;
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
+  $("#publicBlock").innerHTML = '<option value="">Choose block</option>' + blockOptions;
   $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
   if (appConfig.demo_mode) $("#demoAccess").classList.remove("hidden");
@@ -481,17 +481,18 @@ function startNotificationPolling() {
 }
 
 function showLogin() {
-  stopNotificationPolling();
-  $("#loginView").classList.remove("hidden");
-  $("#appView").classList.add("hidden");
-  currentUser = null;
+  showPublicHome();
 }
 
 function enterApp(user) {
+  if (!user || user.role !== "office") {
+    showPublicHome();
+    throw new Error("Student accounts are disabled. Public reporting does not require sign-in.");
+  }
   currentUser = user;
   if (usingMockApi) mockStore.session = mockCopy(user);
   const switchButton = $("#viewSwitchBtn");
-  if (switchButton) { switchButton.textContent = user.role === "office" ? "Switch to student" : "Switch to office"; switchButton.classList.toggle("hidden", !usingMockApi && !(appConfig && appConfig.demo_mode)); }
+  if (switchButton) switchButton.classList.add("hidden");
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
@@ -1660,100 +1661,251 @@ async function submitDecision(event) {
   }
 }
 
-async function start() {
-  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
-    showLogin();
-    $("#loginError").textContent = "This preview is not connected to a LostLink API yet. Configure BACKEND_ORIGIN in Vercel after the backend is deployed.";
+function showPublicHome() {
+  stopNotificationPolling();
+  currentUser = null;
+  $("#loginView").classList.remove("hidden");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.remove("hidden");
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function showPublicDestination(type) {
+  $("#loginView").classList.remove("hidden");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.add("hidden");
+  const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : "publicLostPage";
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
+  if (type === "lost" || type === "found") {
+    $("#publicReportType").value = type;
+    const title = $("#publicLostPage .public-title");
+    const eyebrow = $("#publicLostPage .eyebrow");
+    const lede = $("#publicLostPage .public-lede");
+    const submit = $("#publicReportForm button[type=submit]");
+    if (type === "found") {
+      eyebrow.textContent = "PUBLIC REPORT · FOUND";
+      title.innerHTML = 'You found it.<br><span>Let’s reunite it.</span>';
+      lede.textContent = "Tell us what you found. The campus office will verify your college ID when you hand in the item.";
+      submit.textContent = "Submit found report ↗";
+    } else {
+      eyebrow.textContent = "PUBLIC REPORT · LOST";
+      title.innerHTML = 'Let’s find<br><span>what’s missing.</span>';
+      lede.textContent = "Submit a report using your college roll number. No student account or password is needed.";
+      submit.textContent = "Submit lost report ↗";
+    }
+  }
+  if (type === "browse") loadPublicFound();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+async function publicApi(path, options) {
+  const opts = Object.assign({method:"GET",credentials:"omit",headers:{}},options || {});
+  const response = await fetch(API_BASE_URL + path,opts);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(explainError(data,"Request failed ("+response.status+")."));
+  return data;
+}
+async function loadPublicFound() {
+  const q = $("#publicBrowseQuery").value.trim();
+  const category = $("#publicBrowseCategory").value;
+  const params = new URLSearchParams();
+  if (q) params.set("q",q);
+  if (category) params.set("category",category);
+  try {
+    const data = await publicApi("/api/public/found"+(params.size ? "?"+params.toString() : ""));
+    $("#publicBrowseResults").innerHTML = (data.reports || []).map(item =>
+      '<article class="list-card"><div class="list-card-head"><div><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p>'+escapeHTML(item.description)+'</p><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p><button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button></article>'
+    ).join("");
+    $("#publicBrowseEmpty").classList.toggle("hidden",(data.reports || []).length > 0);
+  } catch(error) {
+    $("#publicBrowseResults").innerHTML = "";
+    $("#publicBrowseEmpty").classList.remove("hidden");
+    $("#publicBrowseEmpty").textContent = error.message;
+  }
+}
+function openPublicOfficeSignIn() {
+  $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
+  $("#loginPanelTitle").textContent = "Office staff sign in";
+  $("#loginPanelCopy").textContent = "Authorised campus staff only. Student accounts are not available.";
+  $("#loginError").textContent = "";
+  $("#loginForm").reset();
+  $("#publicHomeContent").classList.add("hidden");
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  $("#officeLoginPanel").classList.remove("hidden");
+  $("#loginEmail").focus();
+}
+$("#publicBrowseButton").addEventListener("click",() => showPublicDestination("browse"));
+$("#publicTrackButton").addEventListener("click",() => showPublicDestination("track"));
+$("#publicOfficeButton").addEventListener("click",openPublicOfficeSignIn);
+$("#closeOfficeAccess").addEventListener("click",showPublicHome);
+document.querySelectorAll("[data-public-report]").forEach(button => button.addEventListener("click",() => {
+  showPublicDestination(button.dataset.publicReport);
+  $("#publicLostPage .public-title").scrollIntoView({behavior:"smooth",block:"start"});
+}));
+document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click",showPublicHome));
+$("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
+$("#publicBrowseResults").addEventListener("click",async event => {
+  const button = event.target.closest("[data-public-claim]");
+  if (!button) return;
+  const roll = prompt("Enter your college roll number to start a claim:");
+  if (!roll) return;
+  const evidence = prompt("Describe a private detail that helps prove ownership (at least 20 characters):");
+  if (!evidence) return;
+  try {
+    const result = await publicApi("/api/public/found/"+encodeURIComponent(button.dataset.publicClaim)+"/claims",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({roll_number:roll,evidence,evidence_types:["owner_specific_detail","distinctive_features"]})
+    });
+    $("#publicTrackReference").value = result.claim.reference;
+    $("#publicTrackRoll").value = roll;
+    $("#publicTrackSecret").value = result.tracking_secret;
+    $("#publicTrackResult").textContent = result.message || "Save this tracking secret securely. It is shown once.";
+    showPublicDestination("track");
+  } catch(error) { showToast(error.message,true); }
+});
+$("#publicReportForm").addEventListener("submit",async event => {
+  event.preventDefault();
+  const type = $("#publicReportType").value;
+  const body = {
+    report_type:type,roll_number:$("#publicRollNumber").value.trim(),
+    title:$("#publicTitle").value.trim(),category:$("#publicCategory").value,
+    description:$("#publicDescription").value.trim(),
+    brand:$("#publicBrand").value.trim() || null,
+    primary_color:$("#publicColor").value.trim() || null,
+    visible_features:$("#publicFeatures").value.trim() || null,
+    location_block:$("#publicBlock").value || null,
+    location_area:$("#publicArea").value.trim() || null,
+    occurred_at:$("#publicDate").value || null
+  };
+  const errorNode = $("#publicReportError");
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  errorNode.textContent = "";
+  if (!body.location_block && !body.location_area) {
+    errorNode.textContent = "Choose a campus block or enter a nearby area.";
     return;
   }
-  try { await loadConfig(); }
-  catch (error) {
-    if (API_BASE_URL) { showLogin(); $("#loginError").textContent = error.message; return; }
-    enableMockMode(); await loadConfig();
+  button.disabled = true;
+  try {
+    const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    $("#publicTrackReference").value = result.case.reference;
+    $("#publicTrackRoll").value = body.roll_number;
+    $("#publicTrackSecret").value = result.tracking_secret;
+    $("#publicTrackResult").textContent = (result.message || "Report submitted.")+" Reference: "+result.case.reference+". Save the tracking secret now; it is shown once.";
+    showPublicDestination("track");
+    showToast("Report submitted. Save the tracking secret shown here.",false);
+    event.currentTarget.reset();
+  } catch(error) { errorNode.textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$("#publicTrackForm").addEventListener("submit",async event => {
+  event.preventDefault();
+  const ref = encodeURIComponent($("#publicTrackReference").value.trim());
+  const roll = $("#publicTrackRoll").value.trim();
+  const secret = $("#publicTrackSecret").value.trim();
+  const resultNode = $("#publicTrackResult");
+  resultNode.textContent = "Checking private case access…";
+  try {
+    const data = await publicApi("/api/public/track/"+ref+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
+    const record = data.case || data.claim || {};
+    const item = data.case || data.item || {};
+    resultNode.textContent = "Reference "+(record.reference || $("#publicTrackReference").value)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || item.title || "");
+  } catch(error) { resultNode.textContent = error.message; }
+});
+
+async function start() {
+  showPublicHome();
+  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false) {
+    $("#publicApiStatus").textContent = "This preview is not connected to the LostLink API yet. Configure BACKEND_ORIGIN in Vercel after deploying the backend.";
+    $("#publicApiStatus").classList.remove("hidden");
+    return;
+  }
+  try {
+    await loadConfig();
+    $("#publicApiStatus").classList.add("hidden");
+  } catch (error) {
+    $("#publicApiStatus").textContent = error.message + " Public reporting will be available when the backend is reachable.";
+    $("#publicApiStatus").classList.remove("hidden");
+    return;
   }
   if (appConfig && appConfig.auth_mode === "supabase") {
     try {
       const { data } = await supabaseClient.auth.getSession();
       supabaseAccessToken = data && data.session ? data.session.access_token : null;
-      if (!supabaseAccessToken) { showLogin(); return; }
+      if (!supabaseAccessToken) { showPublicHome(); return; }
       const profile = await api("/api/me");
+      if (!profile.user || profile.user.role !== "office") throw new Error("This account is not authorised for office access.");
       enterApp(profile.user);
     } catch (error) {
-      supabaseAccessToken = null; showLogin(); $("#loginError").textContent = error.message;
+      supabaseAccessToken = null;
+      await supabaseClient.auth.signOut().catch(() => {});
+      showPublicHome();
+      $("#publicApiStatus").textContent = error.message;
+      $("#publicApiStatus").classList.remove("hidden");
     }
     return;
   }
-  try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
-  if (!usingMockApi && appConfig && appConfig.demo_mode) {
-    try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
+  try {
+    const profile = await api("/api/me");
+    if (profile.user && profile.user.role === "office") enterApp(profile.user);
+    else showPublicHome();
+  } catch (_) {
+    showPublicHome();
   }
-  enableMockMode(); enterApp(mockCopy(MOCK_USERS.student));
 }
 
-$("#loginForm").addEventListener("submit", async (event) => {
+$("#loginForm").addEventListener("submit",async event => {
   event.preventDefault();
   $("#loginError").textContent = "";
   try {
     if (supabaseClient) {
       const email = $("#loginEmail").value.trim().toLowerCase();
       const password = $("#loginPassword").value;
-      if (supabaseSignupMode) {
-        const allowedDomains = appConfig.allowed_email_domains || [];
-        if (allowedDomains.length && !allowedDomains.includes(email.split("@").pop())) throw new Error("Use an approved college email address to create an account.");
-        const displayName = $("#signupName").value.trim();
-        if (!displayName) throw new Error("Enter your full name.");
-        const { data, error } = await supabaseClient.auth.signUp({email,password,options:{data:{display_name:displayName}}});
-        if (error) throw error;
-        if (!data.session) {
-          showToast("Account created. Check your email to confirm it, then sign in.", false);
-          setSupabaseSignupMode(false);
-          return;
-        }
-        supabaseAccessToken = data.session.access_token;
-      } else {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({email,password});
-        if (error) throw error;
-        supabaseAccessToken = data.session.access_token;
-      }
+      const {data,error} = await supabaseClient.auth.signInWithPassword({email,password});
+      if (error) throw error;
+      supabaseAccessToken = data.session.access_token;
       const profile = await api("/api/me");
+      if (!profile.user || profile.user.role !== "office") {
+        await supabaseClient.auth.signOut();
+        supabaseAccessToken = null;
+        throw new Error("This account is not authorised for office access.");
+      }
       enterApp(profile.user);
-      showToast(supabaseSignupMode ? "Account created successfully." : "Signed in successfully.", false);
-      setSupabaseSignupMode(false);
-      return;
+    } else {
+      const result = await api("/api/login",{method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
+      if (!result.user || result.user.role !== "office") throw new Error("Only authorised office staff can sign in.");
+      enterApp(result.user);
     }
-    const result = await api("/api/login", {method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
-    enterApp(result.user); showToast("Signed in successfully.", false);
-  } catch (error) { $("#loginError").textContent = error.message; }
+    showToast("Office staff signed in successfully.",false);
+  } catch(error) { $("#loginError").textContent = error.message; }
 });
-function setSupabaseSignupMode(enabled) {
-  supabaseSignupMode = Boolean(enabled);
-  $("#signupNameLabel").classList.toggle("hidden", !supabaseSignupMode);
-  $("#loginSubmitButton").innerHTML = supabaseSignupMode ? "Create account" : 'Sign in <span aria-hidden="true">↗</span>';
-  $("#signupToggle").textContent = supabaseSignupMode ? "Back to sign in" : "Create a student account";
-  $("#loginPassword").autocomplete = supabaseSignupMode ? "new-password" : "current-password";
-}
-$("#signupToggle").addEventListener("click", () => setSupabaseSignupMode(!supabaseSignupMode));
 
 async function launchDemoAccount(email,password) {
-  $("#loginError").textContent="";
-  try { const result=await api("/api/login",{method:"POST",body:{email,password}}); inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); enterApp(result.user); showToast("Opened "+(result.user.role==="office"?"office":"student")+" demo view.",false); }
-  catch(error){$("#loginError").textContent=error.message;}
+  $("#loginError").textContent = "";
+  try {
+    const result = await api("/api/login",{method:"POST",body:{email,password}});
+    if (!result.user || result.user.role !== "office") throw new Error("Only the office demo account is available.");
+    inspectedUser = null;
+    $("#returnToDashboardButton").classList.add("hidden");
+    enterApp(result.user);
+    showToast("Opened the office demo view.",false);
+  } catch(error) { $("#loginError").textContent = error.message; }
 }
-$("#fillStudent").addEventListener("click",()=>launchDemoAccount("student@lostlink.local","student123"));
-$("#fillOffice").addEventListener("click",()=>launchDemoAccount("office@lostlink.local","office123"));
-$$("[data-demo-email]").forEach(button=>button.addEventListener("click",()=>launchDemoAccount(button.dataset.demoEmail,button.dataset.demoPassword)));
-$("#viewSwitchBtn").addEventListener("click",async()=>{
- if(usingMockApi){enterApp(mockCopy(currentUser.role==="office"?MOCK_USERS.student:MOCK_USERS.office));showToast("Switched demo view. No campus records were changed by switching roles.",false);return;}
- if(!(appConfig&&appConfig.demo_mode)){showToast("Role switching is available only in the local demo. Sign in with an authorised office account to review real claims.",true);return;}
- const target=currentUser.role==="office"?{email:"student@lostlink.local",password:"student123"}:{email:"office@lostlink.local",password:"office123"};
- try{await api("/api/logout",{method:"POST"});const result=await api("/api/login",{method:"POST",body:target});enterApp(result.user);}catch(error){showToast(error.message,true);}
+$("#fillOffice").addEventListener("click",() => launchDemoAccount("office@lostlink.local","office123"));
+$("#showLoginButton").addEventListener("click",() => {
+  inspectedUser = currentUser;
+  openPublicOfficeSignIn();
+  $("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);
 });
-$("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
-$("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
-$("#logoutButton").addEventListener("click", async () => {
+$("#returnToDashboardButton").addEventListener("click",() => {
+  if (inspectedUser) { const prior = inspectedUser; inspectedUser = null; enterApp(prior); }
+});
+$("#logoutButton").addEventListener("click",async() => {
   if (supabaseClient) { clearAuthenticatedImages(); await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
-  else { try { await api("/api/logout", { method: "POST" }); } catch (_) {} }
-  inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
+  else { try { await api("/api/logout",{method:"POST"}); } catch (_) {} }
+  inspectedUser = null;
+  $("#returnToDashboardButton").classList.add("hidden");
+  showPublicHome();
 });
 $("#studentNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view]");
