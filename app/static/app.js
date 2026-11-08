@@ -539,40 +539,68 @@ function navigate(view) {
 
 function setReportMode(type) {
   if (!["lost", "found"].includes(type)) return;
-  const wasOpen = !$("#reportForm").classList.contains("hidden");
-  if (wasOpen && $("#reportType").value && $("#reportType").value !== type) {
-    $("#reportForm").reset();
-    $("#reportError").textContent = "";
-    $("#imageLabel").textContent = "Choose a photo";
+  const form = $("#reportForm");
+  const chooser = $("#reportTypeChooser");
+  if (!form || !chooser) {
+    console.error("LostLink report form markup is unavailable.");
+    showToast("The report form could not be loaded. Refresh the page and try again.", true);
+    return;
+  }
+  const wasOpen = !form.classList.contains("hidden");
+  if (wasOpen && $("#reportType")?.value && $("#reportType").value !== type) {
+    form.reset();
+    if ($("#reportError")) $("#reportError").textContent = "";
+    if ($("#imageLabel")) $("#imageLabel").textContent = "Choose a photo";
     showToast("Switched report type. The previous draft was cleared to avoid mixing Lost and Found details.", false);
   }
   $("#reportType").value = type;
-  $("#reportTypeChooser").classList.add("hidden");
-  $("#reportForm").classList.remove("hidden");
+  chooser.classList.add("hidden");
+  form.classList.remove("hidden");
+  const lost = type === "lost";
+  $("#lostReportGuidance")?.classList.toggle("hidden", !lost);
+  $("#foundReportGuidance")?.classList.toggle("hidden", lost);
   $$("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
   });
-  if (type === "lost") {
+  if (lost) {
     $("#reportModeTitle").textContent = "Report a lost item";
-    $("#reportModeDescription").textContent = "Tell us what went missing. Your report stays in your account and can be compared with items registered by the office.";
+    $("#reportModeDescription").textContent = "Help us retrace where you last had it. Add the details that could help another student recognise it.";
     $("#reportFormStepTitle").textContent = "What went missing?";
-    $("#reportFormStepHint").textContent = "Describe the item and its last known context.";
+    $("#reportFormStepHint").textContent = "Describe the item and the last moment you remember having it.";
+    $("#reportItemNameLabel").textContent = "What item did you lose?";
+    $("#reportDescriptionLabel").textContent = "Describe the item you lost";
+    $("#reportDescription").placeholder = "What does it look like? Include its type, size, material, condition and any visible details that could help you recognise it.";
+    $("#reportDescriptionHelp").textContent = "Keep one or two unique ownership clues private. You can share those later in a claim so the office can verify they match.";
+    $("#reportFeaturesLabel").textContent = "Visible details you remember";
+    $("#reportFeatures").placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
     $("#reportDateLabel").textContent = "When did you last see it?";
-    $("#reportDateHelp").textContent = "An approximate time helps matching. Leave it blank if you are unsure.";
-    $("#reportLocationHeading").textContent = "Where did you last see it?";
-    $("#reportLocationHelp").textContent = "Choose the nearest block or nearby place.";
+    $("#reportDateHelp").textContent = "Enter the last time you remember having the item, not when you noticed it was missing. An estimate is fine.";
+    $("#reportLocationHeading").textContent = "Where did you last have it?";
+    $("#reportLocationHelp").textContent = "Choose the last place you remember seeing or using the item.";
+    $("#reportBlockLabel").textContent = "Last seen block / building";
+    $("#reportAreaLabel").textContent = "Last seen nearby place";
+    $("#reportArea").placeholder = "e.g. Library reading room, canteen counter, bus bay";
     $("#reportTitle").placeholder = "e.g. Black backpack I lost";
     $("#reportSubmitLabel").textContent = "Submit lost report";
   } else {
     $("#reportModeTitle").textContent = "Report a found item";
-    $("#reportModeDescription").textContent = "Record what you found and where. The item only becomes searchable after office staff confirm physical receipt and tagging.";
+    $("#reportModeDescription").textContent = "Help return an item to its owner. Tell us what you found and exactly where it was discovered.";
     $("#reportFormStepTitle").textContent = "What did you find?";
-    $("#reportFormStepHint").textContent = "Describe the item without exposing private owner details.";
+    $("#reportFormStepHint").textContent = "Record the item's visible condition and discovery location.";
+    $("#reportItemNameLabel").textContent = "What item did you find?";
+    $("#reportDescriptionLabel").textContent = "Describe the item you found";
+    $("#reportDescription").placeholder = "Describe the item as you found it: type, size, material, condition and visible identifying details. Do not guess who owns it.";
+    $("#reportDescriptionHelp").textContent = "Only include details a student could safely use to recognise the item. Do not publish names, ID numbers, contents, serial numbers or hidden marks.";
+    $("#reportFeaturesLabel").textContent = "Visible condition and features";
+    $("#reportFeatures").placeholder = "Scratches, stickers, damage, colour, brand, contents visible from outside…";
     $("#reportDateLabel").textContent = "When did you find it?";
-    $("#reportDateHelp").textContent = "Use the approximate time you found the item. Office intake time is recorded separately.";
+    $("#reportDateHelp").textContent = "Enter when you discovered the item. Office intake time is recorded separately.";
     $("#reportLocationHeading").textContent = "Where did you find it?";
-    $("#reportLocationHelp").textContent = "Use the place where you found the item, not its eventual office storage location.";
+    $("#reportLocationHelp").textContent = "Choose the actual discovery place, not where you later hand it in or where staff store it.";
+    $("#reportBlockLabel").textContent = "Found at block / building";
+    $("#reportAreaLabel").textContent = "Found near / specific spot";
+    $("#reportArea").placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
     $("#reportTitle").placeholder = "e.g. Silver water bottle I found";
     $("#reportSubmitLabel").textContent = "Submit found report";
   }
@@ -583,12 +611,20 @@ function setReportMode(type) {
 }
 
 function resetReportMode() {
-  $("#reportForm").reset();
-  $("#reportForm").classList.add("hidden");
-  $("#reportTypeChooser").classList.remove("hidden");
-  $("#reportType").value = "";
-  $("#reportError").textContent = "";
-  $("#imageLabel").textContent = "Choose a photo";
+  const form = $("#reportForm");
+  const chooser = $("#reportTypeChooser");
+  if (!form || !chooser) {
+    console.warn("Skipped report reset because the report form is not mounted.");
+    return;
+  }
+  form.reset();
+  form.classList.add("hidden");
+  chooser.classList.remove("hidden");
+  if ($("#reportType")) $("#reportType").value = "";
+  if ($("#reportError")) $("#reportError").textContent = "";
+  if ($("#imageLabel")) $("#imageLabel").textContent = "Choose a photo";
+  $("#lostReportGuidance")?.classList.add("hidden");
+  $("#foundReportGuidance")?.classList.add("hidden");
   $("#reportModeTitle").textContent = "Choose your report type";
   $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
   $("#reportFormStepTitle").textContent = "Report details";
@@ -774,7 +810,13 @@ async function suggestReportCategory() {
 
 async function submitReport(event) {
   event.preventDefault();
-  $("#reportError").textContent = "";
+  const form = event.currentTarget;
+  const errorNode = $("#reportError");
+  if (!form || !errorNode) {
+    showToast("The report form is unavailable. Refresh the page and try again.", true);
+    return;
+  }
+  errorNode.textContent = "";
   const reportType = $("#reportType").value;
   if (!reportType) {
     $("#reportError").textContent = "Choose whether you lost or found the item first.";
@@ -802,7 +844,7 @@ async function submitReport(event) {
   }
   if (reportSubmitting) return;
   reportSubmitting = true;
-  const submitButton = $('#reportForm button[type="submit"]');
+  const submitButton = form.querySelector('button[type="submit"]');
   submitButton.disabled = true;
   try {
     const result = await api("/api/reports", { method: "POST", body });
@@ -1811,14 +1853,15 @@ $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
 $("#clearFilters").addEventListener("click", resetSearch);
-$("#reportForm").addEventListener("submit", submitReport);
-$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
-$("#backToReportTypes").addEventListener("click", resetReportMode);
-$("#reportImage").addEventListener("change", () => {
+const reportFormElement = $("#reportForm");
+if (reportFormElement) reportFormElement.addEventListener("submit", submitReport);
+$("#suggestCategoryButton")?.addEventListener("click", suggestReportCategory);
+$("#backToReportTypes")?.addEventListener("click", resetReportMode);
+$("#reportImage")?.addEventListener("change", () => {
   const file = $("#reportImage").files[0];
-  $("#imageLabel").textContent = file ? file.name : "Choose a photo";
+  if ($("#imageLabel")) $("#imageLabel").textContent = file ? file.name : "Choose a photo";
 });
-$("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("browse"); });
+$("#cancelReport")?.addEventListener("click", () => { resetReportMode(); navigate("browse"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
   $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
