@@ -350,6 +350,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ready")
         self.assertIn(payload["database"], {"sqlite", "postgresql"})
         self.assertEqual(payload["canonical_tables"], "ready")
+        self.assertIn(payload["storage"], {"local", "s3"})
         self.assertGreaterEqual(payload["schema_version"], 10)
 
     def test_cross_origin_mutations_are_rejected(self):
