@@ -126,6 +126,7 @@ def _tracking_events(conn, user_id: int, entity_type: str, entity_id: str) -> li
 
 
 async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]]:
+    """Use the same two-tier retrieval and AI ranking path as authenticated reports."""
     from app.matching import matching_engine
     from app.core.images import read_upload
 
@@ -133,11 +134,44 @@ async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]
         lost_row = conn.execute("SELECT * FROM reports WHERE id=?", (lost_report_id,)).fetchone()
         if not lost_row or lost_row["report_type"] != "lost" or lost_row["status"] != "open":
             return []
-        candidates = conn.execute(
-            """SELECT * FROM reports WHERE report_type='found' AND status='available'
-               ORDER BY created_at DESC,id DESC LIMIT ?""",
-            (MATCHING_CANDIDATE_LIMIT,),
-        ).fetchall()
+        candidate_limit = MATCHING_CANDIDATE_LIMIT
+        category_limit = max(1, int(candidate_limit * 0.75))
+        fallback_limit = candidate_limit - category_limit
+        candidates_by_id = {}
+        if lost_row["category"]:
+            category_rows = conn.execute(
+                """SELECT * FROM reports
+                   WHERE report_type='found' AND status='available' AND category=?
+                   ORDER BY created_at DESC,id DESC LIMIT ?""",
+                (lost_row["category"],category_limit),
+            ).fetchall()
+            candidates_by_id.update({row["id"]: row for row in category_rows})
+            if fallback_limit:
+                fallback_match = ["category<>?", "category IS NULL"]
+                fallback_params: list[Any] = [lost_row["category"]]
+                if lost_row["location_block"]:
+                    fallback_match.append("LOWER(COALESCE(location_block,''))=LOWER(?)")
+                    fallback_params.append(lost_row["location_block"])
+                if lost_row["location_area"]:
+                    fallback_match.append("LOWER(COALESCE(location_area,''))=LOWER(?)")
+                    fallback_params.append(lost_row["location_area"])
+                fallback_sql = (
+                    "SELECT * FROM reports WHERE report_type='found' AND status='available' "
+                    "AND (" + " OR ".join(fallback_match) + ") "
+                    "ORDER BY created_at DESC,id DESC LIMIT ?"
+                )
+                fallback_params.append(fallback_limit)
+                fallback_rows = conn.execute(fallback_sql,fallback_params).fetchall()
+                candidates_by_id.update({row["id"]: row for row in fallback_rows})
+        else:
+            recent_rows = conn.execute(
+                """SELECT * FROM reports WHERE report_type='found' AND status='available'
+                   ORDER BY created_at DESC,id DESC LIMIT ?""",
+                (candidate_limit,),
+            ).fetchall()
+            candidates_by_id.update({row["id"]: row for row in recent_rows})
+        candidates = list(candidates_by_id.values())
+
     lost = dict(lost_row)
     if lost.get("image_path"):
         lost["image_key"] = lost["image_path"]
@@ -151,27 +185,30 @@ async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]
             candidate["image_loader"] = read_upload
             candidate["image_path"] = str(UPLOAD_DIR / candidate["image_path"])
         candidate_data.append(candidate)
-    ranked = await run_in_threadpool(matching_engine.rank, lost, candidate_data, limit=5)
-    ids = [match["report"]["id"] for match in ranked]
-    if not ids:
-        return []
-    placeholders = ",".join("?" for _ in ids)
-    with connect_db() as conn:
-        fresh = conn.execute(
-            f"""SELECT * FROM reports WHERE id IN ({placeholders})
-                AND report_type='found' AND status='available'""",
-            ids,
-        ).fetchall()
-    by_id = {row["id"]: row for row in fresh}
-    return [
-        {
-            "report": _public_report(by_id[match["report"]["id"]]),
+
+    ranked = await run_in_threadpool(matching_engine.rank,lost,candidate_data,limit=5)
+    ranked_ids = [match["report"]["id"] for match in ranked]
+    fresh_by_id = {}
+    if ranked_ids:
+        placeholders = ",".join("?" for _ in ranked_ids)
+        with connect_db() as conn:
+            fresh_rows = conn.execute(
+                f"""SELECT * FROM reports WHERE id IN ({placeholders})
+                    AND report_type='found' AND status='available'""",
+                ranked_ids,
+            ).fetchall()
+            fresh_by_id = {row["id"]: row for row in fresh_rows}
+    results = []
+    for match in ranked:
+        fresh = fresh_by_id.get(match["report"]["id"])
+        if fresh is None:
+            continue
+        results.append({
+            "report": _public_report(fresh),
             "strength": match["strength"],
             "reasons": match["reasons"],
-        }
-        for match in ranked
-        if match["report"]["id"] in by_id
-    ]
+        })
+    return results
 
 
 class PublicReportBody(BaseModel):
