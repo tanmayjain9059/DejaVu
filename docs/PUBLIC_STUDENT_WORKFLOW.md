@@ -50,7 +50,8 @@ The additive schema migration is version 10. Existing account-based rows default
 | Method | Endpoint | Purpose |
 |---|---|---|
 | POST | `/api/public/reports` | Create a Lost or Found report |
-| GET | `/api/public/search` | Search open Lost reports and available Found items |\n| GET | `/api/public/found` | Browse available Found items only |
+| GET | `/api/public/search` | Search open Lost reports and available Found items | 
+| GET | `/api/public/found` | Browse available Found items only |
 | GET | `/api/public/track/{reference}` | Track one report or claim |
 | GET | `/api/public/reports/{reference}/matches` | Retrieve ranked matches for one Lost report |
 | POST | `/api/public/found/{report_id}/claims` | Submit a claim |
