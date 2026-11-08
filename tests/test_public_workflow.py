@@ -128,6 +128,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertNotIn("roll_number",row)
             self.assertNotIn("tag_id",row)
             self.assertNotIn("storage_location",row)
+            for private_field in ("private_verification_detail","location_room","created_by","roll_number","tag_id","submission_channel","tracking_hash"):
+                self.assertNotIn(private_field,row)
         self.assertEqual(self.client.get("/api/public/search?report_type=lost").json()["reports"][0]["report_type"],"lost")
         self.assertEqual(self.client.get("/api/public/search?report_type=found").json()["reports"][0]["report_type"],"found")
 
