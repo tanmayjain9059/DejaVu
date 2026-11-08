@@ -432,6 +432,11 @@ async function loadConfig() {
     if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) throw new Error("Supabase Auth client configuration is missing.");
     supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     $("#demoAccess").classList.add("hidden");
+    const modeNote = $("#officeAccessModeNote");
+    modeNote.textContent = "Live campus deployment: demo credentials are disabled. Sign in with an authorised office account provisioned in Supabase.";
+    modeNote.classList.remove("hidden");
+  } else if (appConfig.demo_mode) {
+    $("#officeAccessModeNote").classList.add("hidden");
   }
   const categoryOptions = appConfig.categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
@@ -1723,7 +1728,17 @@ function placeFinnIn(selector) {
   else if (dock) document.body.appendChild(dock);
 }
 
+function setPublicNavActive(destination) {
+  $("#publicNav [data-public-destination]").forEach(button => {
+    const active = button.dataset.publicDestination === destination;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+}
+
 function showPublicHome() {
+  setPublicNavActive("home");
   stopNotificationPolling();
   setFinnMessage("Welcome back to campus, detective. What are we looking for today?", false);
   currentUser = null;
@@ -1737,6 +1752,7 @@ function showPublicHome() {
   window.scrollTo({top:0,behavior:"instant"});
 }
 function showPublicDestination(type) {
+  setPublicNavActive(type);
   setFinnMessage(type === "browse" ? "Let’s search both open Lost reports and items the office has received." : type === "track" ? "Have your reference and tracking secret ready. I’ll find your case updates." : type === "found" ? "Tell us what you found. The office will record it before it appears in search." : "Let’s make a clear Lost report so we can find useful matches.", false);
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
@@ -1792,6 +1808,7 @@ async function loadPublicFound() {
   }
 }
 function openPublicOfficeSignIn() {
+  setPublicNavActive("office");
   setFinnMessage("Welcome to the campus desk. This sign-in is for authorised office staff.", false);
   $("#loginView").classList.add("office-access-open");
   $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
@@ -1805,6 +1822,14 @@ function openPublicOfficeSignIn() {
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
 }
+$("#publicNav").addEventListener("click", event => {
+  const button = event.target.closest("[data-public-destination]");
+  if (!button) return;
+  const destination = button.dataset.publicDestination;
+  if (destination === "home") showPublicHome();
+  else if (destination === "office") openPublicOfficeSignIn();
+  else showPublicDestination(destination);
+});
 $("#publicBrowseButton").addEventListener("click",() => showPublicDestination("browse"));
 $("#publicTrackButton").addEventListener("click",() => showPublicDestination("track"));
 $("#publicOfficeButton").addEventListener("click",openPublicOfficeSignIn);
