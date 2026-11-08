@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
 DIST = ROOT / "dist"
-origin = os.environ.get("BACKEND_ORIGIN", "").strip().rstrip("/")
+origin = os.environ.get("BACKEND_ORIGIN", "https://lostlink-q8ft.onrender.com").strip().rstrip("/")
 if origin:
     parsed = urlsplit(origin)
     if parsed.scheme != "https" or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
@@ -17,7 +17,7 @@ if origin:
     if parsed.username or parsed.password:
         raise SystemExit("BACKEND_ORIGIN must not contain credentials.")
 else:
-    raise SystemExit("BACKEND_ORIGIN is required. Set it to the HTTPS origin of the deployed LostLink API in Vercel Project Settings → Environment Variables.")
+    raise SystemExit("BACKEND_ORIGIN resolved to an empty value; configure the deployed LostLink API origin.")
 STATIC.mkdir(parents=True, exist_ok=True)
 (STATIC / "deployment-config.js").write_text(
     "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\n" +
