@@ -31,17 +31,27 @@
   <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
   <main id="loginView" class="login-shell">
     <section class="login-story public-landing-shell">
-      <!-- LostLink brand mark -->
-      <div class="brand-liquid-pill">
-        <span class="nimbus-glass" aria-hidden="true"></span>
-        <span class="liquid-logo-bubble">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
-          </svg>
-        </span>
-        <span class="brand-text">LostLink</span>
-        <span class="brand-live-dot" title="Active Campus System"></span>
-      </div>
+      <header class="public-topbar" id="publicTopbar">
+        <div class="brand-liquid-pill">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <span class="liquid-logo-bubble">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
+            </svg>
+          </span>
+          <span class="brand-text">LostLink</span>
+          <span class="brand-live-dot" title="Active Campus System"></span>
+        </div>
+        <nav id="publicNav" class="nimbus-nav public-nav" data-tone="light" aria-label="Public LostLink navigation">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <button class="nimbus-item public-nav-item active" type="button" data-public-destination="home" aria-current="page"><span class="nv-ico">⌂</span><span>Home</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="browse"><span class="nv-ico">⌕</span><span>Browse</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="lost"><span class="nv-ico">−</span><span>Lost</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="found"><span class="nv-ico">＋</span><span>Found</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="track"><span class="nv-ico">◷</span><span>Track</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button>
+        </nav>
+      </header>
 
       <div class="story-copy public-story">
         <section id="publicHomeContent" class="public-home-content">
@@ -136,6 +146,7 @@
       <button class="office-panel-back" id="closeOfficeAccess" type="button">← Back to LostLink</button>
       <h2 id="loginPanelTitle">Office staff sign in</h2>
       <p id="loginPanelCopy" class="muted">Authorised campus staff only.</p>
+      <p id="officeAccessModeNote" class="field-hint hidden" role="status"></p>
       <div data-finn-slot class="public-finn-slot"></div>
 
       <form id="loginForm" class="form-stack">
