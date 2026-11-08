@@ -110,6 +110,7 @@ def _public_report(row) -> dict[str, Any]:
     # Public image access is deliberately withheld until the private-storage,
     # per-case signed-access flow is enabled for anonymous tracking tokens.
     item["image_url"] = None
+    item.pop("location_room", None)
     item["reference"] = item["public_ref"]
     return item
 
