@@ -429,10 +429,10 @@ Run these commands from the repository root.
 
 1. Create a virtual environment and install runtime dependencies.
 
+       cd DejaVu
        py -3.11 -m venv .venv
        .\.venv\Scripts\Activate.ps1
        python -m pip install --upgrade pip
-       cd DejaVu
        python -m pip install -r requirements.txt
 
 3. Create the local environment file if it does not already exist.
