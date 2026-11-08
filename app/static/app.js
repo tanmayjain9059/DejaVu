@@ -1851,7 +1851,7 @@ $("#publicTrackForm").addEventListener("submit",async event => {
     const item = data.case || data.item || {};
     const events = (data.events || []).map(entry => '<article class="list-card"><strong>' + escapeHTML(entry.title) + '</strong><p>' + escapeHTML(entry.message) + '</p><small>' + escapeHTML(humanDateTime(entry.created_at)) + '</small></article>').join("");
     resultNode.innerHTML = '<p><strong>Reference ' + escapeHTML(record.reference || $("#publicTrackReference").value) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '. ' + escapeHTML(record.title || item.title || "") + '</p>' +
-      (typeof data.activity_points === "number" ? '<p class="field-hint">Verified activity points: ' + data.activity_points + '</p>' : "") +
+      (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : "") +
       (events ? '<h3>Case updates</h3>' + events : '<p class="field-hint">No additional updates have been recorded yet.</p>');
   } catch(error) { resultNode.textContent = error.message; }
 });
