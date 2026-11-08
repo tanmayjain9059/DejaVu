@@ -1798,7 +1798,7 @@ async function loadPublicFound() {
   try {
     const data = await publicApi("/api/public/search"+(params.size ? "?"+params.toString() : ""));
     $("#publicBrowseResults").innerHTML = (data.reports || []).map(item =>
-      '<article class="list-card"><div class="list-card-head"><div><span class="eyebrow">'+(item.report_type === "lost" ? "LOST REPORT" : "FOUND ITEM")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p>'+escapeHTML(item.description)+'</p><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(item.report_type === "found" ? '<button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button>' : '')+'</article>'
+      '<article class="list-card"><div class="list-card-head"><div><span class="eyebrow">'+(item.report_type === "lost" ? "LOST REPORT" : "FOUND ITEM")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(item.report_type === "found" ? '<button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button>' : '')+'</article>'
     ).join("");
     $("#publicBrowseEmpty").classList.toggle("hidden",(data.reports || []).length > 0);
   } catch(error) {
