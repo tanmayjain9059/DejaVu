@@ -28,7 +28,8 @@ All public routes are under `/api/public`. They do not require a session cookie 
 | Method | Route | Purpose |
 |---|---|---|
 | POST | `/api/public/reports` | Submit a Lost or Found report |
-| GET | `/api/public/search` | Search open Lost reports and available Found items |\n| GET | `/api/public/found` | Browse available Found items only |
+| GET | `/api/public/search` | Search open Lost reports and available Found items | 
+| GET | `/api/public/found` | Browse available Found items only |
 | GET | `/api/public/track/{reference}?roll_number=...` | Read one token-authorised report or claim |
 | GET | `/api/public/reports/{reference}/matches?roll_number=...` | Retrieve ranked matches for one Lost report |
 | POST | `/api/public/found/{report_id}/claims` | Submit a claim with private evidence |
