@@ -33,7 +33,7 @@ to the public internet.
 
 ## P3 — Database operations
 
-- [x] Add an ordered, forward-only migration ledger (v1 legacy baseline, v2 active-claim indexes, v3 workflow uniqueness guards, v4 legacy additive columns/image fingerprint backfill), with a documented recovery policy. Core table bootstrap remains at startup; future schema changes must use versioned migrations.
+- [x] Add an ordered, forward-only migration ledger (v1 legacy baseline through v10 public roll attribution and tracking), with a documented recovery policy. Core table bootstrap remains at startup; future schema changes must use versioned migrations.
 - [x] Add a conservative SQLite-to-PostgreSQL migration utility with dry-run mode, empty-destination guard, integrity/FK checks, row-count verification, sequence repair, and referenced-upload copy; [ ] rehearse it against a representative backup and independently verify results.
 - [x] Add forward-only migration v7 to reconcile AI enrichment fields, the persistent embedding cache, and composite matching indexes across the current-main and PR #3 v5/v6 histories; regression coverage simulates the PR #3 lineage.
 - [x] Add encrypted PostgreSQL backup and guarded restore scripts; [ ] test a restore against the exact PostgreSQL schema/application revision and restore matching uploads.
@@ -60,10 +60,10 @@ implementations must not replace the current AI baseline.
 - [x] Add keyset cursor pagination to report listing, with deterministic
   `created_at DESC, id DESC` ordering, a bounded page size (1–100), opaque
   cursor validation, and existing role/visibility/search filters preserved.
-- [x] Add keyset pagination to student claims and office claim queues. Cursor
+- [x] Add keyset pagination to legacy account-owned claim queries and office claim queues. Cursor
   order uses immutable creation time and ID; office staff can page disputed,
   pending and remaining queues separately, and each row exposes a priority rank.
-  This avoids using mutable status as a cursor key.
+  Public students track one claim by its reference and case-specific secret.
 - [x] Office intake/inventory lists use the shared report-list cursor API with
   deterministic creation-time/ID ordering and bounded page sizes.
 - [x] Replace the fixed 500-row cutoff with a bounded two-tier indexed shortlist
@@ -96,13 +96,8 @@ implementations must not replace the current AI baseline.
 
 ### P2 — Controlled onboarding and operations
 
-- [x] Add Supabase Auth email signup/sign-in with email confirmation and a configurable
-  institution-domain allowlist. New verified accounts default to student; only exact
-  emails in the server-side office allowlist receive office access.
-- [ ] Obtain institutional approval for domain-based student self-registration and
-  configure only approved domains. Email-domain membership is not a student-roll or
-  current-enrolment check; add SIS/roll-number or another approved eligibility check
-  if the institution requires it.
+- [x] Restrict Supabase Auth to confirmed, exact allowlisted campus-office accounts. Student signup/sign-in is disabled; students use public roll-number attribution and case-specific tracking secrets.
+- [ ] Obtain institutional approval for the roll-number syntax and in-person ID verification procedure. A valid-looking roll number is not proof of current enrolment; integrate an approved roster/SIS check only if CVR authorises a source.
 - [ ] Provision office accounts through an out-of-band staff process and verify each
   exact address before adding it to `OFFICE_USER_EMAILS`. Do not permit public office
   self-registration or accept role claims from browser metadata.
@@ -128,7 +123,8 @@ implementations must not replace the current AI baseline.
 - Image/evidence files can use the local filesystem or private S3-compatible storage. Supabase Storage is the selected provider through its S3 endpoint; credentials, private bucket policy, object lifecycle and a coordinated database/object backup-restore drill must be verified in staging.
 - Matching benchmark data is small and synthetic; it is not evidence of real-campus accuracy.
 - The migration ledger records the legacy bootstrap baseline and applies versioned forward migrations for new changes; older additive compatibility updates still run in the legacy bootstrap, and each future migration needs an explicit recovery plan.
-- The visual pass only slightly reduces shadow, radius, and ambient contrast; it does not change product navigation or workflows.
-- Supabase Auth and role provisioning are covered by unit tests, but live email delivery, redirect URLs, domain policy and office allowlist configuration remain staging gates.
-- Vercel static frontend and Render FastAPI deployment manifests are provided; no production service or custom domain has been provisioned. Confirm the Vercel preview build, Render health checks, Supabase Auth, database migrations, private image upload/retrieval and CORS together before a public launch.
+- The public-first landing/reporting flow is now separate from the authenticated office console. The public report form uses dedicated destination views; verify navigation and responsive behavior in staging.
+- Office-only Supabase Auth and exact allowlist enforcement are covered by unit tests, but live email delivery, redirect URLs, office allowlist configuration and session revocation remain staging gates.
+- Public image and evidence-image upload are not enabled yet. The public form currently accepts text and structured item attributes; public image access must use token-scoped signed access to the private bucket before it is exposed.
+- Vercel static frontend and Render FastAPI deployment manifests are provided; no production service or custom domain has been provisioned. Confirm the Vercel preview build, Render health checks, office-only Supabase Auth, database migrations, private image upload/retrieval and CORS together before a public launch.
 - A passing CI run is not a security audit, load test, backup/restore test, live deployment verification, or production-readiness certification.
