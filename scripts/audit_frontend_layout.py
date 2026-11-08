@@ -72,7 +72,8 @@ def main() -> int:
                 audit(page, f"landing after lost {width}x{height}")
 
                 page.locator('[data-public-report="found"]').click()
-                page.locator("#publicFoundPage").wait_for(state="visible")
+                page.locator("#publicLostPage").wait_for(state="visible")
+                assert page.locator("#publicReportType").input_value() == "found"
                 audit(page, f"found report {width}x{height}")
                 return_home(page)
 
