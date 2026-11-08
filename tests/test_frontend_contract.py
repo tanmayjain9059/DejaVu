@@ -54,7 +54,7 @@ class FrontendContractTests(unittest.TestCase):
         # $() is querySelector; $$() is querySelectorAll. Calling .forEach/.map
         # on a single Element aborts startup or a feature action at runtime.
         bad = re.findall(
-            r"""(?<!\$)\$\([^;\n]*?\)\.(?:forEach|map|filter|some|every|reduce)\s*\(""",
+            r"""(?<!\$)\$\(["\'][^"\']+["\']\)\s*\.(?:forEach|map|filter|some|every|reduce)\s*\(""",
             self.js,
         )
         self.assertEqual(bad, [], f"Single-element selector used as a collection: {bad}")
