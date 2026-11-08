@@ -902,6 +902,9 @@
         <span>Physical Tag ID <span class="field-required">Required</span></span>
         <input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read exact ID printed on item's physical label">
       </label>
+      <div id="handoverRollVerificationGroup" class="hidden">
+        <label><span>Verified college roll number <span class="field-required">Required for public claims</span></span><input id="handoverVerifiedRoll" minlength="5" maxlength="20" autocomplete="off" placeholder="Enter the roll number shown on the college ID"></label>
+      </div>
       <label class="checkbox-line"><input id="handoverIdentityChecked" type="checkbox" required> I checked the claimant's identity under campus policy.</label>
       <label class="checkbox-line"><input id="handoverPhysicalChecked" type="checkbox" required> I physically handed the item to the verified claimant.</label>
       <label>
