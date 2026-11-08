@@ -199,6 +199,8 @@ class PublicCloseBody(BaseModel):
 
 class StaffIntakeBody(BaseModel):
     confirmed_physical_receipt: bool
+    identity_verified_in_person: bool
+    verified_roll_number: str = Field(min_length=5, max_length=20)
     storage_location: str = Field(min_length=3, max_length=160)
     private_detail: str | None = Field(default=None, max_length=1200)
     tag_id: str = Field(min_length=4, max_length=80)
@@ -208,12 +210,14 @@ class StaffClaimDecisionBody(BaseModel):
     action: Literal["approve", "reject", "request_more_evidence", "mark_disputed"]
     note: str | None = Field(default=None, max_length=800)
     identity_verified_in_person: bool = False
+    verification_checks: list[str] = Field(default_factory=list, max_length=6)
 
 
 class StaffHandoverBody(BaseModel):
     tag_id: str = Field(min_length=4, max_length=80)
     confirmed_physical_handover: bool
     claimant_identity_checked: bool
+    verified_roll_number: str = Field(min_length=5, max_length=20)
 
 
 @router.post("/reports", status_code=201)
@@ -425,16 +429,22 @@ def public_intake_queue(user: dict[str, Any] = Depends(authenticated_user)):
                          "created_at":r["created_at"],"location_area":r["location_area"]} for r in rows]}
 
 
-@router.post("/office/{case_id}/intake")
-def confirm_public_intake(case_id: str, body: StaffIntakeBody, user: dict[str, Any] = Depends(authenticated_user)):
+@router.post("/office/{case_reference}/intake")
+def confirm_public_intake(case_reference: str, body: StaffIntakeBody, user: dict[str, Any] = Depends(authenticated_user)):
     require_office(user)
     if not body.confirmed_physical_receipt:
         raise HTTPException(status_code=422, detail="Confirm that the physical item is in campus custody.")
+    if not body.identity_verified_in_person:
+        raise HTTPException(status_code=422, detail="Office staff must physically inspect the contributor's college ID.")
+    verified_roll = _roll(body.verified_roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        row = conn.execute("SELECT * FROM public_cases WHERE id=?", (case_id,)).fetchone()
+        row = conn.execute("SELECT * FROM public_cases WHERE id=? OR public_ref=?",
+                           (case_reference, case_reference)).fetchone()
         if not row or row["report_type"] != "found" or row["status"] != "awaiting_intake":
             raise HTTPException(status_code=409, detail="This report is not awaiting intake.")
+        if not secrets.compare_digest(row["roll_number"], verified_roll):
+            raise HTTPException(status_code=422, detail="The physical college ID roll number does not match this found report.")
         timestamp = now_iso()
         conn.execute("""UPDATE public_cases SET status='available',storage_location=?,private_detail=?,
                      tag_id=?,intake_by=?,intake_at=?,updated_at=? WHERE id=?""",
@@ -511,12 +521,15 @@ def record_public_handover(claim_id: str, body: StaffHandoverBody,
     require_office(user)
     if not body.confirmed_physical_handover or not body.claimant_identity_checked:
         raise HTTPException(status_code=422, detail="Confirm claimant identity and physical handover.")
+    verified_roll = _roll(body.verified_roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         claim=conn.execute("SELECT * FROM public_claims WHERE id=?",(claim_id,)).fetchone()
         if not claim or claim["status"]!="approved_for_collection":
             raise HTTPException(status_code=409,detail="Only an approved claim can be handed over.")
         case=conn.execute("SELECT * FROM public_cases WHERE id=?",(claim["case_id"],)).fetchone()
+        if not secrets.compare_digest(claim["roll_number"], verified_roll):
+            raise HTTPException(status_code=422, detail="The physical college ID roll number does not match this claim.")
         if not secrets.compare_digest(str(body.tag_id).strip(),str(case["tag_id"] or "")):
             raise HTTPException(status_code=422,detail="Tag ID does not match the office record.")
         timestamp=now_iso()
