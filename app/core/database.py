@@ -447,6 +447,11 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
     )
 
 
+def _migration_add_public_rate_limit_retention_index(conn) -> None:
+    """Index short-lived anonymous abuse-prevention records for bounded cleanup."""
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_public_rate_limits_created ON public_rate_limits(created_at)")
+
+
 def _migration_add_public_roll_attribution(conn) -> None:
     """Attach anonymous public submissions to canonical reports/claims without student accounts."""
     for column, declaration in (
@@ -506,6 +511,7 @@ SCHEMA_MIGRATIONS = (
     (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
     (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
     (10, "unified_public_roll_attribution_and_tracking", _migration_add_public_roll_attribution),
+    (11, "public_rate_limit_retention_index", _migration_add_public_rate_limit_retention_index),
 )
 
 
