@@ -153,18 +153,32 @@ def health_live():
 
 @app.get("/health/ready", include_in_schema=False)
 def health_ready():
-    """Verify the configured database and required canonical schema without exposing secrets."""
+    """Verify database, canonical schema and object storage without exposing secrets."""
+    readiness_stage = "database_connection"
     try:
         with connect_db() as conn:
             conn.execute("SELECT 1 AS ready").fetchone()
+            readiness_stage = "canonical_schema"
             conn.execute("SELECT id FROM reports LIMIT 0")
             conn.execute("SELECT id FROM claims LIMIT 0")
             version = conn.execute(
                 "SELECT COALESCE(MAX(version),1) AS schema_version FROM schema_migrations"
             ).fetchone()["schema_version"]
+        readiness_stage = "object_storage"
         storage_status = check_storage_ready()
-    except Exception:
-        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    except Exception as exc:
+        # Log only the failing stage and exception class. Never log connection
+        # strings, credentials, request headers, or exception messages.
+        import logging
+        logging.getLogger(__name__).error(
+            "Readiness check failed at %s (%s)",
+            readiness_stage,
+            type(exc).__name__,
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "failed_check": readiness_stage},
+        )
     return {
         "status": "ready",
         "database": "postgresql" if DATABASE_URL else "sqlite",
