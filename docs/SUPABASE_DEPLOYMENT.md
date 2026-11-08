@@ -97,7 +97,8 @@ Deploy the static frontend. Copy its exact production origin into Render's `FRON
 
 - Public browser requests use `credentials: "omit"`.
 - Office API requests use the Supabase access token.
-- CORS allows `Authorization`, `Content-Type` and `X-LostLink-Tracking-Secret`.
+- CORS allows `Authorization`, `Content-Type`, `X-LostLink-Tracking-Secret`, and `X-LostLink-Roll-Number`.
+- Public tracking sends the roll number in a request header, never in the URL, to avoid leaking it into proxy/access logs.
 - State-changing requests from the configured Vercel origin are accepted by the origin middleware; unconfigured origins remain blocked.
 - Never send a tracking secret in a URL or persist it in analytics. Use the `X-LostLink-Tracking-Secret` header for tracking and evidence updates.
 - Roll number + reference + tracking secret must all match. Roll number alone never authorises access.
