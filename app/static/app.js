@@ -496,7 +496,7 @@ function enterApp(user) {
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
-  placeFinnIn("#appView");
+  placeFinnIn("#appView [data-finn-slot]");
   $("#userName").textContent = user.display_name;
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
