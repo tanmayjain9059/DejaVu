@@ -36,6 +36,22 @@ LostLink is a web application for managing campus lost property from initial rep
 
 > **Project status:** working standalone prototype. It uses SQLite and local image files. It has not yet been validated for production-scale load or connected to an institutional identity provider.
 
+## Cloudflare Workers static deployment
+
+The Cloudflare Worker serves the static frontend from `dist/`. Build the asset
+directory from the repository root before deploying:
+
+```bash
+python3 scripts/build_vercel_frontend.py
+npx wrangler deploy
+```
+
+Set `BACKEND_ORIGIN` to the HTTPS origin of the Render API before running the
+build. The build script writes `deployment-config.js` and copies
+`app/static/_headers` to `dist/_headers`; Cloudflare reads that file for
+response security headers. Do not deploy a stale or manually-created
+`dist/` directory.
+
 ## Contents
 
 - [Problem and goals](#problem-and-goals)
