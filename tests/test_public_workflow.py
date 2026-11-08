@@ -119,7 +119,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.office_login()
         report_id = found.json()["case"]["id"]
         self.assertEqual(self.intake(report_id).status_code,200)
-        self.logout()
+        self.client.cookies.clear()
         response = self.client.get("/api/public/search?q=calculator")
         self.assertEqual(response.status_code,200,response.text)
         reports = response.json()["reports"]
