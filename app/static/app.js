@@ -668,7 +668,7 @@ function setReportMode(type) {
     if (strong) strong.textContent = entry[0];
     if (small) small.textContent = entry[1];
   });
-  $("[data-report-kind]").forEach((button) => {
+  $$("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
   });
@@ -745,7 +745,7 @@ function resetReportMode() {
   setText("#categorySuggestionFound", "AI suggestion is optional. You choose the final category.");
   setText("#reportModeTitle", "Choose your report type");
   setText("#reportModeDescription", "Lost and Found have separate guided paths so each report starts with the right context.");
-  $$("[data-report-kind]").forEach((button) => {
+  $$$("[data-report-kind]").forEach((button) => {
     button.classList.remove("selected");
     button.setAttribute("aria-pressed", "false");
   });
