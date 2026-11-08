@@ -17,7 +17,7 @@ if origin:
     if parsed.username or parsed.password:
         raise SystemExit("BACKEND_ORIGIN must not contain credentials.")
 else:
-    print("BACKEND_ORIGIN is not set; building an intentionally unconfigured preview.")
+    raise SystemExit("BACKEND_ORIGIN is required. Set it to the HTTPS origin of the deployed LostLink API in Vercel Project Settings → Environment Variables.")
 STATIC.mkdir(parents=True, exist_ok=True)
 (STATIC / "deployment-config.js").write_text(
     "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\n" +
