@@ -2077,6 +2077,7 @@ function placeFinnForView(view) {
   scheduleRepeat();
 }
 function finnEvent(state) {
+  if (Date.now() - finnLastBubbleAt < 18000 || finnBubbleCount >= 2) return;
   finnBubble(state, true);
 }
 function initFinn() {
