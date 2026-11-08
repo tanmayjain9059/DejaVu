@@ -138,7 +138,7 @@ class FrontendContractTests(unittest.TestCase):
     def test_each_report_form_reset_is_preceded_by_a_null_guard(self):
         for function_name in ("setReportMode", "resetReportMode"):
             start = self.js.index(f"function {function_name}(")
-            next_function = self.js.find("\\nfunction ", start + 1)
+            next_function = self.js.find("\nfunction ", start + 1)
             block = self.js[start:next_function if next_function >= 0 else len(self.js)]
             guard = re.search(r"if \(!form \\|\\| !chooser\) \\{[\\s\\S]*?return;\\s*\\}", block)
             self.assertIsNotNone(guard, f"{function_name} must return when the form or chooser is absent")
@@ -147,7 +147,7 @@ class FrontendContractTests(unittest.TestCase):
 
     def test_report_submission_uses_the_submitted_form_and_guards_its_button(self):
         start = self.js.index("async function submitReport(event)")
-        end = self.js.find("\\nasync function ", start + 1)
+        end = self.js.find("\nasync function ", start + 1)
         block = self.js[start:end if end >= 0 else len(self.js)]
         self.assertIn("const form = event.currentTarget;", block)
         self.assertRegex(block, r"if \(!form \\|\\| !errorNode\) \\{[\\s\\S]*?return;")
