@@ -64,7 +64,7 @@ def _verify_token(stored_hash: str | None, token: str | None) -> bool:
 
 
 def _reference(prefix: str) -> str:
-    return prefix + "-" + secrets.token_hex(8).upper()
+    return prefix + "-" + secrets.token_hex(16).upper()
 
 
 def _public_actor_for_roll(conn, roll_number: str) -> int:
@@ -119,6 +119,21 @@ def _public_report(row) -> dict[str, Any]:
     # per-case signed-access flow is enabled for anonymous tracking tokens.
     item["image_url"] = None
     item.pop("location_room", None)
+    # Found-item free text may contain a finder's or owner's personal data.
+    # Public browse exposes controlled descriptors only; full notes remain
+    # available to authorised office staff during ownership verification.
+    if item.get("report_type") == "found":
+        item["title"] = CATEGORY_LABELS.get(item.get("category"), "Found") + " item"
+        item["description"] = "A found item is held by the campus office. Share private ownership evidence when claiming."
+        item["brand"] = None
+        item["visible_features"] = None
+    # Public Lost listings must not reveal a precise loss location or time.
+    if item.get("report_type") == "lost":
+        item["location"] = "CVR campus"
+        item["location_block"] = None
+        item["location_floor"] = None
+        item["location_area"] = None
+        item["occurred_at"] = None
     # A public Lost listing must not reveal where or exactly when a student
     # lost an item. The full location and timestamp remain available to the
     # owner through the private tracking flow and to authorised office staff.
@@ -283,6 +298,9 @@ class PublicCloseBody(BaseModel):
 def ensure_public_schema() -> None:
     """Idempotently migrate records from the retired parallel public tables."""
     with connect_db() as conn:
+        if DATABASE_URL:
+            # Serialise one-time schema setup across simultaneously starting workers.
+            conn.execute("SELECT pg_advisory_xact_lock(730022)")
         conn.execute(
             """CREATE TABLE IF NOT EXISTS public_schema_migrations (
                 version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL
