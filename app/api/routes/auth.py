@@ -46,7 +46,7 @@ def login(body: LoginBody, request: Request):
         locked_for = login_lockout_remaining(conn, subjects)
         if not locked_for:
             row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-            if not row or row["role"] != "office" or not verify_password(body.password, row["password_hash"]):
+            if not row or row["role"] not in {"office", "student"} or (DEMO_MODE and row["role"] != "office") or not verify_password(body.password, row["password_hash"]):
                 record_failed_login(conn, subjects)
                 invalid_credentials = True
             else:
