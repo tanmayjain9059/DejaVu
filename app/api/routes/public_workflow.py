@@ -729,10 +729,10 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         conn.execute(
             """INSERT INTO claims
                (id,public_ref,report_id,claimant_id,evidence,evidence_types,status,created_at,updated_at,
-                lost_report_id,claimant_roll_number,tracking_hash,submission_channel)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
+                lost_report_id,claimant_roll_number,claimant_phone,tracking_hash,submission_channel)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
             (claim_id,claim_ref,report_id,actor_id,body.evidence.strip(),json.dumps(evidence_types, separators=(",", ":")),
-             status,timestamp,timestamp,lost_report_id,roll,_hash(token)),
+             status,timestamp,timestamp,lost_report_id,roll,contact_phone,_hash(token)),
         )
         if competing:
             conn.execute(
