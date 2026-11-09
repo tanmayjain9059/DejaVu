@@ -64,6 +64,18 @@ def return_home(page) -> None:
         back.click()
         page.locator("#publicHomeContent").wait_for(state="visible")
 
+def exercise_public_category_ai(page, page_id: str, suffix: str = "") -> None:
+    page.locator("#" + page_id + " #publicTitle" + suffix).fill("Blue campus backpack")
+    page.locator("#" + page_id + " #publicDescription" + suffix).fill(
+        "A blue backpack with two front pockets and a zip closure."
+    )
+    page.locator("#" + page_id + " [data-public-ai-category]").click()
+    page.locator("#" + page_id + " .ai-alternative-button").first.wait_for(state="visible", timeout=10000)
+    page.locator("#" + page_id + " .ai-alternative-button").first.click()
+    selected = page.locator("#" + page_id + " #publicCategory" + suffix).input_value()
+    if selected != "bags_wallets":
+        raise AssertionError(f"{page_id}: AI category selection mismatch: {selected!r}")
+
 def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -83,12 +95,14 @@ def main() -> int:
                 page.locator("#publicNav [data-public-destination='lost']").click()
                 page.locator("#publicLostPage").wait_for(state="visible")
                 assert page.locator("#publicReportType").input_value() == "lost"
+                exercise_public_category_ai(page, "publicLostPage")
                 audit(page, f"public nav lost {width}x{height}")
                 return_home(page)
 
                 page.locator("#publicNav [data-public-destination='found']").click()
                 page.locator("#publicFoundPage").wait_for(state="visible")
                 assert page.locator("#publicReportTypeFound").input_value() == "found"
+                exercise_public_category_ai(page, "publicFoundPage", "Found")
                 audit(page, f"public nav found {width}x{height}")
                 return_home(page)
 
