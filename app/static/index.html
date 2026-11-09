@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=public-claim-action-fix-20261109-7">
+  <link rel="stylesheet" href="/static/styles.css?v=office-dashboard-signout-20261109">
 </head>
 <body>
   <!-- Warm ambient lighting for the LostLink campus identity -->
@@ -257,7 +257,7 @@
 <a class="brand-lockup compact" id="homeBrandLink" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost &amp; found</small></span></a>
 <div class="header-center"><nav id="studentNav" class="nimbus-nav" data-tone="light" aria-label="LostLink navigation">
 <span class="nimbus-glass" aria-hidden="true"></span>
-<button class="nimbus-item tab-button" type="button" data-view="start"><span class="nv-ico">⌂</span><span class="nimbus-label">Start</span></button>
+<button id="officeDashboardNav" class="nimbus-item tab-button hidden" type="button" data-view="office" aria-label="Office dashboard"><span class="nv-ico">⌂</span><span class="nimbus-label">Dashboard</span></button><button class="nimbus-item tab-button" type="button" data-view="start"><span class="nv-ico">⌂</span><span class="nimbus-label">Start</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="browse"><span class="nv-ico">⌕</span><span class="nimbus-label">Browse</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="report"><span class="nv-ico">＋</span><span class="nimbus-label">Reports</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button>
@@ -1092,6 +1092,6 @@
   </div>
   <script src="/deployment-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/static/app.js?v=public-wide-nav-finn-corner-20261109-6" defer></script>
+  <script src="/static/app.js?v=office-dashboard-signout-20261109" defer></script>
 </body>
 </html>
