@@ -94,6 +94,11 @@
           <form id="publicReportForm" class="form-card form-stack liquid-glass-panel">
             <input id="publicReportType" type="hidden" value="lost">
             <label><span>College roll number · Required</span><input id="publicRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
+            <div class="two-columns public-contact-fields">
+              <label><span>Phone number · Optional</span><input id="publicContactPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
+              <label><span>Email address · Optional</span><input id="publicContactEmail" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+            </div>
+            <small class="field-hint">Contact details are private and visible only to authorised campus office staff.</small>
             <label><span>Item name · Required</span><input id="publicTitle" required minlength="4" maxlength="100" placeholder="e.g. Black water bottle"></label>
             <div class="public-category-field"><label><span>Category · Required</span><select id="publicCategory" required><option value="">Loading categories…</option></select></label></div>
             <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrand" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColor" maxlength="60" placeholder="e.g. Matte black"></label></div>
@@ -127,6 +132,11 @@
           <form id="publicFoundReportForm" class="form-card form-stack liquid-glass-panel">
             <input id="publicReportTypeFound" type="hidden" value="found">
             <label><span>College roll number · Required</span><input id="publicRollNumberFound" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
+            <div class="two-columns public-contact-fields">
+              <label><span>Phone number · Optional</span><input id="publicContactPhoneFound" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
+              <label><span>Email address · Optional</span><input id="publicContactEmailFound" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+            </div>
+            <small class="field-hint">Contact details are private and visible only to authorised campus office staff.</small>
             <label><span>Item found · Required</span><input id="publicTitleFound" required minlength="4" maxlength="100" placeholder="e.g. Silver water bottle I found"></label>
             <div class="public-category-field"><label><span>Category · Required</span><select id="publicCategoryFound" required><option value="">Loading categories…</option></select></label></div>
             <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrandFound" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColorFound" maxlength="60" placeholder="e.g. Matte black"></label></div>
