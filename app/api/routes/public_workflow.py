@@ -34,7 +34,7 @@ from app.core.config import (
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
-from app.core.database import audit, connect_db, now_iso, table_columns
+from app.core.database import audit, connect_db, lock_advisory_key, lock_row, now_iso, table_columns
 from app.core.security import hash_password
 from app.core.images import canonicalise_image
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
