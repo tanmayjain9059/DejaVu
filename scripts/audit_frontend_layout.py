@@ -19,7 +19,9 @@ AUDIT = r"""
       .slice(0, 12).map(x => ({tag:x.el.tagName,id:x.el.id,cls:typeof x.el.className === 'string' ? x.el.className.slice(0,90) : '',x:x.rect.x,right:x.rect.right,width:x.rect.width,scrollWidth:x.el.scrollWidth}))
   } : null;
   const selector = 'button, a[href], input:not([type="hidden"]), select, textarea';
+  const modal = document.querySelector('#officeLoginPanel:not(.hidden)');
   const nodes = [...document.querySelectorAll(selector)].filter((el) => {
+    if (modal && !modal.contains(el)) return false;
     const style = getComputedStyle(el);
     const rect = el.getBoundingClientRect();
     return style.display !== 'none' && style.visibility !== 'hidden' &&
