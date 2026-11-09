@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 
 TABLE_ORDER = (
     "users",
+    "privacy_requests",
     "public_roll_identities",
     "login_attempts",
     "reports",
