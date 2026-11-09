@@ -220,6 +220,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("#reportView .ai-assist-inline", self.css)
         self.assertIn("grid-template-columns: minmax(0,1fr)", self.css)
 
+    def test_public_report_forms_expose_the_rate_limited_ai_category_helper(self):
+        self.assertIn('data-public-ai-category', self.html)
+        self.assertIn('id="publicCategorySuggestion"', self.html)
+        self.assertIn('id="publicCategorySuggestionFound"', self.html)
+        self.assertIn('async function requestPublicCategorySuggestion(button)', self.js)
+        self.assertIn('/api/public/category-suggestion', self.js)
+        self.assertIn('document.addEventListener("click", event => {', self.js)
+
     def test_global_theme_uses_consistent_bone_beige_palette(self):
         self.assertIn("--ll-paper: #f2e9dc", self.css)
         self.assertIn("--ll-primary: #96552f", self.css)
