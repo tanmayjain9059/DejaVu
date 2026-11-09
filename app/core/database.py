@@ -581,7 +581,7 @@ def _migration_add_privacy_requests(conn) -> None:
             details TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'pending'
                 CHECK(status IN ('pending','in_review','completed','declined')),
-            reviewed_by INTEGER REFERENCES users(id),
+            reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
             reviewer_note TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -596,7 +596,7 @@ def _migration_add_privacy_requests(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_privacy_requests_user_created "
         "ON privacy_requests(user_id, created_at)"
     )
-    if DATABASE_URL:
+    if AUTH_PROVIDER == "supabase" and DATABASE_URL:
         conn.execute("ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY")
         conn.execute("REVOKE ALL ON TABLE privacy_requests FROM anon, authenticated")
 
