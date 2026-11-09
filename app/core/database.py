@@ -598,7 +598,18 @@ def _migration_add_privacy_requests(conn) -> None:
     )
     if AUTH_PROVIDER == "supabase" and DATABASE_URL:
         conn.execute("ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY")
-        conn.execute("REVOKE ALL ON TABLE privacy_requests FROM anon, authenticated")
+        conn.execute("""
+            DO $lostlink$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+                    EXECUTE 'REVOKE ALL ON TABLE privacy_requests FROM anon';
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+                    EXECUTE 'REVOKE ALL ON TABLE privacy_requests FROM authenticated';
+                END IF;
+            END
+            $lostlink$;
+        """)
 
 
 SCHEMA_MIGRATIONS = (
