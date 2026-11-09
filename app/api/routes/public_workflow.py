@@ -338,7 +338,9 @@ async def submit_public_report(body: PublicReportBody, request: Request):
     if body.category not in CATEGORY_LABELS:
         raise HTTPException(status_code=422, detail="Choose a valid item category.")
     if not (body.location_block or body.location_area):
-        raise HTTPException(status_code=422, detail="Choose a campus block or area.")
+        raise HTTPException(status_code=422, detail="Choose a campus building or area.")
+    if body.location_block == "Other / Not listed" and not body.location_area:
+        raise HTTPException(status_code=422, detail="Add a location detail when choosing Other / Not listed.")
     if body.occurred_at:
         try:
             datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
