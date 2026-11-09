@@ -4101,3 +4101,26 @@ a:hover { color: var(--ll-primary-hover); }
   }
   .public-destination .two-columns { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+
+/* Keep optional public photo-consent checkboxes compact on narrow screens. */
+#publicReportForm label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  line-height: 1.55;
+}
+#publicReportForm input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  flex: 0 0 17px;
+  width: 17px;
+  min-width: 17px;
+  height: 17px;
+  min-height: 17px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: #96552f;
+  box-shadow: none !important;
+}
