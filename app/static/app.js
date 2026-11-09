@@ -2061,12 +2061,12 @@ function openPublicClaimDialog(report) {
 }
 async function openPublicClaimById(reportId, publicRef) {
   try {
-    let report = findReportById(reportId);
-    if (!report) {
-      const query = publicRef || reportId || "";
-      const data = await publicApi("/api/public/search" + (query ? "?q=" + encodeURIComponent(query) : ""));
-      report = (data.reports || []).find(item => item.id === reportId || (publicRef && item.public_ref === publicRef));
+    let report = null;
+    if (publicRef) {
+      const data = await publicApi("/api/public/search?q=" + encodeURIComponent(publicRef));
+      report = (data.reports || []).find(item => item.id === reportId || item.public_ref === publicRef);
     }
+    if (!report) report = findReportById(reportId);
     if (!report) throw new Error("This Found item could not be loaded. Refresh Browse and try again.");
     openPublicClaimDialog(report);
   } catch (error) { showToast(error.message, true); }
@@ -2102,7 +2102,6 @@ $("#publicClaimForm").addEventListener("submit", async event => {
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({roll_number:roll,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
-    storePublicAccess(result.claim.reference, roll, result.tracking_secret);
     $("#publicTrackReference").value = result.claim.reference;
     $("#publicTrackRoll").value = roll;
     storePublicAccess(result.claim.reference, roll, result.tracking_secret);
@@ -2643,22 +2642,8 @@ $("#matchResults").addEventListener("click", (event) => {
   void openPublicClaimById(button.dataset.claim, button.dataset.publicRef || button.closest(".item-card")?.querySelector(".item-ref")?.textContent);
 });
 
-async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
-  try {
-    const data = await api("/api/reports?" + buildQuery({ q: searchQuery || publicRef }));
-    const report = data.reports.find((item) => item.id === reportId);
-    if (report) {
-      selectedClaimReport = report;
-      showClaimDialog(report);
-      return;
-    }
-    // A report from the match list may not match the current text filter.
-    const retry = await api("/api/reports?q=" + encodeURIComponent(publicRef));
-    const found = retry.reports.find((item) => item.id === reportId);
-    if (!found) throw new Error("This item is no longer available to claim. Refresh the list.");
-    selectedClaimReport = found;
-    showClaimDialog(found);
-  } catch (error) { showToast(error.message, true); }
+async function loadReportForClaimByRef(reportId, publicRef) {
+  return openPublicClaimById(reportId, publicRef);
 }
 
 observeAuthImages();
