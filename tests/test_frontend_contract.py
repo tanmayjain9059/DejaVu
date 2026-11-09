@@ -85,6 +85,13 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('Both report types use the shared public report form', self.js)
         self.assertNotIn('$("#public"+(type === "lost" ? "Lost" : "Found")+"Page")', self.js)
 
+    def test_public_tracking_uses_private_receipt_link_not_secret_input(self):
+        self.assertIn('id="publicTrackLink"', self.html)
+        self.assertNotIn('id="publicTrackSecret"', self.html)
+        self.assertNotIn('id="publicTrackReference"', self.html)
+        self.assertIn("buildPublicTrackingUrl", self.js)
+        self.assertIn('new URLSearchParams(link.hash.slice(1)).get("secret")', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
