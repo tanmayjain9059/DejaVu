@@ -2206,6 +2206,7 @@ async function submitPublicReport(event) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)
     });
+    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
     let photoStatus = "";
     const photo = field("publicImage").files && field("publicImage").files[0];
     if (photo) {
@@ -2222,7 +2223,6 @@ async function submitPublicReport(event) {
         photoStatus = " The report was saved, but its photo could not be uploaded: " + photoError.message;
       }
     }
-    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
     $("#publicTrackReference").value = result.case.reference;
     $("#publicTrackRoll").value = body.roll_number;
     const matchCards = (result.matches || []).map(match => {
