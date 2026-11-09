@@ -354,7 +354,6 @@ class FrontendContractTests(unittest.TestCase):
 
     def test_campus_dropdowns_do_not_show_pending_verification_badges(self):
         self.assertNotIn("pending verification", self.js.lower())
-        self.assertIn("locations.pending_verification", self.html.lower()) if "locations.pending_verification" in self.html.lower() else None
 
     def test_office_claim_review_displays_linked_lost_report_owner_clues(self):
         start = self.js.index("function officeClaimCard(claim)")
