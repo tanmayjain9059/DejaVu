@@ -19,6 +19,7 @@ from app.core.runtime import (
     connect_db, now_iso, CATEGORY_LABELS, CATEGORY_DEFAULT_LEVEL, require_office, authenticated_user,
     audit,
 )
+from app.matching import matching_engine
 
 router = APIRouter(prefix="/api/public", tags=["public-student-workflow"])
 ROLL_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{4,19}$")
@@ -291,7 +292,26 @@ def track_one_case(reference: str, roll_number: str,
                 "SELECT public_ref,status,created_at FROM public_claims WHERE case_id=? AND roll_number=? ORDER BY created_at",
                 (case["id"], roll),
             ).fetchall()
-            return {"case": _private_case(case), "claims": [dict(c) for c in linked_claims]}
+            response = {"case": _private_case(case), "claims": [dict(c) for c in linked_claims]}
+            if case["report_type"] == "lost" and case["status"] == "open":
+                candidates = conn.execute(
+                    """SELECT * FROM public_cases
+                       WHERE report_type='found' AND status='available' AND roll_number<>?
+                       ORDER BY created_at DESC LIMIT 500""",
+                    (roll,),
+                ).fetchall()
+                ranked = matching_engine.rank(dict(case), [dict(row) for row in candidates], limit=5)
+                by_id = {row["id"]: row for row in candidates}
+                response["matches"] = [
+                    {
+                        "report": _public_case(by_id[item["report"]["id"]]),
+                        "strength": item["strength"],
+                        "reasons": item["reasons"],
+                    }
+                    for item in ranked
+                ]
+                response["matching_note"] = "AI suggestions help prioritise discovery; they do not prove ownership."
+            return response
         claim = conn.execute("SELECT * FROM public_claims WHERE public_ref=?", (reference,)).fetchone()
         if claim and claim["roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret):
             parent = conn.execute("SELECT * FROM public_cases WHERE id=?", (claim["case_id"],)).fetchone()
