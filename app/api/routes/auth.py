@@ -36,6 +36,22 @@ def public_config():
                 "Other / Not listed"
             ],
             "floors": ["Ground Floor", "First Floor", "Second Floor", "Third Floor", "Other / not sure"],
+            "groups": {
+                "Buildings": [
+                    "Main Block", "Computer Block", "PG Block", "First Year Block",
+                    "Exam Hall", "AC Roof Building 1", "AC Roof Building 2",
+                    "AC Roof Building 3", "AC Roof Building 5", "Library",
+                    "Student Centre", "Boys' Hostel", "CM Block"
+                ],
+                "Outdoor areas & sports": [
+                    "Central Ground", "Cricket Ground", "Basketball Court",
+                    "Bus Bay", "CVR Park 1"
+                ],
+                "Campus facilities": [
+                    "CVR Canteen", "Gymnasium", "Medical Centre", "Placement Cell",
+                    "Indoor Games Area", "Workshop 1", "Workshop 2"
+                ]
+            },
             "aliases": {
                 "Main Block": ["MB", "Main Building"],
                 "Computer Block": ["CB", "CSE Building", "Computer Sciences Block"],
