@@ -312,6 +312,7 @@ async def list_claims(
                     "claimant_name": claim["claimant_name"],
                     "claimant_email": claim["claimant_email"],
                     "claimant_roll_number": claim["claimant_roll_number"],
+                    "claimant_phone": claim["claimant_phone"] if "claimant_phone" in claim.keys() else None,
                     "submission_channel": claim["submission_channel"],
                     "public_ref": claim["public_ref"],
                     "reviewer_note": claim["reviewer_note"],
