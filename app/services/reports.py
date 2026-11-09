@@ -40,6 +40,7 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
         "location_floor": row["location_floor"],
         "location_room": row["location_room"] if internal else None,
         "location_area": row["location_area"],
+        "item_condition": row["item_condition"] if "item_condition" in row.keys() else None,
         "image_url": None if hidden_image or not row["image_path"] else "/api/reports/" + row["id"] + "/image",
         "status": row["status"],
         "created_at": row["created_at"],
@@ -49,6 +50,9 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
         result.update({
             "tag_id": row["tag_id"],
             "private_verification_detail": row["private_detail"],
+            "handover_at": row["handover_at"] if "handover_at" in row.keys() else None,
+            "handover_recipient": row["handover_recipient"] if "handover_recipient" in row.keys() else None,
+            "handover_note": row["handover_note"] if "handover_note" in row.keys() else None,
             "value_band": row["value_band"],
             "sensitivity_level": row["sensitivity_level"],
             "verification_level": row["verification_level"],
