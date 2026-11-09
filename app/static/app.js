@@ -2128,7 +2128,7 @@ $("#publicClaimForm").addEventListener("submit", async event => {
     const result = await publicApi("/api/public/found/" + encodeURIComponent(selectedPublicFoundId) + "/claims", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({roll_number:roll,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
+      body: JSON.stringify({roll_number:roll,contact_phone:contactPhone || null,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
     storePublicAccess(result.claim.reference, roll, result.tracking_secret);
     const claimTrackingUrl = $("#publicTrackLink").value;
