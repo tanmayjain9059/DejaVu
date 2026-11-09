@@ -344,6 +344,7 @@ async def update_claim_evidence(
         raise HTTPException(status_code=403, detail="This action is available to the claimant.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -383,6 +384,7 @@ async def dispute_rejected_claim(
         raise HTTPException(status_code=422, detail="Explain why the decision should be reviewed (at least 20 characters).")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -420,6 +422,7 @@ async def decide_claim(
     require_office(user)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -527,6 +530,7 @@ async def record_handover(
         raise HTTPException(status_code=422, detail="Confirm the physical handover and claimant identity.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")
