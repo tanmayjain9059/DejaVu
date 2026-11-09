@@ -2456,12 +2456,6 @@ start().then(() => {
   }
 });
 
-const receiptParams = new URLSearchParams(window.location.search);
-if (receiptParams.get("track")) {
-  showPublicDestination("track");
-  $("#publicTrackLink").value = window.location.href;
-  $("#publicTrackForm").requestSubmit();
-}
 
 
 // Profile Tab Dropdown Toggle
