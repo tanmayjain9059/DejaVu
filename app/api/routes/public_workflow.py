@@ -700,7 +700,6 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
     claim_ref = _reference("CL")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        lock_row(conn, "reports", "id", report_id)
         _enforce_rate_limit(conn,request,"claim",8)
         lock_row(conn, "reports", "id", report_id)
         report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
