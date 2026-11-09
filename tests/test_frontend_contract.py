@@ -312,10 +312,10 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('data-go="activity"', self.html)
 
     def test_public_navigation_does_not_cover_scrolled_form_controls(self):
-        public_topbar = re.search(r"\.public-topbar\\s*\\{([^}]*)\\}", self.css)
+        public_topbar = re.search(r"\.public-topbar\s*\{([^}]*)\}", self.css)
         self.assertIsNotNone(public_topbar)
-        self.assertRegex(public_topbar.group(1), r"position:\\s*relative")
-        self.assertNotRegex(public_topbar.group(1), r"position:\\s*sticky")
+        self.assertRegex(public_topbar.group(1), r"position:\s*relative")
+        self.assertNotRegex(public_topbar.group(1), r"position:\s*sticky")
 
     def test_tablet_browse_date_filters_stay_inside_their_grid_track(self):
         self.assertIn("@media (min-width: 601px) and (max-width: 960px)", self.css)
