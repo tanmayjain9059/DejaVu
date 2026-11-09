@@ -331,7 +331,18 @@ def ensure_public_schema() -> None:
         if DATABASE_URL:
             # Migration bookkeeping is server-only; browser roles have no access.
             conn.execute("ALTER TABLE public_schema_migrations ENABLE ROW LEVEL SECURITY")
-            conn.execute("REVOKE ALL ON TABLE public_schema_migrations FROM anon, authenticated")
+            conn.execute("""
+                DO $lostlink$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+                        EXECUTE 'REVOKE ALL ON TABLE public_schema_migrations FROM anon';
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+                        EXECUTE 'REVOKE ALL ON TABLE public_schema_migrations FROM authenticated';
+                    END IF;
+                END
+                $lostlink$;
+            """)
         case_columns = table_columns(conn, "public_cases")
         claim_columns = table_columns(conn, "public_claims")
         if case_columns and {"id", "public_ref", "roll_number", "tracking_hash"}.issubset(case_columns):
