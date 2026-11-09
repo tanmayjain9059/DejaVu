@@ -138,15 +138,6 @@ def _public_report(row) -> dict[str, Any]:
         item["location_floor"] = None
         item["location_area"] = None
         item["occurred_at"] = None
-    # A public Lost listing must not reveal where or exactly when a student
-    # lost an item. The full location and timestamp remain available to the
-    # owner through the private tracking flow and to authorised office staff.
-    if item.get("report_type") == "lost":
-        item["location"] = "CVR campus"
-        item["location_block"] = None
-        item["location_floor"] = None
-        item["location_area"] = None
-        item["occurred_at"] = None
     item["reference"] = item["public_ref"]
     return item
 
@@ -462,6 +453,7 @@ async def submit_public_report(body: PublicReportBody, request: Request):
 def _verify_public_image_access(reference: str, roll: str, tracking_secret: str, request: Request) -> dict[str, Any]:
     """Authenticate the case and consume its upload quota before image processing."""
     with connect_db() as conn:
+        lock_row(conn, "reports", "public_ref", reference)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
             raise HTTPException(status_code=404, detail="Tracking access not found.")
@@ -485,8 +477,7 @@ def _persist_public_report_image(reference: str, case_id: str, actor_id: int, ra
             # Recheck under the write transaction so simultaneous uploads of the
             # same image cannot both pass the duplicate test.
             conn.execute("BEGIN IMMEDIATE")
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(status_code=409, detail="This photo cannot be attached. Please choose another image.")
+            lock_row(conn, "reports", "id", case_id)
             row = conn.execute(
                 "SELECT image_path,status FROM reports WHERE id=? AND public_ref=? AND submission_channel='public'",
                 (case_id, reference),
@@ -628,6 +619,7 @@ def track_one_case(
                 "events": _tracking_events(conn,int(report["created_by"]),"report",report["id"]),
                 "case_points": _case_points(conn,int(report["created_by"]),report["id"]),
             }
+        lock_row(conn, "claims", "public_ref", reference)
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
         if claim and claim["claimant_roll_number"] == roll and claim["submission_channel"] == "public" and _verify_token(claim["tracking_hash"],tracking_secret):
             parent = conn.execute("SELECT * FROM reports WHERE id=?", (claim["report_id"],)).fetchone()
@@ -698,6 +690,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         _enforce_rate_limit(conn,request,"claim",8)
+        lock_row(conn, "reports", "id", report_id)
         report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
         if not report or report["report_type"] != "found" or report["status"] != "available":
             raise HTTPException(status_code=404,detail="This found item is not available for claims.")
