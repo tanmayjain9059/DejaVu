@@ -2013,9 +2013,22 @@ $("#publicReportForm").addEventListener("submit", async event => {
   try {
     const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     errorNode.textContent = "";
+    const photo = $("#publicReportImage").files[0];
+    let photoMessage = "";
+    if (photo) {
+      try {
+        const imageForm = new FormData();
+        imageForm.append("file", photo);
+        await publicApi("/api/public/cases/"+encodeURIComponent(result.case.reference)+"/image?roll_number="+encodeURIComponent(body.roll_number), {
+          method:"POST", headers:{"X-LostLink-Tracking-Secret":result.tracking_secret}, body:imageForm
+        });
+      } catch (photoError) {
+        photoMessage = " The report was saved, but its photo could not be uploaded: "+photoError.message;
+      }
+    }
     const trackingUrl = buildPublicTrackingUrl(result.case.reference, body.roll_number, result.tracking_secret);
     $("#publicTrackLink").value = trackingUrl;
-    $("#publicTrackResult").innerHTML = trackingReceiptMarkup(result.message+" Reference: "+result.case.reference, trackingUrl);
+    $("#publicTrackResult").innerHTML = trackingReceiptMarkup(result.message+" Reference: "+result.case.reference+photoMessage, trackingUrl);
     showPublicDestination("track");
     showToast("Report submitted. Save the private tracking link from your receipt.",false);
     event.currentTarget.reset();
