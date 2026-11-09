@@ -4058,3 +4058,24 @@ a:hover { color: var(--ll-primary-hover); }
   #publicBrowseResults .public-browse-actions { align-items:stretch; flex-direction:column; }
   #publicBrowseResults .public-claim-action { width:100%; }
 }
+
+
+/* Office console navigation: keep the dashboard route and sign-out visible. */
+#appView #officeDashboardNav { display:inline-flex; }
+#appView .header-right #logoutButton {
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  padding:0 13px;
+  white-space:nowrap;
+}
+#appView #officeDashboardNav.active {
+  color:#49372a !important;
+  background:linear-gradient(135deg,#fffdf9,#f3e8d9) !important;
+  border:1px solid rgba(189,138,75,.45) !important;
+  box-shadow:0 0 0 2px rgba(189,138,75,.14),0 7px 17px rgba(73,48,31,.10) !important;
+}
+@media (max-width:680px) {
+  #appView .header-right #logoutButton { min-height:32px; padding:0 9px; font-size:.68rem; }
+}
