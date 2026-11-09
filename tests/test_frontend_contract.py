@@ -33,6 +33,7 @@ class FrontendContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.html = HTML_PATH.read_text(encoding="utf-8")
         cls.js = JS_PATH.read_text(encoding="utf-8")
+        cls.css = (ROOT / "app" / "static" / "styles.css").read_text(encoding="utf-8")
         parser = MarkupInventory()
         parser.feed(cls.html)
         cls.ids = parser.ids
