@@ -77,7 +77,10 @@ class FrontendContractTests(unittest.TestCase):
         }
         missing = [view for view in self.views if expected.get(view) not in self.id_set]
         self.assertEqual(missing, [], f"Navigation views missing their section: {missing}")
-        self.assertTrue(set(expected).issubset(self.views))
+        self.assertTrue({"start", "browse", "report", "notifications"}.issubset(self.views))
+        self.assertTrue({"my-reports", "my-claims", "activity", "office"}.isdisjoint(self.views))
+        for section in expected.values():
+            self.assertIn(section, self.id_set, f"View section {section} must remain available to its authorized workflow")
 
     def test_mobile_viewport_and_touch_navigation_contract(self):
         self.assertIn("viewport-fit=cover", self.html)
