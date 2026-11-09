@@ -277,8 +277,7 @@ async def list_claims(
 
         output = []
         for claim in rows:
-            lock_row(conn, "reports", "id", claim["report_id"])
-        report = read_report(conn, claim["report_id"])
+            report = read_report(conn, claim["report_id"])
             linked_lost_report = None
             if claim["lost_report_id"]:
                 linked_row = read_report(conn, claim["lost_report_id"])
