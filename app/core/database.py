@@ -470,6 +470,10 @@ def _migration_add_public_report_contact_fields(conn) -> None:
             conn.execute(f"ALTER TABLE reports ADD COLUMN {column} TEXT")
 
 
+def _migration_add_public_claimant_phone(conn) -> None:
+    """Store optional public claimant contact numbers for office review only."""
+    if "claimant_phone" not in table_columns(conn, "claims"):
+        conn.execute("ALTER TABLE claims ADD COLUMN claimant_phone TEXT")
 
 
 def _migration_add_public_roll_attribution(conn) -> None:
