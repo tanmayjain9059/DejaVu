@@ -11,12 +11,12 @@ has been migrated to these routes.
   report and claim. It is normalized to uppercase.
 - Roll number is not authentication. It must never be used by itself to read,
   edit, close, or aggregate private student records.
-- Every report and claim receives an independent high-entropy tracking secret.
-  Only its SHA-256 digest is stored. The raw secret is returned once at creation.
-- A tracking secret unlocks only the corresponding report or claim. A token
-  cannot be used with another reference, even when both records have the same
-  roll number. This prevents someone who knows a roll number from enumerating
-  that student's records.
+- Every report and claim receives an independent high-entropy tracking credential.
+  Only its SHA-256 digest is stored. The raw credential is returned once at creation.
+- The public receipt packages the credential into a private tracking link. The
+  student opens or pastes that link; the interface does not ask them to type a
+  separate tracking-secret value. The credential unlocks only its own report
+  or claim, even when records share a roll number.
 - Office staff continue to authenticate through the existing office session.
   Student credentials are rejected by `POST /api/login`.
 
@@ -31,9 +31,11 @@ has been migrated to these routes.
 | POST | `/api/public/found/{case_id}/claims` | Submit a claim against an available found item |
 | POST | `/api/public/claims/{reference}/evidence` | Add evidence when office requests more evidence |
 
-Tracking requests must include `X-LostLink-Tracking-Secret`. The report/claim
-reference and matching roll number are also required. A wrong reference,
-roll-number mismatch, or wrong token returns a generic not-found response.
+The browser extracts the credential from the private receipt link's URL fragment
+and sends it in the `X-LostLink-Tracking-Secret` header. The reference and
+matching roll number are also required. A wrong reference, roll-number mismatch,
+or wrong credential returns a generic not-found response. The fragment is not
+sent in the HTTP request URL.
 
 ### Report submission
 
@@ -42,8 +44,9 @@ roll-number mismatch, or wrong token returns a generic not-found response.
 Lost reports start as `open`. Found reports start as `awaiting_intake` and
 are excluded from public browsing until office intake is confirmed.
 
-The response contains a public reference and one-time tracking secret. Do not
-log the raw secret or store it in analytics.
+The response contains a public reference and one-time tracking credential.
+The frontend turns it into a private receipt link and never renders a separate
+tracking-secret input. Do not log the raw credential or store it in analytics.
 
 ### Claims
 
