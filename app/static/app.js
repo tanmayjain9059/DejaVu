@@ -464,12 +464,10 @@ async function loadConfig() {
 
   const locations = appConfig.locations || {};
   const blocks = Array.isArray(locations.blocks) ? locations.blocks : [];
-  const pendingLocations = new Set(Array.isArray(locations.pending_verification) ? locations.pending_verification : []);
   const aliases = locations.aliases && typeof locations.aliases === "object" ? locations.aliases : {};
   const formatLocationOption = (block) => {
     const aliasText = Array.isArray(aliases[block]) && aliases[block].length ? " · " + aliases[block].join(" / ") : "";
-    const verificationText = pendingLocations.has(block) ? " · pending verification" : "";
-    return '<option value="' + escapeHTML(block) + '">' + escapeHTML(block + aliasText + verificationText) + "</option>";
+    return '<option value="' + escapeHTML(block) + '">' + escapeHTML(block + aliasText) + "</option>";
   };
   const blockOptions = blocks.map(formatLocationOption).join("");
   const locationGroups = locations.groups && typeof locations.groups === "object" ? locations.groups : {};
@@ -1921,7 +1919,7 @@ function showPublicHome() {
 }
 function showPublicDestination(type) {
   setPublicNavActive(type);
-  setFinnMessage(type === "browse" ? "Let’s search both open Lost reports and items the office has received." : type === "track" ? "Have your reference and tracking secret ready. I’ll find your case updates." : type === "found" ? "Tell us what you found. The office will record it before it appears in search." : "Let’s make a clear Lost report so we can find useful matches.", false);
+  setFinnMessage(type === "browse" ? "Let’s search both open Lost reports and items the office has received." : type === "track" ? "Enter your case reference and roll number. I’ll check for private access saved by this browser." : type === "found" ? "Tell us what you found. The office will record it before it appears in search." : "Let’s make a clear Lost report so we can find useful matches.", false);
   $("#loginView").classList.remove("hidden");
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
@@ -2031,6 +2029,27 @@ document.addEventListener("click", event => {
   }
 });
 $("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
+const publicAccessMemory = new Map();
+function storePublicAccess(reference, roll, secret) {
+  if (!reference || !roll || !secret) return;
+  const access = {roll: String(roll).trim().toUpperCase(), secret: String(secret)};
+  publicAccessMemory.set(reference, access);
+  try { sessionStorage.setItem("lostlink:private-access:" + reference, JSON.stringify(access)); } catch (_) {}
+}
+function getPublicAccess(reference, roll) {
+  let access = publicAccessMemory.get(reference) || null;
+  if (!access) {
+    try {
+      const raw = sessionStorage.getItem("lostlink:private-access:" + reference);
+      access = raw ? JSON.parse(raw) : null;
+    } catch (_) { access = null; }
+  }
+  if (!access || access.roll !== String(roll).trim().toUpperCase() || !access.secret) return null;
+  return {
+    "X-LostLink-Roll-Number": access.roll,
+    "X-LostLink-Tracking-Secret": access.secret
+  };
+}
 let selectedPublicFoundId = null;
 $("#publicBrowseResults").addEventListener("click", event => {
   const button = event.target.closest("[data-public-claim]");
@@ -2062,10 +2081,10 @@ $("#publicClaimForm").addEventListener("submit", async event => {
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({roll_number:roll,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
+    storePublicAccess(result.claim.reference, roll, result.tracking_secret);
     $("#publicTrackReference").value = result.claim.reference;
     $("#publicTrackRoll").value = roll;
-    $("#publicTrackSecret").value = result.tracking_secret;
-    $("#publicTrackResult").textContent = result.message || "Save this tracking secret securely. It is shown once.";
+    $("#publicTrackResult").textContent = "Claim submitted. Your private updates are available in this browser.";
     $("#publicClaimDialog").close();
     selectedPublicFoundId = null;
     showPublicDestination("track");
@@ -2195,7 +2214,7 @@ async function submitPublicReport(event) {
       try {
         await publicApi("/api/public/reports/" + encodeURIComponent(result.case.reference) + "/image", {
           method: "POST",
-          headers: {"X-LostLink-Roll-Number": body.roll_number, "X-LostLink-Tracking-Secret": result.tracking_secret},
+          headers: getPublicAccess(result.case.reference, body.roll_number),
           body: photoBody
         });
         photoStatus = " Your photo was saved privately for office review.";
@@ -2203,9 +2222,9 @@ async function submitPublicReport(event) {
         photoStatus = " The report was saved, but its photo could not be uploaded: " + photoError.message;
       }
     }
+    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
     $("#publicTrackReference").value = result.case.reference;
     $("#publicTrackRoll").value = body.roll_number;
-    $("#publicTrackSecret").value = result.tracking_secret;
     const matchCards = (result.matches || []).map(match => {
       const item = match.report;
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(item.title) + '</h3><p>' +
@@ -2213,13 +2232,13 @@ async function submitPublicReport(event) {
         '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
         escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p></article>';
     }).join("");
-    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML((result.message || "Report submitted.") + " Reference: " + result.case.reference + ". Save the tracking secret now; it is shown once.") + '</p>' +
-      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again using this tracking secret.</p>') +
+    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML("Report submitted. Reference: " + result.case.reference + ". Private updates are available in this browser.") + '</p>' +
+      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again from this browser.</p>') +
       (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
     form.reset();
     showPublicDestination("track");
-    setFinnMessage("Case opened! Keep your reference and one-time secret safe.", true);
-    showToast("Report submitted. Save the tracking secret shown here.", false);
+    setFinnMessage("Case opened! Your private access is saved in this browser.", true);
+    showToast("Report submitted successfully.", false);
   } catch (error) {
     errorNode.textContent = error.message;
   } finally {
@@ -2248,13 +2267,17 @@ $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
   const reference = $("#publicTrackReference").value.trim();
   const roll = $("#publicTrackRoll").value.trim().toUpperCase();
-  const secret = $("#publicTrackSecret").value.trim();
   const resultNode = $("#publicTrackResult");
   resultNode.textContent = "Checking private case access…";
-  const credentials = {"X-LostLink-Roll-Number":roll,"X-LostLink-Tracking-Secret":secret};
+  const credentials = getPublicAccess(reference, roll);
+  if (!credentials) {
+    lastPublicTracking = null;
+    resultNode.textContent = "Private access for this reference is not saved in this browser. Open the browser used to submit the report or claim.";
+    return;
+  }
   try {
     const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
-    lastPublicTracking = {reference,roll,secret,data};
+    lastPublicTracking = {reference,roll,data};
     const record = data.case || data.claim || {};
     const item = data.case || data.item || {};
     const isCase = Boolean(data.case);
@@ -2278,7 +2301,8 @@ $("#publicTrackForm").addEventListener("submit", async event => {
 $("#publicTrackResult").addEventListener("click", async event => {
   const state = lastPublicTracking;
   if (!state) return;
-  const credentials = {"X-LostLink-Roll-Number":state.roll,"X-LostLink-Tracking-Secret":state.secret};
+  const credentials = getPublicAccess(state.reference, state.roll);
+  if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
   if (event.target.closest("[data-public-refresh-matches]")) {
     await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
   } else if (event.target.closest("[data-public-close-case]")) {
@@ -2310,7 +2334,7 @@ $("#publicEvidenceForm").addEventListener("submit", async event => {
     const state = lastPublicTracking;
     const result = await publicApi("/api/public/claims/" + encodeURIComponent(state.reference) + "/evidence", {
       method:"POST",
-      headers:{"Content-Type":"application/json","X-LostLink-Roll-Number":state.roll,"X-LostLink-Tracking-Secret":state.secret},
+      headers:{...getPublicAccess(state.reference, state.roll),"Content-Type":"application/json"},
       body:JSON.stringify({evidence})
     });
     $("#publicEvidenceDialog").close();
@@ -2550,7 +2574,7 @@ $("#cancelCloseReport").addEventListener("click", () => { $("#closeReportDialog"
 $("#closeClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#cancelClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#closeMatches").addEventListener("click", () => $("#matchesPanel").classList.add("hidden"));
-$("#finnCharacter").addEventListener("click", () => { const tips = ["A useful match starts with a clear item name and category.","Keep one distinctive ownership detail private for the claim review.","Found an item? It becomes searchable after the campus office records it.","Use your case reference and tracking secret to check updates."]; const node = $("#mascotMessage"); const current = tips.indexOf(node.textContent); setFinnMessage(tips[(current + 1) % tips.length]); });
+$("#finnCharacter").addEventListener("click", () => { const tips = ["A useful match starts with a clear item name and category.","Keep one distinctive ownership detail private for the claim review.","Found an item? It becomes searchable after the campus office records it.","Use your case reference in the browser where you submitted it to check updates."]; const node = $("#mascotMessage"); const current = tips.indexOf(node.textContent); setFinnMessage(tips[(current + 1) % tips.length]); });
 $("#finnTipsToggle").addEventListener("click", event => { const dock = $("#finnDock"); const hidden = dock.classList.toggle("tips-disabled"); event.currentTarget.setAttribute("aria-pressed",String(hidden)); event.currentTarget.textContent = hidden ? "Show Finn’s tips" : "Hide Finn’s tips"; if (!hidden) setFinnMessage("I’m back! Tap me whenever you need a clue."); });
 $("#appView").addEventListener("submit", submitIntake);
 $("#browseResults").addEventListener("click", (event) => {
