@@ -1075,7 +1075,7 @@ async function loadMyReports() {
     const data = await api("/api/reports?mine=true");
     $("#myReportsList").innerHTML = data.reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
-        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
+        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find AI-assisted matches</button>'
         : "";
       const canClose = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
         (report.report_type === "found" && report.status === "awaiting_intake");
