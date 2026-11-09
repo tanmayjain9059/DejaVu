@@ -1430,10 +1430,19 @@ function intakeCard(report) {
       '<label class="wide">Verified roll number<input name="verified_roll_number" required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the physical college ID"></label>' +
       '<label class="checkbox-line wide"><input type="checkbox" name="identity_verified_in_person" required> I physically checked the reporter’s college ID and confirmed the roll number.</label>'
     : "";
+  const submittedHandover = [
+    report.item_condition ? "Reported item condition: " + report.item_condition.replaceAll("_", " ") : "",
+    report.handover_at ? "Reported handover time: " + humanDateTime(report.handover_at) : "",
+    report.handover_recipient ? "Reported recipient: " + report.handover_recipient : "",
+    report.handover_note ? "Handover note: " + report.handover_note : ""
+  ].filter(Boolean);
+  const handoverContext = submittedHandover.length
+    ? '<div class="internal-meta">' + submittedHandover.map(value => '<p>' + escapeHTML(value) + '</p>').join("") + '</div>'
+    : "";
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
     "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
-    "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
+    "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" + handoverContext +
     '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' + publicIdentity +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
     '<label class="wide">Private identifying detail / approved verification method<textarea name="private_detail" maxlength="1200" placeholder="Not shown to students. For restricted items, describe the authorised verification method without copying unnecessary sensitive data."></textarea></label>' +
