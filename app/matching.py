@@ -194,7 +194,8 @@ class MatchingEngine:
                 from sentence_transformers import SentenceTransformer
                 self._text_model = SentenceTransformer(
                     os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
-                    revision=os.getenv("SEMANTIC_MODEL_REVISION", "main"),
+                    revision=os.getenv("MODEL_DOWNLOAD_REVISION") or os.getenv("SEMANTIC_MODEL_REVISION", "main"),
+                    local_files_only=os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() != "true",
                 )
                 self._text_status = "ready"
             except Exception as exc:
@@ -259,7 +260,7 @@ class MatchingEngine:
                 from transformers import CLIPModel, CLIPProcessor
                 model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
                 revision = os.getenv("CLIP_MODEL_REVISION", "main")
-                self._clip_processor = CLIPProcessor.from_pretrained(model_name, revision=revision)
+                self._clip_processor = CLIPProcessor.from_pretrained(model_name, revision=revision, local_files_only=os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() != "true")
                 self._clip_model = CLIPModel.from_pretrained(model_name, revision=revision)
                 self._clip_model.eval()
                 self._clip_status = "ready"
@@ -328,6 +329,8 @@ class MatchingEngine:
         reports = [lost, *found_reports]
 
         def has_image(report: dict[str, Any]) -> bool:
+            if not bool(report.get("image_ai_consent")):
+                return False
             path_value = report.get("image_path")
             if path_value and Path(str(path_value)).is_file():
                 return True
@@ -450,8 +453,8 @@ class MatchingEngine:
             return None
         lost_path = Path(str(lost.get("image_path") or ""))
         found_path = Path(str(found.get("image_path") or ""))
-        lost_has_image = bool(lost.get("image_path")) and lost_path.is_file()
-        found_has_image = bool(found.get("image_path")) and found_path.is_file()
+        lost_has_image = bool(lost.get("image_ai_consent")) and bool(lost.get("image_path")) and lost_path.is_file()
+        found_has_image = bool(found.get("image_ai_consent")) and bool(found.get("image_path")) and found_path.is_file()
         if not lost_has_image and not found_has_image:
             return None
         try:
