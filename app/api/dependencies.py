@@ -71,9 +71,9 @@ async def authenticated_user(
     if not row:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
-    if row["role"] != "office":
+    if row["role"] not in {"office", "student"}:
         request.session.clear()
-        raise HTTPException(status_code=403, detail="Student sign-in requires Supabase Auth. Public reporting remains available without an account.")
+        raise HTTPException(status_code=403, detail="This account does not have a valid LostLink role.")
     return user_payload(row)
 
 def require_office(user: dict[str, Any]) -> None:
