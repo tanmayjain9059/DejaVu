@@ -184,6 +184,8 @@ def _public_case(row) -> dict[str, Any]:
         "visible_features": row["visible_features"],
         "occurred_at": row["occurred_at"], "location_block": row["location_block"],
         "location_area": row["location_area"], "status": row["status"],
+        "image_url": ("/api/public/found/" + row["public_ref"] + "/image")
+            if row["report_type"] == "found" and row["status"] == "available" and row["image_path"] else None,
         "created_at": row["created_at"], "updated_at": row["updated_at"],
     }
 
