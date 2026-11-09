@@ -403,7 +403,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("contact_phone:contactPhone || null", self.js)
         self.assertIn('publicApi("/api/public/found/" + encodeURIComponent(reportId))', self.js)
         start = self.js.index("function officeClaimCard(claim)")
-        end = self.js.index("\\nasync function submitIntake", start)
+        end = self.js.index("\nasync function submitIntake", start)
         renderer = self.js[start:end]
         self.assertIn("claim.claimant_phone", renderer)
         self.assertIn('href="tel:', renderer)
