@@ -104,6 +104,9 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertIn("CSE Building", locations["aliases"]["Computer Block"])
         self.assertIn("Freshers Block", locations["aliases"]["First Year Block"])
         self.assertIn("pending_verification", locations)
+        self.assertIn("Buildings", locations["groups"])
+        self.assertIn("Outdoor areas & sports", locations["groups"])
+        self.assertIn("Campus facilities", locations["groups"])
         self.assertNotIn("Security Room", locations["blocks"])
         self.assertIn("Other / Not listed", locations["blocks"])
 
