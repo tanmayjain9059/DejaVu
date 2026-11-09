@@ -19,7 +19,7 @@ from io import BytesIO
 from pydantic import BaseModel, Field
 
 from app.core.runtime import (
-    connect_db, now_iso, CATEGORY_LABELS, CATEGORY_DEFAULT_LEVEL, require_office, authenticated_user,
+    connect_db, now_iso, CATEGORY_LABELS, CATEGORY_DEFAULT_LEVEL, require_office, authenticated_user, DATABASE_URL,
     audit, UPLOAD_DIR, MAX_UPLOAD_BYTES, canonicalise_image, image_fingerprint_matches,
     watermark_image,
 )
@@ -118,12 +118,15 @@ def ensure_public_schema() -> None:
             "ai_keywords TEXT", "ai_attributes_json TEXT", "ai_enriched_at TEXT",
             "ai_enrichment_model TEXT",
         ):
-            try:
-                conn.execute("ALTER TABLE public_cases ADD COLUMN " + column)
-            except Exception as exc:
-                message = str(exc).lower()
-                if "duplicate column" not in message and "already exists" not in message:
-                    raise
+            if DATABASE_URL:
+                # PostgreSQL supports IF NOT EXISTS and keeps the migration transaction usable.
+                conn.execute("ALTER TABLE public_cases ADD COLUMN IF NOT EXISTS " + column)
+            else:
+                try:
+                    conn.execute("ALTER TABLE public_cases ADD COLUMN " + column)
+                except Exception as exc:
+                    if "duplicate column" not in str(exc).lower():
+                        raise
         conn.execute(
             "INSERT OR IGNORE INTO public_schema_migrations(version,name,applied_at) VALUES (1,?,?)",
             ("public_roll_attribution_and_tracking_tokens", now_iso()),
