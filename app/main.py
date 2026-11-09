@@ -94,7 +94,7 @@ def _apply_security_headers(response, private_api=False):
             "form-action 'self'; img-src 'self' data: blob:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
+            "script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
         )
     return response
 
