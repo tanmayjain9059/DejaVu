@@ -35,7 +35,7 @@ def public_config():
                 "Indoor Games Area", "Workshop 1", "Workshop 2",
                 "Other / Not listed"
             ],
-            "floors": ["Ground Floor", "First Floor", "Second Floor", "Third Floor", "Other / not sure"],
+            "floors": ["Ground Floor", "First Floor", "Second Floor", "Other / not sure"],
             "groups": {
                 "Buildings": [
                     "Main Block", "Computer Block", "PG Block", "First Year Block",
