@@ -284,6 +284,7 @@ async def list_claims(
                     "public_ref": linked_row["public_ref"],
                     "title": linked_row["title"],
                     "status": linked_row["status"],
+                    "private_verification_detail": linked_row["private_detail"] if internal else None,
                 }
             try:
                 evidence_types = json_module.loads(claim["evidence_types"] or "[]")
