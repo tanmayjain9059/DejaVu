@@ -5,6 +5,93 @@ let currentUser = null;
 let supabaseClient = null;
 let supabaseAccessToken = null;
 const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
+
+function createSupabaseRestAuthClient(supabaseUrl, anonKey) {
+  const base = String(supabaseUrl || "").replace(/\\/$/, "");
+  const storageKey = "lostlink:supabase-office-session";
+  let session = null;
+  try {
+    const stored = sessionStorage.getItem(storageKey);
+    session = stored ? JSON.parse(stored) : null;
+  } catch (_) { session = null; }
+
+  function persist(next) {
+    session = next || null;
+    try {
+      if (session) sessionStorage.setItem(storageKey, JSON.stringify(session));
+      else sessionStorage.removeItem(storageKey);
+    } catch (_) {}
+  }
+  async function authRequest(path, body, accessToken) {
+    const headers = {"apikey": anonKey, "Content-Type": "application/json"};
+    if (accessToken) headers.Authorization = "Bearer " + accessToken;
+    const response = await fetch(base + path, {
+      method: "POST", headers, body: JSON.stringify(body || {}), credentials: "omit"
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.msg || payload.message || payload.error_description || payload.error || "Supabase authentication failed.");
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  }
+  async function refreshIfNeeded() {
+    if (!session) return null;
+    const expiresAt = Number(session.expires_at || 0);
+    if (!expiresAt || expiresAt * 1000 > Date.now() + 60000) return session;
+    if (!session.refresh_token) { persist(null); return null; }
+    try {
+      const refreshed = await authRequest("/auth/v1/token?grant_type=refresh_token", {
+        refresh_token: session.refresh_token
+      });
+      persist({
+        ...refreshed,
+        expires_at: refreshed.expires_at || Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600)
+      });
+      return session;
+    } catch (_) {
+      persist(null);
+      return null;
+    }
+  }
+  return {
+    auth: {
+      async getSession() {
+        const current = await refreshIfNeeded();
+        return {data: {session: current}, error: null};
+      },
+      async signInWithPassword(credentials) {
+        try {
+          const signedIn = await authRequest("/auth/v1/token?grant_type=password", {
+            email: String(credentials.email || "").trim().toLowerCase(),
+            password: String(credentials.password || "")
+          });
+          persist({
+            ...signedIn,
+            expires_at: signedIn.expires_at || Math.floor(Date.now() / 1000) + Number(signedIn.expires_in || 3600)
+          });
+          return {data: {session, user: session.user || null}, error: null};
+        } catch (error) {
+          return {data: {session: null, user: null}, error};
+        }
+      },
+      async signOut() {
+        try {
+          const current = await refreshIfNeeded();
+          if (current && current.access_token) {
+            await authRequest("/auth/v1/logout", {}, current.access_token);
+          }
+          persist(null);
+          return {error: null};
+        } catch (error) {
+          return {error};
+        }
+      }
+    }
+  };
+}
+
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -509,12 +596,12 @@ async function loadConfig() {
     $("#demoAccess").classList.add("hidden");
     const modeNote = $("#officeAccessModeNote");
     try {
-      if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) {
-        throw new Error("Supabase Auth client configuration is missing.");
+      if (!appConfig.supabase_url || !appConfig.supabase_anon_key) {
+        throw new Error("Supabase Auth configuration is missing.");
       }
-      supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      });
+      // Use Supabase's documented Auth REST endpoints directly. This removes
+      // the third-party browser SDK/CDN from the trusted script supply chain.
+      supabaseClient = createSupabaseRestAuthClient(appConfig.supabase_url, appConfig.supabase_anon_key);
       modeNote.textContent = "Live campus deployment: sign in with your verified college account. Office access is limited to the authorised staff email allowlist.";
       modeNote.classList.remove("hidden");
     } catch (error) {
@@ -2453,7 +2540,7 @@ function assertLocalOfficeLoginAllowed() {
     throw new Error("LostLink configuration has not loaded. Refresh the page before signing in.");
   }
   if (appConfig.auth_mode === "supabase") {
-    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL, anon key, and script connection. Local demo login is disabled.");
+    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL and anon key. Local demo login is disabled.");
   }
 }
 
