@@ -364,6 +364,17 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("X-LostLink-Tracking-Secret", self.js)
         self.assertIn("url.hash", self.js)
         self.assertIn("params.has(\"track\")", self.js)
+        self.assertIn('$("#copyPublicTrackingLink").addEventListener("click"', self.js)
+        self.assertIn('$("#publicTrackForm").addEventListener("submit"', self.js)
+        self.assertIn('$("#publicTrackResult").addEventListener("click"', self.js)
+        self.assertIn('$("#publicEvidenceForm").addEventListener("submit"', self.js)
+        self.assertIn('$("#publicClaimForm").addEventListener("submit"', self.js)
+        self.assertIn("data-public-refresh-matches", self.js)
+        self.assertIn("data-public-close-case", self.js)
+        self.assertIn("data-public-add-evidence", self.js)
+        self.assertIn("storePublicAccess(result.claim.reference, roll, result.tracking_secret)", self.js)
+        self.assertIn("storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret)", self.js)
+        self.assertNotIn("publicTrackSecret", self.js)
         self.assertNotIn("tracking_secret=", self.js.lower())
 
     def test_campus_dropdowns_do_not_show_pending_verification_badges(self):
