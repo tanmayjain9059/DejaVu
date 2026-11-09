@@ -221,6 +221,24 @@ def main() -> int:
                     submit_public_report(page, "lost")
                     submit_public_report(page, "found")
 
+                if (width == 1440):
+                    # A newly submitted Lost report must be discoverable immediately.
+                    page.locator("#publicNav [data-public-destination='browse']").click()
+                    page.locator("#publicBrowsePage").wait_for(state="visible")
+                    page.locator("#publicBrowseResults").get_by_text("Black backpack I lost", exact=True).wait_for(timeout=10000)
+                    page.locator("#publicBrowseQuery").fill("Black backpack I lost")
+                    page.locator("#publicBrowseForm").locator('button[type="submit"]').click()
+                    page.locator("#publicBrowseResults").get_by_text("Black backpack I lost", exact=True).wait_for(timeout=10000)
+                    page.locator("#publicBrowseQuery").fill("lostlink-no-such-campus-item-92841")
+                    page.locator("#publicBrowseForm").locator('button[type="submit"]').click()
+                    page.get_by_text("No public reports match that search yet.", exact=True).wait_for(timeout=10000)
+                    # A Found report is intentionally hidden until office staff records physical intake.
+                    page.locator("#publicBrowseQuery").fill("Silver bottle I found")
+                    page.locator("#publicBrowseForm").locator('button[type="submit"]').click()
+                    page.get_by_text("No public reports match that search yet.", exact=True).wait_for(timeout=10000)
+                    return_home(page)
+
+
                 page.locator("#publicNav [data-public-destination='office']").click()
                 page.locator("#officeLoginPanel").wait_for(state="visible")
                 assert page.locator("#publicNav [aria-current='page']").get_attribute("data-public-destination") == "office"
