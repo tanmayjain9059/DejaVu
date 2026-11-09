@@ -3534,3 +3534,12 @@ a:hover { color: var(--ll-primary-hover); }
   #reportView .report-entry-form .two-columns { grid-template-columns: minmax(0,1fr); gap: 13px; }
   #reportView .side-guidance { padding: 19px; }
 }
+
+
+/* Anonymous public category assistant — same warm palette as the signed-in report flow. */
+.public-category-field { display:grid; gap:8px; }
+.public-ai-category { justify-self:start; min-height:36px; border:1px solid #d9b995; border-radius:10px; background:linear-gradient(135deg,#fffdf9,#f3e3d1); color:#824b2d; font-weight:800; }
+.public-ai-category:disabled { opacity:.65; cursor:wait; }
+.public-ai-status { display:grid; gap:7px; margin:0; color:#746458; line-height:1.5; }
+.public-ai-alternatives { display:flex; flex-wrap:wrap; gap:7px; }
+.public-ai-status .ai-alternative-button { padding:6px 10px; border:1px solid #dfc8ae; border-radius:99px; background:#fffdf9; color:#754329; font-size:.72rem; font-weight:750; }
