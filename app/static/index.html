@@ -49,7 +49,7 @@
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="lost"><span class="nv-ico">−</span><span>Lost</span></button>
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="found"><span class="nv-ico">＋</span><span>Found</span></button>
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="track"><span class="nv-ico">◷</span><span>Track</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button><a class="nimbus-item public-nav-item" href="/privacy"><span class="nv-ico">⌑</span><span>Privacy</span></a>
         </nav>
       </header>
 
@@ -274,7 +274,7 @@
 <button id="officeDashboardNav" class="nimbus-item tab-button hidden" type="button" data-view="office" aria-label="Office dashboard"><span class="nv-ico">⌂</span><span class="nimbus-label">Dashboard</span></button><button class="nimbus-item tab-button" type="button" data-view="start"><span class="nv-ico">⌂</span><span class="nimbus-label">Start</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="browse"><span class="nv-ico">⌕</span><span class="nimbus-label">Browse</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="report"><span class="nv-ico">＋</span><span class="nimbus-label">Reports</span></button>
-<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button><button class="nimbus-item tab-button hidden" type="button" id="privacyRequestsNav" data-view="privacyRequests"><span class="nv-ico">⌑</span><span class="nimbus-label">Privacy requests</span></button>
 </nav></div>
 <div class="header-right"><span id="roleChip" class="role-chip">Student</span><div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Campus user</span></div>
 <button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button><button id="finnTipsToggle" class="button button-quiet button-small" type="button" aria-pressed="false">Hide Finn’s tips</button><button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button></div>
@@ -737,6 +737,12 @@
     </section>
 
     <!-- ==================== 6. NOTIFICATIONS VIEW ==================== -->
+    <section id="privacyRequestsView" class="content-view hidden">
+      <div class="section-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Privacy requests</h2><p class="muted">Review verified requests for access, correction or erasure. Record the action taken and any retention reason.</p></div><button class="button button-quiet button-small" type="button" id="refreshPrivacyRequests">Refresh</button></div>
+      <div id="privacyRequestsList" class="stack-list"></div>
+      <p id="privacyRequestsEmpty" class="empty-state hidden">No privacy requests are waiting for review.</p>
+    </section>
+
     <section id="notificationsView" class="content-view hidden">
       <div class="section-heading">
         <div>
@@ -1108,6 +1114,26 @@
       </svg>
     </button>
   </div>
+  <dialog id="privacyDecisionDialog" class="modal-dialog">
+    <form id="privacyDecisionForm" class="form-card form-stack">
+      <div class="dialog-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Update privacy request</h2></div><button type="button" class="dialog-close" id="closePrivacyDecision" aria-label="Close">×</button></div>
+      <p id="privacyDecisionSummary" class="field-hint"></p>
+      <label><span>Decision</span><select id="privacyDecisionAction" required><option value="in_review">Move to review</option><option value="completed">Mark completed</option><option value="declined">Decline request</option></select></label>
+      <label><span>Review note / action taken</span><textarea id="privacyDecisionNote" required minlength="10" maxlength="2000" rows="4" placeholder="Record what was reviewed, action taken, or why retention is necessary."></textarea></label>
+      <div class="form-actions"><button class="button button-liquid" type="submit">Save decision</button><button class="button button-quiet" type="button" id="cancelPrivacyDecision">Cancel</button></div>
+      <p id="privacyDecisionError" class="form-error" role="alert"></p>
+    </form>
+  </dialog>
+  <dialog id="publicPrivacyDialog" class="modal-dialog">
+    <form id="publicPrivacyForm" class="form-card form-stack">
+      <div class="dialog-heading"><div><p class="eyebrow">YOUR DATA</p><h2>Request a privacy action</h2></div><button type="button" class="dialog-close" id="closePublicPrivacy" aria-label="Close">×</button></div>
+      <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share the tracking link with anyone else.</p>
+      <label><span>Request type</span><select id="publicPrivacyType" required><option value="access">Access / copy of my data</option><option value="correction">Correct my data</option><option value="erasure">Request erasure</option></select></label>
+      <label><span>Details (optional)</span><textarea id="publicPrivacyDetails" rows="4" maxlength="2000" placeholder="Describe the information or correction requested."></textarea></label>
+      <div class="form-actions"><button class="button button-liquid" type="submit">Submit request</button><button class="button button-quiet" type="button" id="cancelPublicPrivacy">Cancel</button></div>
+      <p id="publicPrivacyError" class="form-error" role="alert"></p>
+    </form>
+  </dialog>
   <script src="/deployment-config.js"></script>
   <script src="/static/app.js?v=office-claim-contact-20261109a" defer></script>
 </body>
