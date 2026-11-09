@@ -3789,3 +3789,30 @@ a:hover { color: var(--ll-primary-hover); }
   #appView .header-right #roleChip { font-size:.58rem; }
   #appView #studentNav .nimbus-item { padding-inline:10px; }
 }
+
+
+/* Keep the AI assistant directly after the description it analyses. */
+.public-category-field {
+  display:grid;
+  gap:8px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+.public-ai-panel {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:8px;
+  width:100%;
+  padding:12px;
+  border:1px solid rgba(150,85,47,.24);
+  border-radius:14px;
+  background:linear-gradient(135deg,#fffdf9,#f5e9da);
+  box-shadow:0 6px 18px rgba(73,48,31,.07);
+}
+.public-ai-panel .public-ai-category { align-self:flex-start; }
+@media(max-width:680px) {
+  .public-ai-panel .public-ai-category { width:100%; }
+}
