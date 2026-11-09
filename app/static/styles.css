@@ -3836,3 +3836,21 @@ a:hover { color: var(--ll-primary-hover); }
 .report-secondary-links { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px 18px; margin:0 0 18px; }
 .report-secondary-links .link-btn { min-height:36px; padding:6px 2px; font-size:.88rem; }
 @media (max-width:560px) { .report-secondary-links { justify-content:flex-start; gap:8px 14px; margin-bottom:14px; } .report-secondary-links .link-btn { min-height:44px; } }
+
+/* Tablet browse filters: keep the date range inside its grid track. */
+@media (min-width: 601px) and (max-width: 960px) {
+  .search-secondary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .search-secondary-row > .date-filter {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .date-filter > label {
+    min-width: 0;
+  }
+  .date-filter input[type="date"] {
+    width: 100%;
+    min-width: 0;
+  }
+}
