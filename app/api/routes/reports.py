@@ -323,11 +323,13 @@ async def upload_report_image(
         raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
+    filename = uuid.uuid4().hex + ".jpg"
     new_key = None
     old = None
     try:
+        # Keep object-storage latency outside the global PostgreSQL write lock.
+        new_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
-            # Serialize fingerprint check and update against concurrent uploads.
             conn.execute("BEGIN IMMEDIATE")
             row = read_report(conn, report_id)
             is_office = user["role"] == "office"
@@ -340,8 +342,6 @@ async def upload_report_image(
                     status_code=409,
                     detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
                 )
-            filename = uuid.uuid4().hex + ".jpg"
-            new_key = save_upload(filename, normalized)
             old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
@@ -350,21 +350,20 @@ async def upload_report_image(
             audit(conn, user["id"], "report_image_added", "report", report_id)
             updated = read_report(conn, report_id)
     except Exception:
-        # Also catches commit failures from the connection context manager.
         if new_key is not None:
             try:
-                delete_upload(new_key)
+                await run_in_threadpool(delete_upload, new_key)
             except Exception:
                 pass
         raise
 
-    # Only delete the previous image after the DB transaction has committed.
     if old and old != new_key:
         try:
-            delete_upload(old)
+            await run_in_threadpool(delete_upload, old)
         except Exception:
             pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
+
 
 @router.post("/api/reports/{report_id}/enrichment")
 async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
