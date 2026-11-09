@@ -244,6 +244,11 @@ class PublicReportBody(BaseModel):
     location_floor: str | None = Field(default=None, max_length=40)
     location_room: str | None = Field(default=None, max_length=80)
     location_area: str | None = Field(default=None, max_length=120)
+    private_detail: str | None = Field(default=None, max_length=1200)
+    item_condition: Literal["good", "damaged", "partially_damaged", "unknown"] | None = None
+    handover_at: str | None = None
+    handover_recipient: str | None = Field(default=None, max_length=120)
+    handover_note: str | None = Field(default=None, max_length=800)
 
 
 class PublicClaimBody(BaseModel):
@@ -339,6 +344,15 @@ async def submit_public_report(body: PublicReportBody, request: Request):
             datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
         except ValueError:
             raise HTTPException(status_code=422, detail="Use a valid ISO date and time.")
+    if body.handover_at:
+        if body.report_type != "found":
+            raise HTTPException(status_code=422, detail="Handover details are only valid for Found reports.")
+        try:
+            datetime.fromisoformat(body.handover_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Use a valid handover date and time.")
+    if body.report_type == "lost" and any((body.item_condition, body.handover_at, body.handover_recipient, body.handover_note)):
+        raise HTTPException(status_code=422, detail="Found-item condition and handover details cannot be added to a Lost report.")
     token = _issue_token()
     report_id = uuid.uuid4().hex
     public_ref = _reference("LL")
@@ -352,11 +366,14 @@ async def submit_public_report(body: PublicReportBody, request: Request):
             """INSERT INTO reports
                (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
                 category,occurred_at,location_block,location_floor,location_room,location_area,
+                private_detail,item_condition,handover_at,handover_recipient,handover_note,
                 status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'public')""",
             (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
              body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
+             body.private_detail if body.report_type == "lost" else None,
+             body.item_condition,body.handover_at,body.handover_recipient,body.handover_note,
              status,actor_id,timestamp,timestamp,roll,_hash(token)),
         )
         audit(conn, actor_id, "public_report_submitted", "report", report_id,
