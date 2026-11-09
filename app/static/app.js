@@ -552,7 +552,7 @@ function enterApp(user) {
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
   $("#roleChip").className = "role-chip" + (user.role === "office" ? " role-chip-office" : "");
-  $("#officeNavButton").classList.toggle("hidden", user.role !== "office");
+  $("#officeWorkspaceButton").classList.toggle("hidden", user.role !== "office");
   $("#activityNavButton").classList.toggle("hidden", user.role === "office");
   $$('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
     button.classList.toggle("hidden", user.role === "office");
@@ -2390,6 +2390,7 @@ $("#studentNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view]");
   if (button) navigate(button.dataset.view);
 });
+$("#officeWorkspaceButton").addEventListener("click", () => navigate("office"));
 document.addEventListener("click", (event) => {
   const go = event.target.closest("[data-go]");
   if (go) navigate(go.dataset.go);
