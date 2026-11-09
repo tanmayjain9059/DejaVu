@@ -337,9 +337,24 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('field("publicPrivateDetail").value.trim()', self.js)
         self.assertIn('field("publicItemCondition").value', self.js)
         self.assertIn('field("publicHandoverAt").value', self.js)
-        self.assertIn('locations.pending_verification', self.js)
+        self.assertNotIn('pending verification', self.js.lower())
         self.assertIn('locations.aliases', self.js)
         self.assertIn(".public-handover-fields", self.css)
+
+    def test_public_tracking_never_displays_or_requests_a_tracking_secret(self):
+        self.assertNotIn('id="publicTrackSecret"', self.html)
+        self.assertNotIn("tracking secret", self.html.lower())
+        self.assertIn('id="publicTrackReference"', self.html)
+        self.assertIn('id="publicTrackRoll"', self.html)
+        self.assertIn("sessionStorage.setItem", self.js)
+        self.assertIn("sessionStorage.getItem", self.js)
+        self.assertIn("function getPublicAccess(reference, roll)", self.js)
+        self.assertNotIn("#publicTrackSecret", self.js)
+        self.assertNotIn("tracking secret", self.js.lower())
+
+    def test_campus_dropdowns_do_not_show_pending_verification_badges(self):
+        self.assertNotIn("pending verification", self.js.lower())
+        self.assertIn("locations.pending_verification", self.html.lower()) if "locations.pending_verification" in self.html.lower() else None
 
     def test_office_claim_review_displays_linked_lost_report_owner_clues(self):
         start = self.js.index("function officeClaimCard(claim)")
