@@ -875,3 +875,43 @@ def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Reque
             "privacy_request", request_id,
         )
     return {"id": request_id, "status": "pending", "message": "Your verified request has been sent to authorised office staff."}
+
+@router.post("/reports/{reference}/ai-consent")
+def update_public_ai_consent(
+    reference: str,
+    body: ImageAiConsentBody,
+    request: Request,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "ai-consent", 10)
+        lock_row(conn, "reports", "public_ref", reference)
+        row = conn.execute(
+            "SELECT * FROM reports WHERE public_ref=? AND submission_channel='public'",
+            (reference,),
+        ).fetchone()
+        if not row or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404, detail="Private tracking access not found.")
+        consent = int(bool(body.consent))
+        conn.execute(
+            """UPDATE reports SET image_ai_consent=?,
+               ai_caption=CASE WHEN ?=0 THEN NULL ELSE ai_caption END,
+               ai_keywords=CASE WHEN ?=0 THEN NULL ELSE ai_keywords END,
+               ai_attributes_json=CASE WHEN ?=0 THEN NULL ELSE ai_attributes_json END,
+               ai_enriched_at=CASE WHEN ?=0 THEN NULL ELSE ai_enriched_at END,
+               ai_enrichment_model=CASE WHEN ?=0 THEN NULL ELSE ai_enrichment_model END,
+               updated_at=? WHERE id=?""",
+            (consent, consent, consent, consent, consent, consent, now_iso(), row["id"]),
+        )
+        if not consent and row["image_sha256"]:
+            conn.execute(
+                "DELETE FROM ai_embedding_cache WHERE content_hash=? AND model_name LIKE ?",
+                (row["image_sha256"], "%:image"),
+            )
+        audit(conn, int(row["created_by"]), "public_report_image_ai_consent_updated", "report", row["id"],
+              {"consent": bool(consent)})
+    return {"reference": reference, "image_ai_consent": bool(body.consent)}
+
+
