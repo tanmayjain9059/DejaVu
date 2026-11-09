@@ -350,16 +350,20 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('publicApi("/api/public/found/"', self.js)
         self.assertIn("publicClaimEvidenceType", self.js)
 
-    def test_public_tracking_accepts_private_secret_without_using_roll_number_as_authentication(self):
-        self.assertIn('id="publicTrackSecret"', self.html)
-        self.assertIn("tracking secret", self.html.lower())
-        self.assertIn('id="publicTrackReference"', self.html)
-        self.assertIn('id="publicTrackRoll"', self.html)
+    def test_public_tracking_uses_private_receipt_link_without_manual_secret_field(self):
+        self.assertIn('id="publicTrackLink"', self.html)
+        self.assertNotIn('id="publicTrackSecret"', self.html)
+        self.assertNotIn('id="publicTrackReference"', self.html)
+        self.assertNotIn('id="publicTrackRoll"', self.html)
+        self.assertIn('id="copyPublicTrackingLink"', self.html)
+        self.assertIn("function buildPublicTrackingUrl(reference, roll, secret)", self.js)
+        self.assertIn("function parsePublicTrackingUrl(value)", self.js)
+        self.assertIn("function getPublicAccess(reference, roll, suppliedSecret)", self.js)
         self.assertIn("sessionStorage.setItem", self.js)
         self.assertIn("sessionStorage.getItem", self.js)
-        self.assertIn("function getPublicAccess(reference, roll, suppliedSecret)", self.js)
-        self.assertIn("#publicTrackSecret", self.js)
         self.assertIn("X-LostLink-Tracking-Secret", self.js)
+        self.assertIn("url.hash", self.js)
+        self.assertIn("params.has(\"track\")", self.js)
         self.assertNotIn("tracking_secret=", self.js.lower())
 
     def test_campus_dropdowns_do_not_show_pending_verification_badges(self):
