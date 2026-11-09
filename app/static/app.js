@@ -901,32 +901,36 @@ async function suggestReportCategory(event) {
     primary_color: reportField("reportColor", form).value.trim() || null,
     visible_features: reportField("reportFeatures", form).value.trim() || null
   };
-  if ((payload.title + " " + payload.description).trim().length < 4) {
-    output.textContent = "Add an item name and a short description before requesting a suggestion.";
+  if (payload.title.length < 4 || payload.description.length < 10) {
+    output.textContent = "Enter an item name (at least 4 characters) and a description (at least 10 characters) before requesting a suggestion.";
+    (payload.title.length < 4 ? reportField("reportTitle", form) : reportField("reportDescription", form)).focus();
     return;
   }
   button.disabled = true;
-  output.textContent = "Analysing the item details…";
+  button.innerHTML = '<span aria-hidden="true">◌</span> Analysing…';
+  output.textContent = "Reviewing the item details…";
   try {
     const result = await api("/api/reports/category-suggestion", { method: "POST", body: payload });
     const suggestion = result.suggestion || {};
     if (suggestion.status !== "suggested" || !suggestion.category) {
-      output.textContent = "The classifier is unsure. Please choose the category yourself.";
+      output.textContent = "No reliable category suggestion was found. Please choose the category manually.";
       return;
     }
-    const alternatives = (suggestion.alternatives || []).slice(0, 3)
-      .map((item) => escapeHTML(item.label)).join(" · ");
-    output.innerHTML = "Suggested: <strong>" + escapeHTML(suggestion.label) + "</strong>" +
-      (alternatives ? "<br>Other possibilities: " + alternatives : "") +
-      ' <button class="button button-quiet button-small" type="button" data-use-category="' +
-      escapeHTML(suggestion.category) + '">Use suggestion</button>';
+    const alternatives = (suggestion.alternatives || []).slice(0, 3);
+    output.innerHTML = '<span class="ai-suggestion-title">Suggested: <strong>' +
+      escapeHTML(suggestion.label || categoryLabel(suggestion.category)) + '</strong></span>' +
+      '<span class="ai-suggestion-actions">' +
+      alternatives.map((item) => '<button class="ai-alternative-button" type="button" data-use-category="' +
+        escapeHTML(item.category) + '">' + escapeHTML(item.label || categoryLabel(item.category)) +
+        (item.category === suggestion.category ? ' · Apply' : ' · Use instead') + '</button>').join("") +
+      '</span><span class="ai-suggestion-note">AI suggestions are advisory. Select one to apply it; no field is changed automatically.</span>';
   } catch (error) {
-    output.textContent = "Category suggestion unavailable. Choose a category manually.";
+    output.textContent = "AI suggestion unavailable: " + (error.message || "choose a category manually.");
   } finally {
     button.disabled = false;
+    button.innerHTML = '<span aria-hidden="true">✦</span> Suggest with AI';
   }
 }
-
 
 async function submitReport(event) {
   event.preventDefault();
