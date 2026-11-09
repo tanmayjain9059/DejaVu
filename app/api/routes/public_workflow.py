@@ -808,12 +808,14 @@ def add_public_claim_evidence(
 @router.get("/privacy-export/{reference}")
 def export_public_case_data(
     reference: str,
+    request: Request,
     roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     """Return the data attached to a public case only after its private credentials verify."""
     roll = _roll(roll_number)
     with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "privacy-export", 5)
         report = conn.execute("SELECT * FROM reports WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
         if report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], tracking_secret):
             allowed = (
@@ -858,7 +860,7 @@ def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Reque
         if not verified:
             raise HTTPException(status_code=404, detail="Private tracking access not found.")
         requester_email = report["contact_email"] if report else None
-        roll_hash = hashlib.sha256(roll.encode("utf-8")).hexdigest()
+        roll_hash = hmac.new(SESSION_SECRET.encode("utf-8"), roll.encode("utf-8"), hashlib.sha256).hexdigest()
         conn.execute(
             """INSERT INTO privacy_requests
                (id,public_reference,requester_email,roll_hash,request_type,details,status,created_at,updated_at)
