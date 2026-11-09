@@ -705,15 +705,18 @@ function stopNotificationPolling() {
 
 function startNotificationPolling() {
   stopNotificationPolling();
+  refreshNotificationBadge();
   notificationPollTimer = window.setInterval(async () => {
     if (!currentUser || document.hidden || notificationPollInFlight) return;
     notificationPollInFlight = true;
     try {
       if (!$("#notificationsView").classList.contains("hidden")) {
         await loadNotifications(true);
-      } else {
-        await refreshNotificationBadge();
       }
+      if (!$("#myClaimsView").classList.contains("hidden")) {
+        await loadMyClaims();
+      }
+      await refreshNotificationBadge();
     } catch (_) {
       // Polling is best-effort; transient network errors should not interrupt the UI.
     } finally {
@@ -732,7 +735,12 @@ function enterApp(user) {
   currentUser = user;
   if (usingMockApi) mockStore.session = mockCopy(user);
   const switchButton = $("#viewSwitchBtn");
-  if (switchButton) { switchButton.textContent = user.role === "office" ? "Switch to student" : "Switch to office"; switchButton.classList.toggle("hidden", !usingMockApi && !(appConfig && appConfig.demo_mode)); }
+  if (switchButton) {
+    if ($("#profileHeroSwitchText")) {
+      $("#profileHeroSwitchText").textContent = user.role === "office" ? "Switch to student" : "Switch to office";
+    }
+    switchButton.classList.toggle("hidden", !usingMockApi && !(appConfig && appConfig.demo_mode));
+  }
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
     $("#userName").textContent = user.display_name;
   if ($("#dropdownUserName")) $("#dropdownUserName").textContent = user.display_name || "User";
@@ -1538,9 +1546,27 @@ async function refreshNotificationBadge() {
   try {
     const data = await api("/api/notifications");
     const badge = $("#notificationNavCount");
-    badge.textContent = String(data.unread_count || 0);
-    badge.classList.toggle("hidden", !data.unread_count);
+    if (badge) {
+      badge.textContent = String(data.unread_count || 0);
+      badge.classList.toggle("hidden", !data.unread_count);
+    }
   } catch (_) {}
+  if (currentUser.role === "student") {
+    try {
+      const claimData = await api("/api/claims");
+      const activeCount = (claimData.claims || []).filter((claim) =>
+        ["pending", "disputed", "needs_more_evidence"].includes(claim.status)
+      ).length;
+      const claimBadge = $("#claimNavCount");
+      if (claimBadge) {
+        claimBadge.textContent = String(activeCount);
+        claimBadge.classList.toggle("hidden", activeCount === 0);
+      }
+    } catch (_) {}
+  } else {
+    const claimBadge = $("#claimNavCount");
+    if (claimBadge) claimBadge.classList.add("hidden");
+  }
 }
 
 async function loadNotifications(silent = false) {
@@ -1950,12 +1976,12 @@ async function loadProfile() {
   } catch (_) {}
   
   try {
-    const rep = await api("/api/reports/mine");
+    const rep = await api("/api/reports?mine=true");
     if ($("#profileReportsCount")) $("#profileReportsCount").textContent = rep.reports ? rep.reports.length : 0;
   } catch (_) {}
 
   try {
-    const clm = await api("/api/claims/mine");
+    const clm = await api("/api/claims");
     if ($("#profileClaimsCount")) $("#profileClaimsCount").textContent = clm.claims ? clm.claims.length : 0;
   } catch (_) {}
 
@@ -1978,6 +2004,36 @@ $("#logoutButton").addEventListener("click", async () => {
   try { await api("/api/logout", { method: "POST" }); } catch (_) {}
   showToast("Session reset to demo account.", false);
   showLogin();
+});
+$("#viewSwitchBtn").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const isOffice = currentUser.role === "office";
+  const targetRole = isOffice ? "student" : "office";
+  const targetEmail = isOffice ? "student@lostlink.local" : "office@lostlink.local";
+  const targetPassword = isOffice ? "student123" : "office123";
+
+  if (usingMockApi) {
+    enterApp(mockCopy(isOffice ? MOCK_USERS.student : MOCK_USERS.office));
+    showToast("Switched to " + targetRole + " demo view.", false);
+    return;
+  }
+
+  try {
+    await api("/api/logout", { method: "POST" });
+  } catch (_) {}
+
+  try {
+    const result = await api("/api/login", {
+      method: "POST",
+      body: { email: targetEmail, password: targetPassword }
+    });
+    enterApp(result.user);
+    showToast("Switched to " + (result.user.role === "office" ? "office" : "student") + " view.", false);
+  } catch (error) {
+    enableMockMode();
+    enterApp(mockCopy(isOffice ? MOCK_USERS.student : MOCK_USERS.office));
+    showToast("Switched to " + targetRole + " demo view.", false);
+  }
 });
 $("#studentNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view], [data-go]");
