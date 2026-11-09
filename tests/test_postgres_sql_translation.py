@@ -59,6 +59,25 @@ class PostgresSqlTranslationTests(unittest.TestCase):
         self.assertIn("checks_json=EXCLUDED.checks_json", sql)
         self.assertEqual(sql.count("%s"), 4)
 
+    def test_literal_percent_signs_are_escaped_for_psycopg(self):
+        sql, is_lock = PostgresCompatConnection.translate(
+            "SELECT id FROM reports WHERE title LIKE '%lost%' AND score % 2 = ?"
+        )
+        self.assertFalse(is_lock)
+        self.assertEqual(
+            sql,
+            "SELECT id FROM reports WHERE title LIKE '%%lost%%' AND score %% 2 = %s",
+        )
+
+    def test_percent_signs_inside_literals_and_comments_are_handled(self):
+        sql, _ = PostgresCompatConnection.translate(
+            "SELECT '100%' AS literal, value FROM items WHERE id=? -- 50% comment"
+        )
+        self.assertEqual(
+            sql,
+            "SELECT '100%%' AS literal, value FROM items WHERE id=%s -- 50% comment",
+        )
+
     def test_begin_immediate_uses_transaction_scoped_advisory_lock(self):
         sql, is_lock = PostgresCompatConnection.translate("BEGIN IMMEDIATE")
         self.assertTrue(is_lock)
