@@ -401,7 +401,7 @@
       
       <div class="report-intro"><p class="eyebrow">CAMPUS LOST &amp; FOUND</p><h2 id="reportExperienceHeading">Let's find what you've lost.</h2><p id="reportExperienceCopy">Tell us a little about the item. We'll help connect you with possible matches across campus.</p></div>
       <div class="form-layout">
-        <form id="lostReportForm" class="form-card form-stack liquid-glass-panel hidden">
+        <form id="lostReportForm" class="form-card form-stack liquid-glass-panel hidden report-entry-form">
           <input id="reportType" name="report_type" type="hidden" value="lost">
           <section id="lostReportGuidance" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">LOST ITEM · HELP US RETRACE IT</span><h3>Think back to the last moment you had the item.</h3><p>Describe what you remember and where you last saw or used it. Keep one or two ownership clues private for claim verification.</p><ul><li>Use your best estimate for the last-seen time.</li><li>Keep unique marks or private proof out of the public description.</li></ul></section>
           
@@ -421,9 +421,9 @@
             <div>
               <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategory" name="category" required></select>
-              <div class="category-ai-control">
-                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with Finn</button>
-                <small id="categorySuggestion" class="field-hint" role="status"></small>
+              <div class="category-ai-control ai-assist-inline">
+                <button id="suggestCategoryButton" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest with AI</button>
+                <small id="categorySuggestion" class="field-hint ai-suggestion-output" role="status" aria-live="polite">Get a category suggestion from the item name and description. You stay in control of the final category.</small>
               </div>
             </div>
           </div>
@@ -524,7 +524,7 @@
           </div>
         </form>
 
-<form id="foundReportForm" class="form-card form-stack liquid-glass-panel hidden found-report-form">
+<form id="foundReportForm" class="form-card form-stack liquid-glass-panel hidden found-report-form report-entry-form">
           <input id="reportTypeFound" name="report_type" type="hidden" value="found">
           <section id="foundReportGuidanceFound" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">FOUND ITEM · HELP RETURN IT SAFELY</span><h3>Describe only what you observed when you discovered the item.</h3><p>Record the visible condition and exact discovery spot. Do not publish names, IDs, serial numbers, contents or hidden identifying marks.</p><ul><li>Record when and where you actually found it.</li><li>Hand the item to the campus office; staff confirm receipt and assign its LostLink Tag ID.</li></ul></section>
           
@@ -544,9 +544,9 @@
             <div>
               <label for="reportCategoryFound"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategoryFound" name="category" required></select>
-              <div class="category-ai-control">
-                <button id="suggestCategoryButtonFound" class="button button-quiet button-small" type="button">Suggest category with Finn</button>
-                <small id="categorySuggestionFound" class="field-hint" role="status"></small>
+              <div class="category-ai-control ai-assist-inline">
+                <button id="suggestCategoryButtonFound" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest with AI</button>
+                <small id="categorySuggestionFound" class="field-hint ai-suggestion-output" role="status" aria-live="polite">Get a category suggestion from the visible details of the item you found. You choose the final category.</small>
               </div>
             </div>
           </div>
