@@ -28,12 +28,12 @@ class MatchingModelRuntimeTests(unittest.TestCase):
         engine.semantic_enabled = True
         engine._text_status = "not_loaded"
 
-        with patch.dict(sys.modules, {"sentence_transformers": fake_module}):
+        with patch.dict(sys.modules, {"sentence_transformers": fake_module}), patch.dict("os.environ", {"SEMANTIC_MODEL_REVISION": "minilm-r7"}):
             with ThreadPoolExecutor(max_workers=12) as pool:
                 models = list(pool.map(lambda _: engine._load_text_model(), range(24)))
 
         self.assertEqual(len(constructed), 1)
-        self.assertEqual(constructed[0][1], "main")
+        self.assertEqual(constructed[0][1], "minilm-r7")
         self.assertTrue(all(model is models[0] for model in models))
         self.assertEqual(engine.model_status()["text"]["state"], "ready")
 
@@ -64,12 +64,12 @@ class MatchingModelRuntimeTests(unittest.TestCase):
         engine.clip_enabled = True
         engine._clip_status = "not_loaded"
 
-        with patch.dict(sys.modules, {"transformers": fake_module}):
+        with patch.dict(sys.modules, {"transformers": fake_module}), patch.dict("os.environ", {"CLIP_MODEL_REVISION": "clip-r3"}):
             with ThreadPoolExecutor(max_workers=12) as pool:
                 pairs = list(pool.map(lambda _: engine._load_clip(), range(24)))
 
         self.assertEqual(len(constructed), 1)
-        self.assertEqual(constructed[0][1], "main")
+        self.assertEqual(constructed[0][1], "clip-r3")
         self.assertTrue(all(pair[0] is pairs[0][0] for pair in pairs))
         self.assertTrue(all(pair[1] is pairs[0][1] for pair in pairs))
         self.assertEqual(engine.model_status()["image"]["state"], "ready")
