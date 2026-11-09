@@ -3543,3 +3543,249 @@ a:hover { color: var(--ll-primary-hover); }
 .public-ai-status { display:grid; gap:7px; margin:0; color:#746458; line-height:1.5; }
 .public-ai-alternatives { display:flex; flex-wrap:wrap; gap:7px; }
 .public-ai-status .ai-alternative-button { padding:6px 10px; border:1px solid #dfc8ae; border-radius:99px; background:#fffdf9; color:#754329; font-size:.72rem; font-weight:750; }
+
+
+/* Reference-matched LostLink header: brand | centered capsule | account. */
+#appView > .app-header {
+  display:grid !important;
+  grid-template-columns:minmax(190px,auto) minmax(0,1fr) minmax(190px,auto) !important;
+  align-items:center !important;
+  gap:clamp(12px,2vw,28px) !important;
+  min-width:0;
+  padding:8px 0 18px !important;
+}
+#appView .brand-lockup.compact {
+  display:flex !important;
+  align-items:center;
+  justify-self:start;
+  gap:11px;
+  min-width:0;
+  padding:9px 17px 9px 10px;
+  border:1px solid rgba(255,255,255,.86);
+  border-radius:999px;
+  background:linear-gradient(135deg,rgba(255,255,255,.9),rgba(250,244,235,.78));
+  box-shadow:0 10px 28px rgba(73,48,31,.10),inset 0 1px 0 #fff;
+}
+#appView .brand-lockup.compact .brand-mark {
+  display:grid;
+  place-items:center;
+  width:43px;
+  height:43px;
+  flex:0 0 43px;
+  border-radius:50%;
+  color:#fffaf3;
+  background:linear-gradient(145deg,#b97845,#80452d);
+  box-shadow:0 4px 12px rgba(89,51,31,.2),inset 0 1px 2px rgba(255,255,255,.65);
+  font-size:1rem;
+  font-weight:900;
+}
+#appView .brand-lockup.compact > span:last-child { display:grid; gap:1px; }
+#appView .brand-lockup.compact strong { font-size:1.12rem; letter-spacing:-.035em; }
+#appView .brand-lockup.compact small { font-size:.62rem; color:var(--ll-muted); }
+#appView .header-center { min-width:0; width:100%; display:flex; justify-content:center; }
+#appView #studentNav {
+  width:max-content;
+  max-width:100%;
+  min-width:0;
+  justify-content:center;
+  gap:clamp(2px,.45vw,7px);
+  padding:7px;
+  border-radius:999px;
+  background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(247,239,229,.68));
+  box-shadow:0 13px 32px rgba(73,48,31,.12),inset 0 1px 0 rgba(255,255,255,.96);
+}
+#appView #studentNav .nimbus-item {
+  min-width:0;
+  min-height:52px;
+  height:52px;
+  padding:0 clamp(9px,1.15vw,19px);
+  border-radius:999px;
+  white-space:nowrap;
+  flex:0 1 auto;
+}
+#appView #studentNav .nimbus-label { font-size:clamp(.72rem,.9vw,.9rem); }
+#appView #studentNav .nv-ico { font-size:1.05rem; }
+#appView #studentNav .nimbus-item.active {
+  color:#49372a !important;
+  background:linear-gradient(135deg,#fffdf9,#f3e8d9) !important;
+  border:1px solid rgba(189,138,75,.45) !important;
+  box-shadow:0 0 0 2px rgba(189,138,75,.14),0 7px 17px rgba(73,48,31,.10) !important;
+}
+#appView .header-right {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  min-width:0;
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.86);
+  border-radius:999px;
+  background:linear-gradient(135deg,rgba(255,255,255,.86),rgba(250,244,235,.72));
+  box-shadow:0 9px 24px rgba(73,48,31,.09),inset 0 1px 0 #fff;
+}
+#appView .header-right #roleChip { order:3; white-space:nowrap; }
+#appView .header-right .user-menu { order:2; min-width:0; display:flex; align-items:center; gap:8px; }
+#appView .header-right #userName { max-width:125px; }
+#appView .header-right #userInitial { order:-1; flex:0 0 auto; }
+#appView .office-workspace-action { order:1; min-height:36px; white-space:nowrap; }
+#appView .header-right #showLoginButton,
+#appView .header-right #finnTipsToggle,
+#appView .header-right #logoutButton { display:none !important; }
+
+#reportView .category-ai-control,
+#reportView .ai-assist-inline {
+  display:flex !important;
+  flex-direction:column;
+  align-items:stretch !important;
+  gap:8px !important;
+  width:100%;
+  margin-top:10px !important;
+  padding:12px !important;
+  border:1px solid rgba(150,85,47,.24) !important;
+  border-radius:14px !important;
+  background:linear-gradient(135deg,#fffdf9,#f5e9da) !important;
+  box-shadow:0 6px 18px rgba(73,48,31,.07) !important;
+}
+#reportView .ai-suggest-button,
+#reportView .category-ai-control .button {
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  align-self:flex-start;
+  gap:8px;
+  min-height:42px !important;
+  padding:0 16px !important;
+  border:1px solid #b97845 !important;
+  border-radius:11px !important;
+  color:#fffaf3 !important;
+  background:linear-gradient(135deg,#a9653d,#79452e) !important;
+  box-shadow:0 5px 13px rgba(89,51,31,.17) !important;
+  font-size:.78rem !important;
+  font-weight:850 !important;
+  text-decoration:none !important;
+}
+#reportView .ai-suggest-button:hover,
+#reportView .category-ai-control .button:hover {
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(89,51,31,.2) !important;
+}
+#reportView .ai-suggestion-output,
+#reportView .category-ai-control .field-hint {
+  display:block !important;
+  margin:0 !important;
+  color:#746458 !important;
+  font-size:.73rem !important;
+  line-height:1.5 !important;
+}
+#reportView .ai-suggestion-actions { display:flex; flex-wrap:wrap; gap:7px; }
+#reportView .ai-alternative-button {
+  min-height:34px;
+  padding:6px 10px;
+  border:1px solid #d9b995;
+  border-radius:999px;
+  color:#754329;
+  background:#fffdf9;
+  font-size:.72rem;
+  font-weight:750;
+}
+.public-category-field {
+  padding:12px;
+  border:1px solid rgba(150,85,47,.22);
+  border-radius:14px;
+  background:linear-gradient(135deg,#fffdf9,#f5e9da);
+}
+.public-ai-category {
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  min-height:42px !important;
+  padding:0 15px !important;
+  border:1px solid #b97845 !important;
+  border-radius:11px !important;
+  color:#fffaf3 !important;
+  background:linear-gradient(135deg,#a9653d,#79452e) !important;
+  box-shadow:0 5px 13px rgba(89,51,31,.15) !important;
+  font-size:.78rem !important;
+  font-weight:850 !important;
+}
+.public-ai-status { margin-top:8px !important; font-size:.73rem !important; }
+
+@media (max-width:1180px) {
+  #appView > .app-header {
+    grid-template-columns:minmax(150px,auto) minmax(0,1fr) !important;
+    row-gap:12px !important;
+  }
+  #appView .header-center { grid-column:1/-1; grid-row:2; }
+  #appView #studentNav { width:100%; justify-content:flex-start; overflow-x:auto; scrollbar-width:thin; }
+  #appView .header-right { grid-column:2; grid-row:1; justify-self:end; }
+}
+@media (max-width:680px) {
+  #appView.app-shell { padding:12px 12px 26px !important; }
+  #appView > .app-header {
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:10px !important;
+    padding:4px 0 14px !important;
+  }
+  #appView .brand-lockup.compact { padding:6px 12px 6px 6px; gap:7px; }
+  #appView .brand-lockup.compact .brand-mark { width:36px; height:36px; flex-basis:36px; }
+  #appView .brand-lockup.compact strong { font-size:.95rem; }
+  #appView .brand-lockup.compact small { display:none; }
+  #appView .header-right {
+    grid-column:2 !important;
+    grid-row:1 !important;
+    width:auto;
+    max-width:100%;
+    padding:5px 8px;
+    gap:6px;
+  }
+  #appView .header-right #roleChip { font-size:.62rem; padding:4px 6px; }
+  #appView .header-right #userName { max-width:78px; font-size:.72rem; }
+  #appView .header-right #userInitial { width:30px; height:30px; }
+  #appView .office-workspace-action { min-height:32px; padding:0 8px; font-size:.65rem; }
+  #appView .header-center {
+    grid-column:1/-1 !important;
+    grid-row:2 !important;
+    width:100%;
+    min-width:0;
+    overflow:hidden;
+    padding:2px 0 5px;
+  }
+  #appView #studentNav {
+    width:100%;
+    max-width:100%;
+    justify-content:flex-start;
+    gap:4px;
+    padding:5px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    scroll-snap-type:x proximity;
+  }
+  #appView #studentNav::-webkit-scrollbar { display:none; }
+  #appView #studentNav .nimbus-item {
+    flex:0 0 auto;
+    min-height:43px;
+    height:43px;
+    padding:0 12px;
+    gap:6px;
+    scroll-snap-align:start;
+  }
+  #appView #studentNav .nimbus-label { font-size:.72rem; }
+  #appView #studentNav .nv-ico { font-size:.95rem; }
+  #appView .header-right #showLoginButton,
+  #appView .header-right #finnTipsToggle { display:none !important; }
+  #reportView .ai-suggest-button,
+  #reportView .category-ai-control .button,
+  .public-ai-category { width:100%; align-self:stretch; }
+}
+@media (max-width:360px) {
+  #appView.app-shell { padding-inline:9px !important; }
+  #appView .brand-lockup.compact { padding-right:8px; }
+  #appView .brand-lockup.compact strong { font-size:.86rem; }
+  #appView .header-right { padding:4px 6px; gap:4px; }
+  #appView .header-right #userName { max-width:62px; }
+  #appView .header-right #roleChip { font-size:.58rem; }
+  #appView #studentNav .nimbus-item { padding-inline:10px; }
+}
