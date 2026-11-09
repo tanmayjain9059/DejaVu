@@ -491,7 +491,7 @@ async function loadConfig() {
       supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
-      modeNote.textContent = "Live campus deployment: demo credentials are disabled. Sign in with an authorised office account provisioned in Supabase.";
+      modeNote.textContent = "Live campus deployment: sign in with your verified college account. Office access is limited to the authorised staff email allowlist.";
       modeNote.classList.remove("hidden");
     } catch (error) {
       supabaseClient = null;
