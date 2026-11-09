@@ -4084,9 +4084,11 @@ a:hover { color: var(--ll-primary-hover); }
 /* Keep public report and tracking surfaces inside very narrow phone viewports. */
 @media (max-width: 700px) {
   .public-destination {
-    width: calc(100% - 4px) !important;
-    max-width: calc(100% - 4px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    margin-left: -4px !important;
+    margin-right: 4px !important;
     box-sizing: border-box !important;
   }
   .public-destination .form-card,
