@@ -2447,14 +2447,14 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
   } catch (error) { showToast(error.message, true); }
 }
 
-start();
-
-const receiptParams = new URLSearchParams(window.location.search);
-if (receiptParams.get("track")) {
-  showPublicDestination("track");
-  $("#publicTrackLink").value = window.location.href;
-  $("#publicTrackForm").requestSubmit();
-}
+start().then(() => {
+  const receiptParams = new URLSearchParams(window.location.search);
+  if (receiptParams.get("track")) {
+    showPublicDestination("track");
+    $("#publicTrackLink").value = window.location.href;
+    $("#publicTrackForm").requestSubmit();
+  }
+});
 
 const receiptParams = new URLSearchParams(window.location.search);
 if (receiptParams.get("track")) {
