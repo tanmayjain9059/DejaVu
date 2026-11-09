@@ -165,13 +165,13 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
         conn.execute(
             """INSERT INTO reports(id, public_ref, report_type, title, description, brand, primary_color,
                visible_features, category, occurred_at, location_block, location_floor, location_room,
-               location_area, status, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               location_area, image_ai_consent, status, created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (report_id, public_ref, body.report_type, body.title.strip(), body.description.strip(),
              (body.brand or "").strip() or None, (body.primary_color or "").strip() or None,
              (body.visible_features or "").strip() or None, body.category, body.occurred_at,
              body.location_block, body.location_floor, body.location_room, body.location_area,
-             status, user["id"], timestamp, timestamp),
+             int(body.image_ai_consent), status, user["id"], timestamp, timestamp),
         )
         audit(conn, user["id"], "report_created", "report", report_id, {"report_type": body.report_type})
         if body.report_type == "found":
@@ -380,6 +380,8 @@ async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(aut
             raise HTTPException(status_code=404, detail="Report not found.")
         if not row["image_path"]:
             raise HTTPException(status_code=409, detail="Upload an item photo before requesting image enrichment.")
+        if not row["image_ai_consent"]:
+            raise HTTPException(status_code=403, detail="AI photo analysis was not authorised for this report.")
         image_key = row["image_path"]
         try:
             image_bytes = read_upload(image_key)
