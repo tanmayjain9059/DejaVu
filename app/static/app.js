@@ -2113,6 +2113,7 @@ $("#publicClaimForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!selectedPublicFoundId || claimSubmitting) return;
   const roll = $("#publicClaimRoll").value.trim().toUpperCase();
+  const contactPhone = $("#publicClaimPhone").value.trim();
   const evidence = $("#publicClaimEvidence").value.trim();
   const evidenceTypes = $$('input[name="publicClaimEvidenceType"]:checked').map(input => input.value);
   const errorNode = $("#publicClaimError");
