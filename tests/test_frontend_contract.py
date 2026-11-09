@@ -324,5 +324,22 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn(".date-filter input[type=\"date\"]", self.css)
         self.assertIn("min-width: 0;", self.css)
 
+    def test_public_forms_use_cvr_location_hierarchy_and_approved_details(self):
+        for element_id in (
+            "publicBlock", "publicFloor", "publicRoom", "publicArea",
+            "publicPrivateDetail", "publicBlockFound", "publicFloorFound",
+            "publicRoomFound", "publicAreaFound", "publicItemConditionFound",
+            "publicHandoverAtFound", "publicHandoverRecipientFound", "publicHandoverNoteFound",
+        ):
+            self.assertIn(f'id="{element_id}"', self.html)
+        self.assertIn('field("publicFloor").value', self.js)
+        self.assertIn('field("publicRoom").value.trim()', self.js)
+        self.assertIn('field("publicPrivateDetail").value.trim()', self.js)
+        self.assertIn('field("publicItemCondition").value', self.js)
+        self.assertIn('field("publicHandoverAt").value', self.js)
+        self.assertIn('locations.pending_verification', self.js)
+        self.assertIn('locations.aliases', self.js)
+        self.assertIn(".public-handover-fields", self.css)
+
 if __name__ == "__main__":
     unittest.main()
