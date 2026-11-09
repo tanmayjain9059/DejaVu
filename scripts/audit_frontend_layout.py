@@ -140,13 +140,16 @@ def submit_public_report(page, kind: str) -> None:
             "mimeType": "image/png",
             "buffer": tiny_png_bytes(),
         })
+    if page.locator("#publicTrackSecret").input_value():
+        raise AssertionError("A tracking secret was populated before report submission")
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
     reference = page.locator("#publicTrackReference").input_value()
     if not reference.startswith("LL-"):
         raise AssertionError(f"{kind} report did not return a case reference")
-    if page.locator("#publicTrackSecret").count() or "tracking secret" in page.locator("#publicTrackPage").inner_text().lower():
-        raise AssertionError("Tracking secret is visible in the public interface")
+    tracking_secret = page.locator("#publicTrackSecret").input_value()
+    if len(tracking_secret) < 20:
+        raise AssertionError("The submitting user did not receive a private tracking secret")
     if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
         raise AssertionError("Lost report photo picker/upload did not complete successfully")
     if form.locator("#publicTitle" + suffix).input_value():
