@@ -1,10 +1,12 @@
 """Regression tests for the anonymous roll-attributed public workflow."""
 import os
 import tempfile
+from io import BytesIO
 import unittest
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app.core import config as app_config
 from app.core import database as app_database
@@ -113,6 +115,75 @@ class PublicWorkflowTests(unittest.TestCase):
         self.assertEqual(matches[0]["report"]["reference"], found_ref)
         self.assertTrue(matches[0]["reasons"])
         self.assertIn("do not prove ownership", tracked.json()["matching_note"])
+
+    def test_public_report_photo_uses_private_storage_and_duplicate_detection(self):
+        report = self.client.post("/api/public/reports", json={
+            "report_type":"lost","roll_number":"25B81A66J8",
+            "title":"Blue water bottle","description":"Blue bottle with a small white scratch near the cap.",
+            "category":"other","location_block":"Block A",
+        })
+        self.assertEqual(report.status_code,201,report.text)
+        payload = report.json()
+        image = Image.new("RGB",(64,64),(20,80,140))
+        raw = BytesIO()
+        image.save(raw,format="PNG")
+        upload = self.client.post(
+            "/api/public/cases/"+payload["case"]["reference"]+"/image",
+            params={"roll_number":"25B81A66J8"},
+            headers={"X-LostLink-Tracking-Secret":payload["tracking_secret"]},
+            files={"file":("bottle.png",raw.getvalue(),"image/png")},
+        )
+        self.assertEqual(upload.status_code,201,upload.text)
+        with main.connect_db() as conn:
+            stored = conn.execute("SELECT image_path FROM public_cases WHERE public_ref=?",
+                                  (payload["case"]["reference"],)).fetchone()
+        self.assertTrue(stored["image_path"])
+        self.assertTrue((main.UPLOAD_DIR / stored["image_path"]).is_file())
+
+        other = self.client.post("/api/public/reports", json={
+            "report_type":"lost","roll_number":"25B81A66J9",
+            "title":"Another blue bottle","description":"Another blue bottle with a white scratch near the cap.",
+            "category":"other","location_block":"Block B",
+        }).json()
+        duplicate = self.client.post(
+            "/api/public/cases/"+other["case"]["reference"]+"/image",
+            params={"roll_number":"25B81A66J9"},
+            headers={"X-LostLink-Tracking-Secret":other["tracking_secret"]},
+            files={"file":("duplicate.png",raw.getvalue(),"image/png")},
+        )
+        self.assertEqual(duplicate.status_code,409,duplicate.text)
+
+    def test_found_photo_is_not_public_until_office_intake(self):
+        report = self.client.post("/api/public/reports", json={
+            "report_type":"found","roll_number":"25B81A66J8",
+            "title":"Green notebook","description":"Green notebook with a torn lower-right corner.",
+            "category":"stationery","location_block":"Block A",
+        })
+        self.assertEqual(report.status_code,201,report.text)
+        payload = report.json()
+        image = Image.new("RGB",(64,64),(10,120,60))
+        raw = BytesIO()
+        image.save(raw,format="PNG")
+        upload = self.client.post(
+            "/api/public/cases/"+payload["case"]["reference"]+"/image",
+            params={"roll_number":"25B81A66J8"},
+            headers={"X-LostLink-Tracking-Secret":payload["tracking_secret"]},
+            files={"file":("notebook.png",raw.getvalue(),"image/png")},
+        )
+        self.assertEqual(upload.status_code,201,upload.text)
+        self.assertEqual(self.client.get("/api/public/found/"+payload["case"]["reference"]+"/image").status_code,404)
+        login = self.client.post("/api/login", json={
+            "email":"office@test.invalid","password":"office-password"})
+        self.assertEqual(login.status_code,200,login.text)
+        intake = self.client.post("/api/public/office/"+payload["case"]["reference"]+"/intake",json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0003","private_detail":"Torn lower-right corner.",
+        })
+        self.assertEqual(intake.status_code,200,intake.text)
+        preview = self.client.get("/api/public/found/"+payload["case"]["reference"]+"/image")
+        self.assertEqual(preview.status_code,200,preview.text)
+        self.assertEqual(preview.headers.get("content-type"),"image/jpeg")
 
     def test_claim_approval_requires_matching_physical_id_and_verification_checks(self):
         report=self.client.post("/api/public/reports",json={
