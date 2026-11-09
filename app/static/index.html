@@ -420,10 +420,7 @@
             <div>
               <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategory" name="category" required></select>
-              <div class="category-ai-control ai-assist-inline">
-                <button id="suggestCategoryButton" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest with AI</button>
-                <small id="categorySuggestion" class="field-hint ai-suggestion-output" role="status" aria-live="polite">Get a category suggestion from the item name and description. You stay in control of the final category.</small>
-              </div>
+
             </div>
           </div>
 
@@ -432,6 +429,10 @@
             <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
             <small id="reportDescriptionHelp" class="field-hint">Keep one or two unique ownership clues private. Share them later in a claim so the office can verify ownership.</small>
           </label>
+          <div class="category-ai-control ai-assist-inline">
+            <button id="suggestCategoryButton" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest category with AI</button>
+            <small id="categorySuggestion" class="field-hint ai-suggestion-output" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You choose what to apply.</small>
+          </div>
 
           <div class="form-section-heading space-top">
             <span class="step-number">02</span>
@@ -543,10 +544,7 @@
             <div>
               <label for="reportCategoryFound"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategoryFound" name="category" required></select>
-              <div class="category-ai-control ai-assist-inline">
-                <button id="suggestCategoryButtonFound" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest with AI</button>
-                <small id="categorySuggestionFound" class="field-hint ai-suggestion-output" role="status" aria-live="polite">Get a category suggestion from the visible details of the item you found. You choose the final category.</small>
-              </div>
+
             </div>
           </div>
 
@@ -555,6 +553,10 @@
             <textarea id="reportDescriptionFound" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Describe the item as found: type, size, material, condition and visible details. Do not guess who owns it."></textarea>
             <small id="reportDescriptionHelpFound" class="field-hint">Share only safe, observable details. Do not include names, student IDs, serial numbers, contents or hidden identifying marks.</small>
           </label>
+          <div class="category-ai-control ai-assist-inline">
+            <button id="suggestCategoryButtonFound" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest category with AI</button>
+            <small id="categorySuggestionFound" class="field-hint ai-suggestion-output" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You choose what to apply.</small>
+          </div>
 
           <div class="form-section-heading space-top">
             <span class="step-number">02</span>
