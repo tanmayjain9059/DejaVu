@@ -286,6 +286,9 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
                 self.assertNotIn(private_field,row)
         self.assertEqual(self.client.get("/api/public/search?report_type=lost").json()["reports"][0]["report_type"],"lost")
         self.assertEqual(self.client.get("/api/public/search?report_type=found").json()["reports"][0]["report_type"],"found")
+        by_reference = self.client.get("/api/public/search?q="+lost.json()["case"]["reference"])
+        self.assertEqual(by_reference.status_code,200,by_reference.text)
+        self.assertEqual(by_reference.json()["reports"][0]["public_ref"],lost.json()["case"]["reference"])
 
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
