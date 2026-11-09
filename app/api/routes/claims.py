@@ -18,11 +18,14 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
     evidence_types = list(body.evidence_types)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", body.report_id)
+        lock_row(conn, "users", "id", user["id"])
         report = read_report(conn, body.report_id)
         if report["report_type"] != "found" or report["status"] != "available":
             raise HTTPException(status_code=409, detail="This item is not accepting claims.")
         linked_lost = None
         if body.lost_report_id:
+            lock_row(conn, "reports", "id", body.lost_report_id)
             linked_lost = read_report(conn, body.lost_report_id)
             if (linked_lost["report_type"] != "lost" or
                     linked_lost["created_by"] != user["id"] or
@@ -65,7 +68,7 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
                 detail=f"You have reached the limit of {MAX_OPEN_CLAIMS_PER_STUDENT} open claims. Wait for a review or use the existing claim's follow-up controls.",
             )
         active = conn.execute(
-            "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+            "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
             (body.report_id,)
         ).fetchall()
         status = "disputed" if active else "pending"
@@ -99,6 +102,7 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
                     "This item is on hold while authorised office staff review the competing claims.",
                     "claim", previous_claim["id"]
                 )
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
     return {"claim": {"id": claim["id"], "status": claim["status"], "created_at": claim["created_at"],
                       "report": serialise_report(report), "message": "Claim submitted for review."}}
@@ -125,6 +129,7 @@ async def upload_claim_evidence_image(
         image_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
             conn.execute("BEGIN IMMEDIATE")
+            lock_row(conn, "claims", "id", claim_id)
             claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
             if not claim or claim["claimant_id"] != user["id"]:
                 raise HTTPException(status_code=404, detail="Claim not found.")
@@ -276,7 +281,8 @@ async def list_claims(
 
         output = []
         for claim in rows:
-            report = read_report(conn, claim["report_id"])
+            lock_row(conn, "reports", "id", claim["report_id"])
+        report = read_report(conn, claim["report_id"])
             linked_lost_report = None
             if claim["lost_report_id"]:
                 linked_row = read_report(conn, claim["lost_report_id"])
