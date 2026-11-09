@@ -115,11 +115,9 @@
         <section id="publicTrackPage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
-          <p class="public-lede">Use the reference, roll number, and one-time tracking secret shown when you submitted the report. Roll number alone cannot open a case.</p>
+          <p class="public-lede">Open or paste the private tracking link from your submission receipt. No separate secret-entry field is needed; your roll number alone cannot open a case.</p>
           <form id="publicTrackForm" class="form-stack">
-            <label><span>Case / claim reference</span><input id="publicTrackReference" required maxlength="24" placeholder="LL-XXXXXXXX or CL-XXXXXXXX"></label>
-            <label><span>College roll number</span><input id="publicTrackRoll" required minlength="5" maxlength="20"></label>
-            <label><span>Tracking secret</span><input id="publicTrackSecret" required type="text" autocomplete="off" spellcheck="false"></label>
+            <label><span>Private tracking link</span><input id="publicTrackLink" type="url" required autocomplete="url" placeholder="Paste the private link from your receipt"></label>
             <button class="button button-liquid" type="submit">View private status</button>
           </form>
           <div id="publicTrackResult" class="stack-list" aria-live="polite"></div>
