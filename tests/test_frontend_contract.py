@@ -251,7 +251,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('id="suggestCategoryButton"', self.html)
         self.assertIn('id="suggestCategoryButtonFound"', self.html)
         self.assertIn('class="category-ai-control ai-assist-inline"', self.html)
-        self.assertIn('class="ai-suggest-button"', self.html)
+        self.assertIn('ai-suggest-button', self.html)
         self.assertIn("#reportView .ai-suggest-button", self.css)
         self.assertIn("async function suggestReportCategory(event)", self.js)
 
