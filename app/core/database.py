@@ -463,6 +463,12 @@ def _migration_add_public_report_context_fields(conn) -> None:
         if column not in table_columns(conn, "reports"):
             conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
 
+def _migration_add_public_report_contact_fields(conn) -> None:
+    """Store submitter contact details for authorised office staff only."""
+    for column in ("contact_phone", "contact_email"):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} TEXT")
+
 
 
 
@@ -527,6 +533,7 @@ SCHEMA_MIGRATIONS = (
     (10, "unified_public_roll_attribution_and_tracking", _migration_add_public_roll_attribution),
     (11, "public_rate_limit_retention_index", _migration_add_public_rate_limit_retention_index),
     (12, "public_report_context_and_handover_fields", _migration_add_public_report_context_fields),
+    (13, "private_public_report_contact_fields", _migration_add_public_report_contact_fields),
 )
 
 
