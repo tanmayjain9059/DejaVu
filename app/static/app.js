@@ -2423,7 +2423,7 @@ document.addEventListener("click", (event) => {
     }
   }
   const reportKind = event.target.closest("[data-report-kind]");
-  if (reportKind) setReportMode(reportKind.dataset.reportKind);
+  if (reportKind) { navigate("report"); setReportMode(reportKind.dataset.reportKind); }
   const detailButton = event.target.closest("[data-view-details]");
   if (detailButton) openItemDetails(detailButton.dataset.viewDetails);
   const notificationMatches = event.target.closest("[data-notification-matches]");
