@@ -33,137 +33,8 @@
     </filter>
   </svg>
 
-  <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
-  <main id="loginView" class="login-shell">
-    <section class="login-story">
-      <!-- Sleek Liquid Glass Logo & Brand (Enlarged) -->
-      <div class="brand-header-logo brand-login-logo">
-        <span class="brand-icon-mark" aria-hidden="true">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </span>
-        <span class="brand-text">Lost<span class="brand-accent">Link</span></span>
-      </div>
-
-      <div class="story-copy">
-        <p class="eyebrow"><span class="pulse-dot"></span> Verified Campus Custody</p>
-        <h1>Lost something?<br><span>Start here.</span></h1>
-        <p class="lede">A calm, verified campus lost and found workflow. Report an item, search registered custody, and track claims privately.</p>
-        
-        <div class="story-points">
-          <div class="glass-point">
-            <span class="point-icon">01</span>
-            <div><strong>Report clearly</strong><small>Add useful visible details without exposing private proof.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">02</span>
-            <div><strong>Find likely matches</strong><small>AI-assisted discovery helps surface office-held items.</small></div>
-          </div>
-          <div class="glass-point">
-            <span class="point-icon">03</span>
-            <div><strong>Verify before release</strong><small>Physical inspection and verified tag check before handover.</small></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="story-footer">
-        <span>LostLink · Campus Property Assistance Protocol</span>
-      </div>
-    </section>
-
-    <section class="login-panel liquid-glass-panel">
-      <div class="panel-specular-light" aria-hidden="true"></div>
-      <div class="panel-kicker">
-        <span class="status-dot"></span>
-        <span>CAMPUS ACCESS</span>
-      </div>
-      <h2>Welcome back</h2>
-      <p class="muted">Sign in to report, search, or review a claim.</p>
-
-      <form id="loginForm" class="form-stack">
-        <label>
-          <span>Email address</span>
-          <div class="input-glass-wrap">
-            <input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu">
-          </div>
-        </label>
-        <label>
-          <span>Password</span>
-          <div class="input-glass-wrap">
-            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
-          </div>
-        </label>
-        <button class="button button-liquid button-full" type="submit">
-          <span>Sign in</span>
-          <span class="button-arrow" aria-hidden="true">&rarr;</span>
-        </button>
-        <p id="loginError" class="form-error" role="alert"></p>
-      </form>
-
-      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
-
-      <div id="demoAccess" class="demo-access hidden">
-        <div class="divider-label">
-          <span></span>
-          <small>QUICK DEMO ACCOUNTS</small>
-          <span></span>
-        </div>
-        <div class="demo-accounts-grid">
-          <button id="fillStudent" class="demo-account glass-pill" type="button">
-            <span class="avatar avatar-student">S</span>
-            <div class="demo-info">
-              <strong>Student 1 · Demo</strong>
-              <small>student@lostlink.local</small>
-            </div>
-            <span class="arrow">&rarr;</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-email="student2@lostlink.local" data-demo-password="student2123">
-            <span class="avatar avatar-student">A</span>
-            <div class="demo-info">
-              <strong>Student 2 · Aarav</strong>
-              <small>student2@lostlink.local</small>
-            </div>
-            <span class="arrow">&rarr;</span>
-          </button>
-          <button class="demo-account glass-pill" type="button" data-demo-email="student3@lostlink.local" data-demo-password="student3123">
-            <span class="avatar avatar-student">R</span>
-            <div class="demo-info">
-              <strong>Student 3 · Riya</strong>
-              <small>student3@lostlink.local</small>
-            </div>
-            <span class="arrow">&rarr;</span>
-          </button>
-          <button id="fillOffice" class="demo-account glass-pill demo-office" type="button">
-            <span class="avatar avatar-office">O</span>
-            <div class="demo-info">
-              <strong>Campus Office Staff</strong>
-              <small>office@lostlink.local</small>
-            </div>
-            <span class="arrow">&rarr;</span>
-          </button>
-        </div>
-        <p class="demo-credentials">Demo mode enabled. Click any account above to sign in instantly.</p>
-      </div>
-
-      <div class="privacy-note">
-        <span class="lock-icon">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-        </span>
-        <div>
-          <strong>Private by design</strong>
-          <small>Claim evidence and verification details are accessible only to the claimant and authorised staff.</small>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ==================== MAIN APP VIEW ==================== -->
-  <main id="appView" class="app-shell hidden">
+<!-- ==================== MAIN APP VIEW ==================== -->
+  <main id="appView" class="app-shell">
     <!-- Uncluttered Top Navigation Bar -->
     <header class="app-header">
       <!-- Redesigned Top-Left Modern Logo Badge -->
@@ -766,7 +637,6 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span>Sign out</span>
           </button>
-          <button id="showLoginButton" class="button button-quiet hidden" type="button" aria-hidden="true">Login screen</button>
         </div>
       </div>
 

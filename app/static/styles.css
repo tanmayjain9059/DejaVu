@@ -21,9 +21,9 @@
   --n-fg-muted: rgba(11, 19, 43, 0.48);
   --n-rim: rgba(255, 255, 255, 0.95);
 
-  /* Canvas Background (Exact #DCEBF5 from 21st demo) */
-  --canvas-bg: #DCEBF5;
-  --canvas-gradient: radial-gradient(130% 120% at 50% 0%, #E8F3FA 0%, #DCEBF5 55%, #CFE2F0 100%);
+  /* Canvas Background */
+  --canvas-bg: #f8fafc;
+  --canvas-gradient: transparent;
 
   /* Liquid Accents */
   --water-blue: #00A2FF;
@@ -3484,7 +3484,7 @@ textarea {
 
 /* ==========================================================================
    21ST.DEV AURORA BACKGROUND (BY @manuarora700)
-   Multi-chromatic animated northern lights for liquid glassmorphism
+   Exact Aceternity UI component: https://21st.dev/?preview=%2F%40manuarora700%2Fcomponents%2Faurora-background
    ========================================================================== */
 .aurora-background-container {
   position: fixed;
@@ -3495,7 +3495,7 @@ textarea {
   pointer-events: none;
   z-index: -10;
   isolation: isolate;
-  background-color: #ecf3f9;
+  background-color: #f8fafc;
   contain: strict;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
@@ -3508,27 +3508,27 @@ textarea {
   filter: blur(28px);
   will-change: transform, opacity;
   background: 
-    radial-gradient(circle at 12% 18%, rgba(56, 189, 248, 0.45) 0%, transparent 45%),
-    radial-gradient(circle at 88% 22%, rgba(168, 85, 247, 0.4) 0%, transparent 48%),
-    radial-gradient(circle at 50% 55%, rgba(14, 165, 233, 0.35) 0%, transparent 52%),
-    radial-gradient(circle at 82% 82%, rgba(99, 102, 241, 0.35) 0%, transparent 50%),
-    radial-gradient(circle at 18% 80%, rgba(20, 184, 166, 0.3) 0%, transparent 48%);
+    radial-gradient(circle at 12% 18%, rgba(59, 130, 246, 0.45) 0%, transparent 45%),
+    radial-gradient(circle at 88% 22%, rgba(168, 85, 247, 0.45) 0%, transparent 48%),
+    radial-gradient(circle at 50% 55%, rgba(96, 165, 250, 0.35) 0%, transparent 52%),
+    radial-gradient(circle at 82% 82%, rgba(192, 132, 252, 0.35) 0%, transparent 50%),
+    radial-gradient(circle at 18% 80%, rgba(56, 189, 248, 0.3) 0%, transparent 48%);
   animation: aurora-pulse 24s ease-in-out infinite alternate;
 }
 
 .aurora-layer {
   position: absolute;
-  inset: -20px;
-  opacity: 0.55;
-  filter: blur(20px);
+  inset: -15px;
+  opacity: 0.6;
+  filter: blur(14px);
   will-change: transform, background-position;
   background-image: 
-    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.9) 16%),
-    repeating-linear-gradient(100deg, #38bdf8 10%, #818cf8 15%, #60a5fa 20%, #c084fc 25%, #0284c7 30%, #38bdf8 35%);
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
+    repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
   background-size: 300% 200%;
   background-position: 50% 50%, 50% 50%;
-  mask-image: radial-gradient(ellipse at 100% 0%, black 25%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 25%, transparent 80%);
+  mask-image: radial-gradient(ellipse at 100% 0%, black 12%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 12%, transparent 72%);
 }
 
 .aurora-layer::after {
@@ -3536,12 +3536,12 @@ textarea {
   position: absolute;
   inset: 0;
   background-image: 
-    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.9) 16%),
-    repeating-linear-gradient(100deg, #38bdf8 10%, #818cf8 15%, #60a5fa 20%, #c084fc 25%, #0284c7 30%, #38bdf8 35%);
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
+    repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
   background-size: 200% 100%;
   background-attachment: fixed;
   mix-blend-mode: overlay;
-  animation: aurora-movement 45s linear infinite;
+  animation: aurora-movement 55s linear infinite;
 }
 
 @keyframes aurora-movement {

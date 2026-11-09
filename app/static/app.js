@@ -691,7 +691,7 @@ async function loadConfig() {
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
   $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
     .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
-  if (appConfig.demo_mode) $("#demoAccess").classList.remove("hidden");
+  // demoAccess removed with loginView
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
   $("#reportDate").value = localNow.toISOString().slice(0, 16);
 }
@@ -723,10 +723,9 @@ function startNotificationPolling() {
 }
 
 function showLogin() {
-  stopNotificationPolling();
-  $("#loginView").classList.remove("hidden");
-  $("#appView").classList.add("hidden");
-  currentUser = null;
+  // Login page removed completely: reset session directly to default student view
+  enableMockMode();
+  enterApp(mockCopy(MOCK_USERS.student));
 }
 
 function enterApp(user) {
@@ -735,9 +734,7 @@ function enterApp(user) {
   const switchButton = $("#viewSwitchBtn");
   if (switchButton) { switchButton.textContent = user.role === "office" ? "Switch to student" : "Switch to office"; switchButton.classList.toggle("hidden", !usingMockApi && !(appConfig && appConfig.demo_mode)); }
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
-  $("#loginView").classList.add("hidden");
-  $("#appView").classList.remove("hidden");
-  $("#userName").textContent = user.display_name;
+    $("#userName").textContent = user.display_name;
   if ($("#dropdownUserName")) $("#dropdownUserName").textContent = user.display_name || "User";
   if ($("#dropdownUserEmail")) $("#dropdownUserEmail").textContent = user.email || "";
   if ($("#dropdownAvatar")) {
@@ -1977,38 +1974,10 @@ async function start() { try { initLiquidNavbar(); } catch(e) { console.error(e)
   enableMockMode(); enterApp(mockCopy(MOCK_USERS.student));
 }
 
-$("#loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  $("#loginError").textContent = "";
-  try {
-    const result = await api("/api/login", {
-      method: "POST",
-      body: { email: $("#loginEmail").value.trim(), password: $("#loginPassword").value }
-    });
-    enterApp(result.user);
-    showToast("Signed in successfully.", false);
-  } catch (error) { $("#loginError").textContent = error.message; }
-});
-
-async function launchDemoAccount(email,password) {
-  $("#loginError").textContent="";
-  try { const result=await api("/api/login",{method:"POST",body:{email,password}}); inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); enterApp(result.user); showToast("Opened "+(result.user.role==="office"?"office":"student")+" demo view.",false); }
-  catch(error){$("#loginError").textContent=error.message;}
-}
-$("#fillStudent").addEventListener("click",()=>launchDemoAccount("student@lostlink.local","student123"));
-$("#fillOffice").addEventListener("click",()=>launchDemoAccount("office@lostlink.local","office123"));
-$$("[data-demo-email]").forEach(button=>button.addEventListener("click",()=>launchDemoAccount(button.dataset.demoEmail,button.dataset.demoPassword)));
-$("#viewSwitchBtn").addEventListener("click",async()=>{
- if(usingMockApi){enterApp(mockCopy(currentUser.role==="office"?MOCK_USERS.student:MOCK_USERS.office));showToast("Switched demo view. No campus records were changed by switching roles.",false);return;}
- if(!(appConfig&&appConfig.demo_mode)){showToast("Role switching is available only in the local demo. Sign in with an authorised office account to review real claims.",true);return;}
- const target=currentUser.role==="office"?{email:"student@lostlink.local",password:"student123"}:{email:"office@lostlink.local",password:"office123"};
- try{await api("/api/logout",{method:"POST"});const result=await api("/api/login",{method:"POST",body:target});enterApp(result.user);}catch(error){showToast(error.message,true);}
-});
-$("#showLoginButton").addEventListener("click",()=>{inspectedUser=currentUser;showLogin();$("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);});
-$("#returnToDashboardButton").addEventListener("click",()=>{if(inspectedUser){const prior=inspectedUser;inspectedUser=null;enterApp(prior);}});
 $("#logoutButton").addEventListener("click", async () => {
   try { await api("/api/logout", { method: "POST" }); } catch (_) {}
-  inspectedUser=null; $("#returnToDashboardButton").classList.add("hidden"); showLogin();
+  showToast("Session reset to demo account.", false);
+  showLogin();
 });
 $("#studentNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view], [data-go]");
