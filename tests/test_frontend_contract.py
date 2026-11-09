@@ -210,6 +210,16 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('reportPage.querySelector("#publicDescriptionFound")', self.js)
         self.assertIn('form.id === "publicFoundReportForm"', self.js)
 
+    def test_report_layout_matches_reference_with_bone_beige_theme(self):
+        self.assertIn('class="form-card form-stack liquid-glass-panel hidden report-entry-form"', self.html)
+        self.assertIn('class="form-card form-stack liquid-glass-panel hidden found-report-form report-entry-form"', self.html)
+        self.assertIn('class="button button-quiet button-small ai-suggest-button"', self.html)
+        self.assertIn('aria-live="polite"', self.html)
+        self.assertIn("#reportView .form-layout", self.css)
+        self.assertIn("#reportView .side-guidance", self.css)
+        self.assertIn("#reportView .ai-assist-inline", self.css)
+        self.assertIn("grid-template-columns: minmax(0,1fr)", self.css)
+
     def test_global_theme_uses_consistent_bone_beige_palette(self):
         self.assertIn("--ll-paper: #f2e9dc", self.css)
         self.assertIn("--ll-primary: #96552f", self.css)
