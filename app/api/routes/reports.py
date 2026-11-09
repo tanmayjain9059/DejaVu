@@ -183,6 +183,7 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
             notify_user(conn, user["id"], "report-created:" + report_id, "Lost report submitted",
                         "Your lost-item report is saved. LostLink can suggest possible matches as found items are received.", "report", report_id)
             notify_matches_for_lost_report(conn, read_report(conn, report_id))
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
     return {"report": serialise_report(row, internal=user["role"] == "office"),
             "message": "Lost report submitted." if body.report_type == "lost" else "Found-item report submitted for office intake. It will become searchable after staff confirm receipt."}
@@ -260,6 +261,7 @@ async def close_report(
         raise HTTPException(status_code=403, detail="Only the report owner can close their report.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         report = read_report(conn, report_id)
         if report["created_by"] != user["id"]:
             raise HTTPException(status_code=404, detail="Report not found.")
@@ -331,6 +333,7 @@ async def upload_report_image(
         new_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
             conn.execute("BEGIN IMMEDIATE")
+            lock_row(conn, "reports", "id", report_id)
             row = read_report(conn, report_id)
             is_office = user["role"] == "office"
             if not is_office and row["created_by"] != user["id"]:
