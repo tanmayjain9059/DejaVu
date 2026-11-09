@@ -1501,7 +1501,7 @@ function officeClaimCard(claim) {
     "\">" + escapeHTML(statusLabel(claim.status)) + "</span></div>" +
     '<div class="internal-meta"><span>Physical tag: ' + escapeHTML(report.tag_id || "Not assigned") + "</span><span>Verification: " + escapeHTML(level) +
     "</span><span>Value band: " + escapeHTML(report.value_band || "unknown") + "</span><span>Sensitivity: " + escapeHTML(report.sensitivity_level) + "</span></div>" +
-    claimantPhone + linkedLost +
+    claimantPhone + reporterPhone + linkedLost +
     '<div class="claim-evidence"><strong>CLAIMANT EVIDENCE · PRIVATE</strong><p>' + escapeHTML(claim.evidence) + "</p></div>" +
     evidenceChips + evidencePhoto +
     (claim.appeal_note ? '<div class="claim-appeal-note"><strong>CLAIMANT REVIEW REQUEST</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "") +
