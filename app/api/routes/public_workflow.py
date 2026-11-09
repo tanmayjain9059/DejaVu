@@ -677,6 +677,11 @@ def close_public_case(
 @router.post("/found/{report_id}/claims", status_code=201)
 def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request):
     roll = _roll(body.roll_number)
+    contact_phone = (body.contact_phone or "").strip() or None
+    if contact_phone:
+        phone_digits = re.sub(r"\D", "", contact_phone)
+        if not 7 <= len(phone_digits) <= 15:
+            raise HTTPException(status_code=422, detail="Enter a valid phone number with 7 to 15 digits.")
     evidence_types = sorted(set(body.evidence_types))
     if not evidence_types or set(evidence_types) - ALLOWED_EVIDENCE_TYPES:
         raise HTTPException(status_code=422,detail="Choose valid evidence types.")
