@@ -596,6 +596,9 @@ def _migration_add_privacy_requests(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_privacy_requests_user_created "
         "ON privacy_requests(user_id, created_at)"
     )
+    if DATABASE_URL:
+        conn.execute("ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY")
+        conn.execute("REVOKE ALL ON TABLE privacy_requests FROM anon, authenticated")
 
 
 SCHEMA_MIGRATIONS = (
