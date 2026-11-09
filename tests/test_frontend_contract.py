@@ -80,6 +80,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertRegex(styles, r"\.tab-button\s*\{[^}]*min-height:\s*44px")
         self.assertRegex(styles, r"input,\s*select,\s*textarea\s*\{[^}]*font-size:\s*16px")
 
+    def test_report_ai_assistant_is_visible_and_wired(self):
+        self.assertIn('id="suggestCategoryButton"', self.html)
+        self.assertIn('class="ai-assist-card"', self.html)
+        self.assertIn('id="categorySuggestion"', self.html)
+        self.assertIn('$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);', self.js)
+        self.assertIn('/api/reports/category-suggestion', self.js)
+        self.assertIn('data-use-category=', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
