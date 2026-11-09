@@ -464,14 +464,21 @@ async function loadConfig() {
 
   const locations = appConfig.locations || {};
   const blocks = Array.isArray(locations.blocks) ? locations.blocks : [];
-  const blockOptions = blocks.map((block) =>
-    '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
-  ).join("");
+  const pendingLocations = new Set(Array.isArray(locations.pending_verification) ? locations.pending_verification : []);
+  const aliases = locations.aliases && typeof locations.aliases === "object" ? locations.aliases : {};
+  const blockOptions = blocks.map((block) => {
+    const aliasText = Array.isArray(aliases[block]) && aliases[block].length ? " · " + aliases[block].join(" / ") : "";
+    const verificationText = pendingLocations.has(block) ? " · pending verification" : "";
+    return '<option value="' + escapeHTML(block) + '">' + escapeHTML(block + aliasText + verificationText) + "</option>";
+  }).join("");
   ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
-  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose block</option>' + blockOptions; });
-  ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + (Array.isArray(locations.floors) ? locations.floors : [])
-    .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join(""); });
+  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a building or outdoor area</option>' + blockOptions; });
+  const floorOptions = (Array.isArray(locations.floors) ? locations.floors : []).map((floor) =>
+    '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>"
+  ).join("");
+  ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + floorOptions; });
+  ["#publicFloor", "#publicFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + floorOptions; });
 
   if (appConfig.demo_mode) {
     $("#demoAccess").classList.remove("hidden");
@@ -2128,8 +2135,15 @@ async function submitPublicReport(event) {
     primary_color: field("publicColor").value.trim() || null,
     visible_features: field("publicFeatures").value.trim() || null,
     location_block: field("publicBlock").value || null,
+    location_floor: field("publicFloor").value || null,
+    location_room: field("publicRoom").value.trim() || null,
     location_area: field("publicArea").value.trim() || null,
-    occurred_at: field("publicDate").value || null
+    occurred_at: field("publicDate").value || null,
+    private_detail: type === "lost" ? field("publicPrivateDetail").value.trim() || null : null,
+    item_condition: type === "found" ? field("publicItemCondition").value || null : null,
+    handover_at: type === "found" ? field("publicHandoverAt").value || null : null,
+    handover_recipient: type === "found" ? field("publicHandoverRecipient").value.trim() || null : null,
+    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null
   };
   const errorNode = field("publicReportError");
   const button = form.querySelector('button[type="submit"]');
