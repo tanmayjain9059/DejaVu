@@ -962,32 +962,41 @@ async function suggestReportCategory() {
     primary_color: $("#reportColor").value.trim() || null,
     visible_features: $("#reportFeatures").value.trim() || null
   };
-  if ((payload.title + " " + payload.description).trim().length < 4) {
-    output.textContent = "Add an item name and a short description before requesting a suggestion.";
+  if (payload.title.length < 4 || payload.description.length < 10) {
+    output.textContent = "Enter an item name (at least 4 characters) and a description (at least 10 characters) first.";
+    (!payload.title || payload.title.length < 4 ? $("#reportTitle") : $("#reportDescription")).focus();
     return;
   }
   button.disabled = true;
-  output.textContent = "Analysing the item details…";
+  button.innerHTML = '<span aria-hidden="true">◌</span> Analysing…';
+  output.textContent = "Reviewing the item details…";
   try {
     const result = await api("/api/reports/category-suggestion", { method: "POST", body: payload });
     const suggestion = result.suggestion || {};
     if (suggestion.status !== "suggested" || !suggestion.category) {
-      output.textContent = "The classifier is unsure. Please choose the category yourself.";
+      output.textContent = "No reliable category suggestion was found. Please choose the category manually.";
       return;
     }
-    const alternatives = (suggestion.alternatives || []).slice(0, 3)
-      .map((item) => escapeHTML(item.label)).join(" · ");
-    output.innerHTML = "Suggested: <strong>" + escapeHTML(suggestion.label) + "</strong>" +
-      (alternatives ? "<br>Other possibilities: " + alternatives : "") +
-      ' <button class="button button-quiet button-small" type="button" data-use-category="' +
-      escapeHTML(suggestion.category) + '">Use suggestion</button>';
+    const alternatives = (suggestion.alternatives || []).slice(0, 3);
+    const engineLabel = suggestion.engine === "minilm_semantic"
+      ? "Semantic model" : "Local keyword baseline";
+    output.innerHTML =
+      '<div class="ai-suggestion-heading"><strong>Suggested: ' + escapeHTML(suggestion.label || categoryLabel(suggestion.category)) +
+      '</strong><span class="ai-engine-label">' + escapeHTML(engineLabel) + '</span></div>' +
+      '<div class="ai-suggestion-options">' + alternatives.map((item) =>
+        '<button class="ai-category-option" type="button" data-use-category="' + escapeHTML(item.category) + '">' +
+        '<span>' + escapeHTML(item.label || categoryLabel(item.category)) + '</span>' +
+        (item.category === suggestion.category ? '<small>Top suggestion · Apply</small>' : '<small>Use this instead</small>') +
+        '</button>'
+      ).join("") + '</div>' +
+      '<small class="ai-disclaimer">Suggestions are advisory. Select a category to apply it; nothing is changed automatically.</small>';
   } catch (error) {
-    output.textContent = "Category suggestion unavailable. Choose a category manually.";
+    output.textContent = "Category suggestion failed: " + (error.message || "Please choose a category manually.");
   } finally {
     button.disabled = false;
+    button.innerHTML = '<span aria-hidden="true">✦</span> Suggest with AI';
   }
 }
-
 async function submitReport(event) {
   event.preventDefault();
   $("#reportError").textContent = "";
@@ -1898,7 +1907,8 @@ document.addEventListener("click", (event) => {
   const useCategory = event.target.closest("[data-use-category]");
   if (useCategory) {
     $("#reportCategory").value = useCategory.dataset.useCategory;
-    $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
+    $("#categorySuggestion").textContent = "Category applied. Review it before submitting.";
+    $("#reportCategory").focus();
   }
   const reportKind = event.target.closest("[data-report-kind]");
   if (reportKind) setReportMode(reportKind.dataset.reportKind);
