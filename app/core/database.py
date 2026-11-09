@@ -732,6 +732,12 @@ def initialise_db() -> None:
             (1, "legacy_schema_baseline", now_iso()),
         )
         _apply_versioned_schema_migrations(conn)
+        # Continue the bounded legacy-image fingerprint backfill on each boot.
+        # A separate transaction-scoped lock prevents workers hashing the same
+        # batch concurrently on PostgreSQL.
+        if DATABASE_URL:
+            conn.execute("SELECT pg_advisory_xact_lock(730023)")
+        _migration_move_legacy_additive_columns(conn)
         if AUTH_PROVIDER == "supabase":
             # Reapply the idempotent public-schema lockdown on startup so any
             # newly introduced application tables also receive RLS protection.
