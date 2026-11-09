@@ -230,14 +230,25 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('document.addEventListener("click", event => {', self.js)
 
 
-    def test_office_workspace_is_outside_student_navigation_capsule(self):
-        self.assertIn('id="officeWorkspaceButton"', self.html)
-        self.assertNotIn('id="officeNavButton"', self.html)
+    def test_student_navigation_has_four_destinations_and_no_office_panel(self):
         nav = re.search(r'<nav id="studentNav".*?</nav>', self.html, re.S)
         self.assertIsNotNone(nav)
-        self.assertNotIn("officeWorkspaceButton", nav.group(0))
-        self.assertIn('$("#officeWorkspaceButton").addEventListener("click"', self.js)
-        self.assertIn('$("#officeWorkspaceButton").classList.toggle("hidden", user.role !== "office")', self.js)
+        markup = nav.group(0)
+        self.assertIn('data-view="start"', markup)
+        self.assertIn('data-view="browse"', markup)
+        self.assertIn('data-view="report"', markup)
+        self.assertIn('>Reports</span>', markup)
+        self.assertIn('data-view="notifications"', markup)
+        self.assertNotIn('data-view="my-reports"', markup)
+        self.assertNotIn('data-view="my-claims"', markup)
+        self.assertNotIn('Office workspace', self.html)
+        self.assertNotIn('officeWorkspaceButton', self.js)
+
+    def test_report_navigation_opens_lost_found_picker(self):
+        self.assertIn('report: "#reportView"', self.js)
+        self.assertIn('id="reportTypeChooser"', self.html)
+        self.assertIn('data-report-kind="lost"', self.html)
+        self.assertIn('data-report-kind="found"', self.html)
 
     def test_reference_header_has_responsive_phone_layout(self):
         self.assertIn('class="brand-lockup compact"', self.html)
@@ -282,3 +293,7 @@ class FrontendContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_navigation_destinations_are_oval_on_desktop_and_mobile(self):
+        self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
+        self.assertIn('#appView #studentNav .nimbus-item { flex:1 0 auto;', self.css)
