@@ -337,13 +337,19 @@ function initLiquidNavbar() {
       currentIndex = idx;
       measure();
       loop();
-      const icon = items[idx]?.querySelector(".nv-ico");
-      if (icon) {
-        const fx = icon.getAttribute("data-fx");
-        if (fx) {
-          icon.style.animation = "none";
-          void icon.offsetWidth;
-          icon.style.animation = "";
+      const el = items[idx];
+      if (el) {
+        if (typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+        const icon = el.querySelector(".nv-ico");
+        if (icon) {
+          const fx = icon.getAttribute("data-fx");
+          if (fx) {
+            icon.style.animation = "none";
+            void icon.offsetWidth;
+            icon.style.animation = "";
+          }
         }
       }
     },
