@@ -1462,6 +1462,9 @@ function officeClaimCard(claim) {
   const claimantPhone = claim.claimant_phone
     ? '<div class="internal-meta">Claimant phone: <a href="tel:' + escapeHTML(claim.claimant_phone) + '">' + escapeHTML(claim.claimant_phone) + '</a></div>'
     : '<div class="internal-meta">Claimant phone: Not provided</div>';
+  const reporterPhone = report.contact_phone
+    ? '<div class="internal-meta">Found reporter phone: <a href="tel:' + escapeHTML(report.contact_phone) + '">' + escapeHTML(report.contact_phone) + '</a></div>'
+    : "";
   const publicIdentity = claim.submission_channel === "public"
     ? '<div class="internal-meta"><strong>Public claim · Roll number: ' + escapeHTML(claim.claimant_roll_number || "Not supplied") + '</strong></div>' +
       '<label class="wide">Verified roll number<input type="text" data-verified-roll required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the claimant’s college ID"></label>' +
