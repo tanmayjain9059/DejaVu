@@ -433,7 +433,7 @@ function applyDateInputBounds() {
   const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   const maxDateTime = localNow.toISOString().slice(0, 16);
   const maxDate = maxDateTime.slice(0, 10);
-  ["#publicDate", "#publicDateFound", "#reportDate", "#reportDateFound"].forEach((selector) => {
+  ["#publicDate", "#publicDateFound", "#publicHandoverAtFound", "#reportDate", "#reportDateFound"].forEach((selector) => {
     const input = $(selector);
     if (!input) return;
     input.min = minDate + "T00:00";
