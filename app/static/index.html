@@ -478,10 +478,7 @@
             <div>
               <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategory" name="category" required></select>
-              <div class="category-ai-control">
-                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button>
-                <small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small>
-              </div>
+
             </div>
           </div>
 
@@ -490,6 +487,20 @@
             <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
             <small class="field-hint">Describe visible details only. Keep private proof of ownership, serial numbers, and passwords out of this description.</small>
           </label>
+
+          <section class="ai-assist-card" aria-labelledby="reportAiTitle">
+            <div class="ai-assist-copy">
+              <span class="ai-assist-kicker">✦ AI ASSIST</span>
+              <strong id="reportAiTitle">Need help choosing a category?</strong>
+              <small>Analyse the item name and visible details. Review the suggestions and choose one yourself.</small>
+            </div>
+            <button id="suggestCategoryButton" class="button button-ai" type="button">
+              <span aria-hidden="true">✦</span> Suggest with AI
+            </button>
+            <div id="categorySuggestion" class="ai-suggestion-result" role="status" aria-live="polite">
+              Suggestions are optional. LostLink never applies a category without your confirmation.
+            </div>
+          </section>
 
           <div class="form-section-heading space-top">
             <span class="step-number">02</span>
