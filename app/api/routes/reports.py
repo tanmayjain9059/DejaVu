@@ -537,11 +537,13 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
 def office_ai_status(user: dict[str, Any] = Depends(authenticated_user)):
     """Office-only diagnostics for the optional matching models."""
     from app.matching import matching_engine
+    from app.services.image_enrichment import model_status as image_model_status
 
     require_office(user)
     return {
-        "models": matching_engine.model_status(),
+        "models": {**matching_engine.model_status(), "image_enrichment": image_model_status()},
         "matching_policy": "AI scores rank candidates for human review; they do not establish ownership.",
+        "privacy_policy": "Only public report descriptions and approved report photos are used for discovery. Private claim evidence and office storage details are excluded.",
     }
 
 
