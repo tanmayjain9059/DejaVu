@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import struct
 import sys
+from datetime import datetime
 import zlib
 from playwright.sync_api import sync_playwright
 
@@ -118,9 +119,19 @@ def submit_public_report(page, kind: str) -> None:
     form.locator("#publicDescription" + suffix).fill(
         "A clearly described campus item with visible colour, material and condition details for the report."
     )
+    form.locator("#publicBlock" + suffix).select_option("Library" if found else "Computer Block")
+    form.locator("#publicFloor" + suffix).select_option("Ground Floor" if found else "First Floor")
+    form.locator("#publicRoom" + suffix).fill("Reading Hall" if found else "CSE Lab")
     form.locator("#publicArea" + suffix).fill(
         "Outside the library entrance" if found else "Library reading room"
     )
+    if found:
+        form.locator("#publicItemCondition" + suffix).select_option("good")
+        form.locator("#publicHandoverAt" + suffix).fill(datetime.now().strftime("%Y-%m-%dT%H:%M"))
+        form.locator("#publicHandoverRecipient" + suffix).fill("Campus office desk")
+        form.locator("#publicHandoverNote" + suffix).fill("Submitted at the office counter.")
+    else:
+        form.locator("#publicPrivateDetail").fill("Owner-only mark beneath the battery cover.")
     if not found:
         with page.expect_file_chooser() as chooser_info:
             form.locator('label:has(#publicImage)').click()
