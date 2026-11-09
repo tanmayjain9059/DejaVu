@@ -3816,3 +3816,17 @@ a:hover { color: var(--ll-primary-hover); }
 @media(max-width:680px) {
   .public-ai-panel .public-ai-category { width:100%; }
 }
+
+
+/* Unified four-destination navigation: capsule and every destination remain oval on touch screens. */
+#appView #studentNav { border-radius:999px !important; }
+#appView #studentNav .nimbus-item { border-radius:999px !important; }
+@media (max-width:680px) {
+  #appView #studentNav { border-radius:999px !important; padding:5px !important; gap:5px !important; }
+  #appView #studentNav .nimbus-item { flex:1 0 auto; min-width:0; min-height:42px; height:42px; padding:0 14px; border-radius:999px !important; white-space:nowrap; }
+  #appView #studentNav .nimbus-label { font-size:.76rem; white-space:nowrap; }
+}
+@media (max-width:380px) {
+  #appView #studentNav .nimbus-item { padding-inline:11px; }
+  #appView #studentNav .nimbus-label { font-size:.7rem; }
+}
