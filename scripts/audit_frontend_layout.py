@@ -6,6 +6,7 @@ import os
 import struct
 import sys
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 import zlib
 from playwright.sync_api import sync_playwright
 
@@ -140,15 +141,17 @@ def submit_public_report(page, kind: str) -> None:
             "mimeType": "image/png",
             "buffer": tiny_png_bytes(),
         })
-    previous_tracking_secret = page.locator("#publicTrackSecret").input_value()
+    previous_tracking_url = page.locator("#publicTrackLink").input_value()
+    previous_secret = parse_qs(urlparse(previous_tracking_url).fragment).get("secret", [""])[0]
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
     reference = page.locator("#publicTrackReference").input_value()
     if not reference.startswith("LL-"):
         raise AssertionError(f"{kind} report did not return a case reference")
-    tracking_secret = page.locator("#publicTrackSecret").input_value()
-    if len(tracking_secret) < 20 or tracking_secret == previous_tracking_secret:
-        raise AssertionError("The submitting user did not receive a fresh private tracking secret")
+    tracking_url = page.locator("#publicTrackLink").input_value()
+    tracking_secret = parse_qs(urlparse(tracking_url).fragment).get("secret", [""])[0]
+    if len(tracking_secret) < 20 or tracking_secret == previous_secret:
+        raise AssertionError("The submitting user did not receive a fresh private tracking link with a case secret")
     if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
         raise AssertionError("Lost report photo picker/upload did not complete successfully")
     if form.locator("#publicTitle" + suffix).input_value():
