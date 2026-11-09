@@ -41,7 +41,7 @@ def _load_pipeline():
             from transformers import pipeline
             model_name = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base")
             revision = os.getenv("IMAGE_CAPTION_MODEL_REVISION", "main")
-            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name, revision=revision)
+            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name, revision=os.getenv("MODEL_DOWNLOAD_REVISION") or revision, local_files_only=os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() != "true")
         except Exception:
             _CAPTION_PIPELINE = None
         return _CAPTION_PIPELINE
