@@ -216,6 +216,9 @@ jobs:
       - name: Measure labelled retrieval top-3
         env:
           USE_SEMANTIC_MODEL: "true"
+          ALLOW_MODEL_DOWNLOADS: "true"
+          MODEL_DOWNLOAD_REVISION: "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+          HF_HUB_DISABLE_TELEMETRY: "1"
           SEMANTIC_MODEL: sentence-transformers/all-MiniLM-L6-v2
         run: python scripts/evaluate_matching.py --require-semantic-model
 
