@@ -452,6 +452,20 @@ def _migration_add_public_rate_limit_retention_index(conn) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_public_rate_limits_created ON public_rate_limits(created_at)")
 
 
+def _migration_add_public_report_context_fields(conn) -> None:
+    """Persist private ownership clues and found-item custody context separately."""
+    for column, declaration in (
+        ("item_condition", "TEXT"),
+        ("handover_at", "TEXT"),
+        ("handover_recipient", "TEXT"),
+        ("handover_note", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+
+
+
 def _migration_add_public_roll_attribution(conn) -> None:
     """Attach anonymous public submissions to canonical reports/claims without student accounts."""
     for column, declaration in (
@@ -512,6 +526,7 @@ SCHEMA_MIGRATIONS = (
     (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
     (10, "unified_public_roll_attribution_and_tracking", _migration_add_public_roll_attribution),
     (11, "public_rate_limit_retention_index", _migration_add_public_rate_limit_retention_index),
+    (12, "public_report_context_and_handover_fields", _migration_add_public_report_context_fields),
 )
 
 
