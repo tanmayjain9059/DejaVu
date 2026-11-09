@@ -564,7 +564,7 @@ function enterApp(user) {
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
   $("#roleChip").className = "role-chip" + (user.role === "office" ? " role-chip-office" : "");
-  $('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
+  $$('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
     button.classList.toggle("hidden", user.role === "office");
   });
   $("#officeDashboardNav").classList.toggle("hidden", user.role !== "office");
@@ -757,7 +757,7 @@ function resetReportMode() {
   setText("#categorySuggestionFound", "AI suggestion is optional. You choose the final category.");
   setText("#reportModeTitle", "Choose your report type");
   setText("#reportModeDescription", "Lost and Found have separate guided paths so each report starts with the right context.");
-  $("[data-report-kind]").forEach((button) => {
+  $$("[data-report-kind]").forEach((button) => {
     button.classList.remove("selected");
     button.setAttribute("aria-pressed", "false");
   });
@@ -2087,7 +2087,7 @@ $("#publicClaimForm").addEventListener("submit", async event => {
   if (!selectedPublicFoundId || claimSubmitting) return;
   const roll = $("#publicClaimRoll").value.trim().toUpperCase();
   const evidence = $("#publicClaimEvidence").value.trim();
-  const evidenceTypes = $('input[name="publicClaimEvidenceType"]:checked').map(input => input.value);
+  const evidenceTypes = $$('input[name="publicClaimEvidenceType"]:checked').map(input => input.value);
   const errorNode = $("#publicClaimError");
   errorNode.textContent = "";
   if (evidence.length < 20) { errorNode.textContent = "Please provide at least 20 characters explaining how you can verify ownership."; return; }
