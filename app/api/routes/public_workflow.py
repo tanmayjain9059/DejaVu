@@ -106,7 +106,8 @@ def _trusted_client_ip(request: Request) -> str:
 
 def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
     """Rate-limit anonymous writes while storing only a one-way IP digest."""
-    address = request.client.host if request.client else "unknown"
+    address = _trusted_client_ip(request)
+    lock_advisory_key(conn, "public-rate:" + action, address)
     hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")
     ip_hash = hmac.new(hash_key, address.encode("utf-8"), hashlib.sha256).hexdigest()
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
@@ -425,7 +426,8 @@ async def submit_public_report(body: PublicReportBody, request: Request):
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         _enforce_rate_limit(conn, request, "report", 10)
-        lock_advisory_key(conn, "public-roll", roll)
+        from app.core.database import lock_advisory_key as _lock_advisory_key
+        _lock_advisory_key(conn, "public-roll", roll)
         actor_id = _public_actor_for_roll(conn, roll)
         timestamp = now_iso()
         conn.execute(
