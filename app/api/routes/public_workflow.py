@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from app.core.config import (
     ALLOWED_EVIDENCE_TYPES,
     CATEGORY_LABELS,
+    DATABASE_URL,
     MATCHING_CANDIDATE_LIMIT,
     MAX_UPLOAD_BYTES,
     SESSION_SECRET,
@@ -287,6 +288,10 @@ def ensure_public_schema() -> None:
                 version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL
             )"""
         )
+        if DATABASE_URL:
+            # Migration bookkeeping is server-only; browser roles have no access.
+            conn.execute("ALTER TABLE public_schema_migrations ENABLE ROW LEVEL SECURITY")
+            conn.execute("REVOKE ALL ON TABLE public_schema_migrations FROM anon, authenticated")
         case_columns = table_columns(conn, "public_cases")
         claim_columns = table_columns(conn, "public_claims")
         if case_columns and {"id", "public_ref", "roll_number", "tracking_hash"}.issubset(case_columns):
@@ -517,8 +522,8 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
         where += " AND category=?"
         params.append(category)
     if q and q.strip():
-        term = "%" + q.strip().lower() + "%"
-        where += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ? OR LOWER(COALESCE(public_ref,'')) LIKE ?)"
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+        where += " AND (LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR LOWER(COALESCE(location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(brand,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
         params.extend([term,term,term,term,term])
     with connect_db() as conn:
         rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
@@ -550,8 +555,8 @@ def browse_public_found(category: str | None = Query(default=None, max_length=60
     if q and q.strip():
         term = "%" + q.strip().lower() + "%"
         clauses.append(
-            "(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR "
-            "LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
+            "(LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR "
+            "LOWER(COALESCE(location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(brand,'')) LIKE ? ESCAPE '!')"
         )
         params.extend([term,term,term,term])
     with connect_db() as conn:
@@ -566,11 +571,13 @@ def browse_public_found(category: str | None = Query(default=None, max_length=60
 @router.get("/reports/{reference}/matches")
 async def public_report_matches(
     reference: str,
+    request: Request,
     roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
     with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "matches", 20, window_minutes=60)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if not row or row["report_type"] != "lost" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
