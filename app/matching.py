@@ -259,7 +259,7 @@ class MatchingEngine:
             try:
                 from transformers import CLIPModel, CLIPProcessor
                 model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
-                revision = os.getenv("CLIP_MODEL_REVISION", "main")
+                revision = os.getenv("MODEL_DOWNLOAD_REVISION") or os.getenv("CLIP_MODEL_REVISION", "main")
                 self._clip_processor = CLIPProcessor.from_pretrained(model_name, revision=revision, local_files_only=os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() != "true")
                 self._clip_model = CLIPModel.from_pretrained(model_name, revision=revision)
                 self._clip_model.eval()
