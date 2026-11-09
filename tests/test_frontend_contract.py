@@ -341,6 +341,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('locations.aliases', self.js)
         self.assertIn(".public-handover-fields", self.css)
 
+    def test_office_claim_review_displays_linked_lost_report_owner_clues(self):
+        start = self.js.index("function officeClaimCard(claim)")
+        end = self.js.index("\nasync function submitIntake", start)
+        renderer = self.js[start:end]
+        self.assertIn("linked_lost_report.private_verification_detail", renderer)
+        self.assertIn("OWNER-ONLY DETAILS · LOST REPORT", renderer)
+        self.assertIn("escapeHTML(claim.linked_lost_report.private_verification_detail)", renderer)
+
     def test_office_intake_displays_found_item_condition_and_handover_context(self):
         start = self.js.index("function intakeCard(report)")
         end = self.js.index("\nfunction officeClaimCard", start)
