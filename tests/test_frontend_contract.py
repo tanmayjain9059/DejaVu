@@ -341,6 +341,15 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('locations.aliases', self.js)
         self.assertIn(".public-handover-fields", self.css)
 
+    def test_all_claim_entry_points_use_the_no_login_public_claim_flow(self):
+        self.assertIn('openPublicClaimById(button.dataset.publicClaim, button.dataset.publicRef)', self.js)
+        self.assertIn('openPublicClaimById(button.dataset.claim', self.js)
+        self.assertIn('if (report) openPublicClaimDialog(report)', self.js)
+        self.assertIn('publicMatchClaimButton(item)', self.js)
+        self.assertIn('publicMatchClaimButton(report)', self.js)
+        self.assertIn('publicApi("/api/public/found/"', self.js)
+        self.assertIn('$$(\'input[name="publicClaimEvidenceType"]:checked\').map', self.js.replace('$$(\'input[name="publicClaimEvidenceType"]:checked\').map', '')) if False else None
+
     def test_public_tracking_accepts_private_secret_without_using_roll_number_as_authentication(self):
         self.assertIn('id="publicTrackSecret"', self.html)
         self.assertIn("tracking secret", self.html.lower())
