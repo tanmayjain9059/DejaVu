@@ -563,6 +563,19 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
     return {"reports": [_public_report(row) for row in rows]}
 
 
+@router.get("/found/{report_id}")
+def get_public_found_item(report_id: str):
+    """Fetch one claimable Found item by its canonical report ID."""
+    with connect_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM reports WHERE id=? AND report_type='found' AND status='available'",
+            (report_id,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="This Found item is no longer available for claims. Refresh Browse.")
+    return {"report": _public_report(row)}
+
+
 @router.get("/found")
 def browse_public_found(category: str | None = Query(default=None, max_length=60), q: str | None = Query(default=None, max_length=100), limit: int = Query(default=50, ge=1, le=100)):
     if category and category not in CATEGORY_LABELS:
