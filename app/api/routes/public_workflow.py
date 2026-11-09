@@ -404,6 +404,7 @@ async def submit_public_report(body: PublicReportBody, request: Request):
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         _enforce_rate_limit(conn, request, "report", 10)
+        lock_advisory_key(conn, "public-roll", roll)
         actor_id = _public_actor_for_roll(conn, roll)
         timestamp = now_iso()
         conn.execute(
@@ -647,6 +648,7 @@ def close_public_case(
     roll = _roll(roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "public_ref", reference)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
@@ -689,6 +691,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
     claim_ref = _reference("CL")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         _enforce_rate_limit(conn,request,"claim",8)
         lock_row(conn, "reports", "id", report_id)
         report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
@@ -764,6 +767,7 @@ def add_public_claim_evidence(
     roll = _roll(roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "public_ref", reference)
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
         if not claim or claim["submission_channel"] != "public" or claim["claimant_roll_number"] != roll or not _verify_token(claim["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
