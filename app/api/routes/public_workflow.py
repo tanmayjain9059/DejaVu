@@ -252,6 +252,7 @@ class PublicCategorySuggestionBody(BaseModel):
 
 class PublicReportBody(BaseModel):
     report_type: Literal["lost", "found"]
+    image_ai_consent: bool = False
     roll_number: str = Field(min_length=5, max_length=20)
     contact_phone: str | None = Field(default=None, max_length=20)
     contact_email: str | None = Field(default=None, max_length=254)
@@ -411,13 +412,13 @@ async def submit_public_report(body: PublicReportBody, request: Request):
             """INSERT INTO reports
                (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
                 category,occurred_at,location_block,location_floor,location_room,location_area,
-                private_detail,item_condition,handover_at,handover_recipient,handover_note,
+                image_ai_consent,private_detail,item_condition,handover_at,handover_recipient,handover_note,
                 contact_phone,contact_email,status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
             (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
              body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
-             body.private_detail if body.report_type == "lost" else None,
+             int(body.image_ai_consent), body.private_detail if body.report_type == "lost" else None,
              body.item_condition,body.handover_at,body.handover_recipient,body.handover_note,
              contact_phone,contact_email,status,actor_id,timestamp,timestamp,roll,_hash(token)),
         )
