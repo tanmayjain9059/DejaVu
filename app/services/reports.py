@@ -60,6 +60,8 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
             "created_by": row["created_by"],
             "roll_number": row["roll_number"],
             "submission_channel": row["submission_channel"],
+            "contact_phone": row["contact_phone"] if "contact_phone" in row.keys() else None,
+            "contact_email": row["contact_email"] if "contact_email" in row.keys() else None,
         })
     return result
 
