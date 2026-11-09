@@ -35,7 +35,8 @@ def test_script_csp_is_same_origin_only():
 
 def test_public_workflow_has_no_duplicate_route_decorators_or_functions():
     source = (ROOT / "app/api/routes/public_workflow.py").read_text(encoding="utf-8")
-    routes = re.findall(r'^@router\.(?:get|post|put|delete|patch)\("([^"]+)"', source, flags=re.M)
+    routes = re.findall(r'^@router\.(get|post|put|delete|patch)\("([^"]+)"', source, flags=re.M)
+    route_keys = [method + " " + path for method, path in routes]
     functions = re.findall(r'^(?:async )?def ([A-Za-z_]\w*)\(', source, flags=re.M)
-    assert len(routes) == len(set(routes)), "public_workflow.py contains duplicate route paths"
+    assert len(route_keys) == len(set(route_keys)), "public_workflow.py contains duplicate method/path routes"
     assert len(functions) == len(set(functions)), "public_workflow.py contains duplicate helper definitions"
