@@ -190,7 +190,7 @@ def _get_postgres_pool():
         conninfo=_postgres_url(),
         min_size=1,
         max_size=max_size,
-        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10},
+        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10, "prepare_threshold": None},
         timeout=10,
         open=True,
     )
