@@ -121,10 +121,16 @@ def _public_report(row) -> dict[str, Any]:
     # Public browse exposes controlled descriptors only; full notes remain
     # available to authorised office staff during ownership verification.
     if item.get("report_type") == "found":
-        item["title"] = CATEGORY_LABELS.get(item.get("category"), "Found") + " item"
+        item["title"] = "Found item"
         item["description"] = "A found item is held by the campus office. Share private ownership evidence when claiming."
         item["brand"] = None
         item["visible_features"] = None
+    if item.get("category") in {"identity_documents", "keys_access"}:
+        # Do not publicly label identity documents or access credentials.
+        item["category"] = "other"
+        item["category_label"] = "Personal item"
+        if item.get("report_type") == "found":
+            item["title"] = "Personal item held by the campus office"
     # Public Lost listings must not reveal a precise loss location or time.
     if item.get("report_type") == "lost":
         item["location"] = "CVR campus"
