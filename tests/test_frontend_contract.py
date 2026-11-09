@@ -255,6 +255,18 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("#reportView .ai-suggest-button", self.css)
         self.assertIn("async function suggestReportCategory(event)", self.js)
 
+
+    def test_public_ai_assistant_follows_the_description_it_uses(self):
+        for description_id, status_id in [
+            ("publicDescription", "publicCategorySuggestion"),
+            ("publicDescriptionFound", "publicCategorySuggestionFound"),
+        ]:
+            description_pos = self.html.index(f'id="{description_id}"')
+            status_pos = self.html.index(f'id="{status_id}"')
+            self.assertGreater(status_pos, description_pos)
+        self.assertIn('class="public-ai-panel"', self.html)
+        self.assertIn(".public-ai-panel", self.css)
+
     def test_global_theme_uses_consistent_bone_beige_palette(self):
         self.assertIn("--ll-paper: #f2e9dc", self.css)
         self.assertIn("--ll-primary: #96552f", self.css)
