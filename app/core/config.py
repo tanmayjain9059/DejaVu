@@ -68,4 +68,4 @@ CATEGORY_DEFAULT_LEVEL = {
     "other": 3,
 }
 SENSITIVE_CATEGORIES = {"identity_documents", "keys_access"}
-ACTIVE_CLAIM_STATES = {"pending", "disputed", "needs_more_evidence"}
+ACTIVE_CLAIM_STATES = {"pending", "disputed", "needs_more_evidence", "approved_for_collection"}
