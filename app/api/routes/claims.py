@@ -74,7 +74,7 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
         if approved_claim:
             raise HTTPException(status_code=409, detail="A claim is already approved for collection. No additional claims can be submitted.")
         active = conn.execute(
-            "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+            "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
             (body.report_id,)
         ).fetchall()
         status = "disputed" if active else "pending"
@@ -352,7 +352,7 @@ async def update_claim_evidence(
         if claim["status"] != "needs_more_evidence":
             raise HTTPException(status_code=409, detail="Additional evidence is not currently requested.")
         active_other = conn.execute(
-            "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+            "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
             (claim["report_id"], claim_id)
         ).fetchall()
         status = "disputed" if active_other else "pending"
@@ -508,7 +508,7 @@ async def decide_claim(
                     notice_title, notice_text, "claim", claim_id)
         if body.action == "reject":
             other_active = conn.execute(
-                "SELECT 1 FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+                "SELECT 1 FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
                 (claim["report_id"], claim_id)
             ).fetchone()
             if not other_active and report["status"] == "available":
