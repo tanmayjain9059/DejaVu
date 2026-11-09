@@ -422,7 +422,7 @@ async def submit_public_report(body: PublicReportBody, request: Request):
                 category,occurred_at,location_block,location_floor,location_room,location_area,
                 image_ai_consent,private_detail,item_condition,handover_at,handover_recipient,handover_note,
                 contact_phone,contact_email,status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
             (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
              body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
