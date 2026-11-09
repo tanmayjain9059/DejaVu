@@ -1927,6 +1927,11 @@ function showPublicDestination(type) {
   const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "found" ? "publicFoundPage" : "publicLostPage";
   ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
   placeFinnIn("#"+destination+" [data-finn-slot]");
+  if (type === "browse") {
+    $("#publicBrowseEmpty").textContent = "Loading campus reports…";
+    $("#publicBrowseEmpty").classList.remove("hidden");
+    loadPublicFound();
+  }
   if (type === "lost" || type === "found") {
     const reportPage = $("#" + destination);
     const hiddenType = reportPage.querySelector("input[type=hidden]");
