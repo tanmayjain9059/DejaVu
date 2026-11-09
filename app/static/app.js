@@ -1488,7 +1488,11 @@ function officeClaimCard(claim) {
     ? '<div class="linked-report-line office-linked-report"><strong>Linked lost report</strong><span>' +
       escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
       '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' +
-      escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>'
+      escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>' +
+      (claim.linked_lost_report.private_verification_detail
+        ? '<div class="internal-detail"><strong>OWNER-ONLY DETAILS · LOST REPORT</strong><small>' +
+          escapeHTML(claim.linked_lost_report.private_verification_detail) + '</small></div>'
+        : "")
     : "";
   const evidenceTypes = Array.isArray(claim.evidence_types) ? claim.evidence_types : [];
   const evidenceChips = evidenceTypes.length
