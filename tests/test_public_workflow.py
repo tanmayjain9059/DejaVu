@@ -300,6 +300,16 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         found = self.create_public_report("found")
         self.assertEqual(found.status_code,201,found.text)
         report_id = found.json()["case"]["id"]
+        lost = self.client.post("/api/public/reports", json={
+            "report_type": "lost",
+            "roll_number": "25B81A66J8",
+            "title": "Lost matching calculator",
+            "description": "Black scientific calculator with a cracked protective cover.",
+            "category": "electronics",
+            "location_block": "Computer Block",
+            "private_detail": "A unique scratch beneath the battery cover known only to the owner.",
+        })
+        self.assertEqual(lost.status_code,201,lost.text)
         self.office_login()
         intake = self.intake(report_id)
         self.assertEqual(intake.status_code,200,intake.text)
@@ -309,6 +319,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "roll_number":"25B81A66J9",
             "evidence":"I can identify a blue sticker below the battery cover and a small scratch on the right edge.",
             "evidence_types":["distinctive_features","other"],
+            "lost_report_reference":lost.json()["case"]["reference"],
         })
         self.assertEqual(claim_response.status_code,201,claim_response.text)
         claim = claim_response.json()["claim"]
@@ -331,6 +342,10 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(office_queue.status_code,200,office_queue.text)
         self.assertEqual(office_queue.json()["claims"][0]["claimant_roll_number"],"25B81A66J9")
         self.assertEqual(office_queue.json()["claims"][0]["evidence_types"],["distinctive_features","other"])
+        self.assertEqual(
+            office_queue.json()["claims"][0]["linked_lost_report"]["private_verification_detail"],
+            "A unique scratch beneath the battery cover known only to the owner.",
+        )
         claim_id = claim["id"]
         checks = ["distinctive_features","date_location","physical_inspection","claimant_identity"]
         denied = self.client.post("/api/claims/"+claim_id+"/decision",json={
