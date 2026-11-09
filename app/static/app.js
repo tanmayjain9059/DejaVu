@@ -2497,6 +2497,37 @@ $("#copyPublicTrackingLink").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(value); showToast("Private tracking link copied.", false); }
   catch (_) { field.focus(); field.select(); showToast("Select and copy the private tracking link.", false); }
 });
+$("#publicPrivacyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!lastPublicTracking) return;
+  const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+  if (!access) { $("#publicPrivacyError").textContent = "Open the private tracking link from your receipt first."; return; }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#publicPrivacyError").textContent = "";
+  try {
+    const result = await publicApi("/api/public/privacy-requests", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        reference: lastPublicTracking.reference,
+        roll_number: access.roll,
+        tracking_secret: access.secret,
+        request_type: $("#publicPrivacyType").value,
+        details: $("#publicPrivacyDetails").value.trim()
+      })
+    });
+    $("#publicPrivacyDialog").close();
+    showToast(result.message || "Privacy request submitted.", false);
+  } catch(error) {
+    $("#publicPrivacyError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#closePublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+$("#cancelPublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+
 $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
   const resultNode = $("#publicTrackResult");
@@ -2530,6 +2561,8 @@ $("#publicTrackForm").addEventListener("submit", async event => {
     if (!isCase && record.status === "needs_more_evidence") {
       actions.push('<button class="button button-liquid button-small" type="button" data-public-add-evidence>Submit requested evidence</button>');
     }
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-export>Download my case data</button>');
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-privacy>Request a privacy action</button>');
     resultNode.innerHTML = '<section class="track-summary"><p><strong>Reference ' + escapeHTML(record.reference || reference) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '</p><p>' + escapeHTML(record.title || item.title || "Claim") + '</p>' +
       (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : '') +
       '<div class="form-actions">' + actions.join("") + '</div></section>' +
@@ -2543,6 +2576,31 @@ $("#publicTrackResult").addEventListener("click", async event => {
   if (!state) return;
   const credentials = getPublicAccess(state.reference, state.roll);
   if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
+  if (event.target.closest("[data-public-export]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before exporting data.", true); return; }
+    try {
+      const data = await publicApi("/api/public/privacy-export/" + encodeURIComponent(state.reference), {
+        headers: getPublicAccess(state.reference, state.roll, access.secret)
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lostlink-" + state.reference + "-data.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch(error) { showToast(error.message, true); }
+    return;
+  }
+  if (event.target.closest("[data-public-privacy]")) {
+    $("#publicPrivacyError").textContent = "";
+    $("#publicPrivacyDetails").value = "";
+    $("#publicPrivacyDialog").showModal();
+    return;
+  }
   if (event.target.closest("[data-public-refresh-matches]")) {
     await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
   } else if (event.target.closest("[data-public-close-case]")) {
