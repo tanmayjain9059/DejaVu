@@ -409,5 +409,16 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('href="tel:', renderer)
         self.assertIn("Claimant phone: Not provided", renderer)
 
+    def test_supabase_office_login_never_falls_back_to_local_demo_auth(self):
+        self.assertIn("function assertLocalOfficeLoginAllowed()", self.js)
+        self.assertIn('if (appConfig.auth_mode === "supabase")', self.js)
+        login_start = self.js.index('$("#loginForm").addEventListener("submit"')
+        login_end = self.js.index('async function launchDemoAccount', login_start)
+        login_handler = self.js[login_start:login_end]
+        self.assertIn("assertLocalOfficeLoginAllowed();", login_handler)
+        demo_start = self.js.index("async function launchDemoAccount")
+        demo_end = self.js.index('$("#fillOffice").addEventListener', demo_start)
+        self.assertIn("assertLocalOfficeLoginAllowed();", self.js[demo_start:demo_end])
+
 if __name__ == "__main__":
     unittest.main()

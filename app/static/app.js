@@ -2415,6 +2415,15 @@ $("#publicEvidenceForm").addEventListener("submit", async event => {
   finally { button.disabled = false; }
 });
 
+function assertLocalOfficeLoginAllowed() {
+  if (!appConfig) {
+    throw new Error("LostLink configuration has not loaded. Refresh the page before signing in.");
+  }
+  if (appConfig.auth_mode === "supabase") {
+    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL, anon key, and script connection. Local demo login is disabled.");
+  }
+}
+
 async function start() {
   showPublicHome();
   // A blank API_BASE_URL means this page is served by the FastAPI backend itself.
@@ -2481,6 +2490,7 @@ $("#loginForm").addEventListener("submit",async event => {
       }
       enterApp(profile.user);
     } else {
+      assertLocalOfficeLoginAllowed();
       const result = await api("/api/login",{method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
       if (!result.user || result.user.role !== "office") throw new Error("Only authorised office staff can sign in.");
       enterApp(result.user);
@@ -2492,6 +2502,7 @@ $("#loginForm").addEventListener("submit",async event => {
 async function launchDemoAccount(email,password) {
   $("#loginError").textContent = "";
   try {
+    assertLocalOfficeLoginAllowed();
     const result = await api("/api/login",{method:"POST",body:{email,password}});
     if (!result.user || result.user.role !== "office") throw new Error("Only the office demo account is available.");
     inspectedUser = null;
