@@ -40,7 +40,8 @@ def _load_pipeline():
         try:
             from transformers import pipeline
             model_name = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base")
-            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name)
+            revision = os.getenv("IMAGE_CAPTION_MODEL_REVISION", "main")
+            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name, revision=revision)
         except Exception:
             _CAPTION_PIPELINE = None
         return _CAPTION_PIPELINE
@@ -61,6 +62,7 @@ def model_status() -> dict[str, Any]:
         "enabled": enabled,
         "state": state,
         "model": os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base"),
+        "revision": os.getenv("IMAGE_CAPTION_MODEL_REVISION", "main"),
     }
 
 def _keywords(caption: str, limit: int = 12) -> list[str]:
