@@ -2049,6 +2049,71 @@ $("#publicClaimForm").addEventListener("submit", async event => {
   } catch(error) { errorNode.textContent = error.message; }
   finally { claimSubmitting = false; button.disabled = false; }
 });
+async function requestPublicCategorySuggestion(button) {
+  const form = button.closest("form");
+  if (!form) return;
+  const found = form.id === "publicFoundReportForm";
+  const suffix = found ? "Found" : "";
+  const field = (id) => form.querySelector("#" + id + suffix);
+  const output = form.querySelector(found ? "#publicCategorySuggestionFound" : "#publicCategorySuggestion");
+  const payload = {
+    title: field("publicTitle").value.trim(),
+    description: field("publicDescription").value.trim(),
+    brand: field("publicBrand").value.trim() || null,
+    primary_color: field("publicColor").value.trim() || null,
+    visible_features: field("publicFeatures").value.trim() || null
+  };
+  if (payload.title.length < 4 || payload.description.length < 10) {
+    output.textContent = "Enter an item name (at least 4 characters) and description (at least 10 characters) first.";
+    (payload.title.length < 4 ? field("publicTitle") : field("publicDescription")).focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Analysing…";
+  output.textContent = "Checking item details…";
+  try {
+    const result = await publicApi("/api/public/category-suggestion", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
+    });
+    const suggestion = result.suggestion || {};
+    if (suggestion.status !== "suggested" || !suggestion.category) {
+      output.textContent = "No confident category suggestion. Please choose one manually.";
+      return;
+    }
+    const alternatives = (suggestion.alternatives || []).slice(0, 3);
+    output.replaceChildren();
+    const heading = document.createElement("span");
+    heading.textContent = "Suggested: " + (suggestion.label || categoryLabel(suggestion.category));
+    output.append(heading);
+    const actions = document.createElement("span");
+    actions.className = "public-ai-alternatives";
+    alternatives.forEach(item => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "ai-alternative-button";
+      option.textContent = item.label || categoryLabel(item.category);
+      option.addEventListener("click", () => {
+        form.querySelector(found ? "#publicCategoryFound" : "#publicCategory").value = item.category;
+        output.textContent = (item.label || categoryLabel(item.category)) + " selected. Review it before submitting.";
+      });
+      actions.append(option);
+    });
+    output.append(actions);
+    const note = document.createElement("span");
+    note.textContent = "AI suggestions are advisory; select a category to apply it.";
+    output.append(note);
+  } catch (error) {
+    output.textContent = error.message || "AI suggestion is unavailable. Choose a category manually.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "✦ Suggest with AI";
+  }
+}
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-public-ai-category]");
+  if (button) void requestPublicCategorySuggestion(button);
+});
+
 function publicReportField(form, id) {
   return form.querySelector("#" + id + (form.id === "publicFoundReportForm" ? "Found" : ""));
 }
