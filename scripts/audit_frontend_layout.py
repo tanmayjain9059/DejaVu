@@ -76,12 +76,45 @@ def exercise_public_category_ai(page, page_id: str, suffix: str = "") -> None:
     if selected != "bags_wallets":
         raise AssertionError(f"{page_id}: AI category selection mismatch: {selected!r}")
 
+def submit_public_report(page, kind: str) -> None:
+    """Exercise the actual Lost/Found submit button and one-time tracking response."""
+    found = kind == "found"
+    suffix = "Found" if found else ""
+    page_id = "publicFoundPage" if found else "publicLostPage"
+    form_id = "publicFoundReportForm" if found else "publicReportForm"
+    page.locator(f"#publicNav [data-public-destination='{kind}']").click()
+    page.locator("#" + page_id).wait_for(state="visible")
+    form = page.locator("#" + form_id)
+    form.locator("#publicRollNumber" + suffix).fill("25B81A66J8")
+    form.locator("#publicTitle" + suffix).fill(
+        "Silver bottle I found" if found else "Black backpack I lost"
+    )
+    form.locator("#publicCategory" + suffix).select_option("bags_wallets")
+    form.locator("#publicDescription" + suffix).fill(
+        "A clearly described campus item with visible colour, material and condition details for the report."
+    )
+    form.locator("#publicArea" + suffix).fill(
+        "Outside the library entrance" if found else "Library reading room"
+    )
+    form.locator('button[type="submit"]').click()
+    page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
+    reference = page.locator("#publicTrackReference").input_value()
+    secret = page.locator("#publicTrackSecret").input_value()
+    if not reference.startswith("LL-") or not secret:
+        raise AssertionError(f"{kind} report did not return a case reference and tracking secret")
+    if form.locator("#publicTitle" + suffix).input_value():
+        raise AssertionError(f"{kind} report form did not reset after successful submission")
+    return_home(page)
+
+
 def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch()
         try:
             for width, height in [(320, 740), (375, 812), (768, 1024), (1440, 900)]:
                 page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1)
+                page_errors = []
+                page.on("pageerror", lambda error: page_errors.append(str(error)))
                 page.goto(BASE_URL, wait_until="networkidle")
                 page.locator("#publicHomeContent").wait_for(state="visible")
                 audit(page, f"landing {width}x{height}")
@@ -133,6 +166,10 @@ def main() -> int:
                 audit(page, f"public tracking {width}x{height}")
                 return_home(page)
 
+                if width == 1440:
+                    submit_public_report(page, "lost")
+                    submit_public_report(page, "found")
+
                 page.locator("#publicNav [data-public-destination='office']").click()
                 page.locator("#officeLoginPanel").wait_for(state="visible")
                 assert page.locator("#publicNav [aria-current='page']").get_attribute("data-public-destination") == "office"
@@ -152,8 +189,10 @@ def main() -> int:
                     page.locator(f'button[data-view="{view}"]:visible').first.click()
                     page.locator("#" + view_id).wait_for(state="visible")
                     audit(page, f"office {view} {width}x{height}")
+                if page_errors:
+                    raise AssertionError(f"Uncaught browser JavaScript errors at {width}px: {page_errors}")
                 page.close()
-            print("Responsive browser layout audit passed at 320, 375, 768 and 1440 CSS pixels.")
+            print("Responsive browser and Lost/Found submit audit passed at 320, 375, 768 and 1440 CSS pixels.")
             return 0
         finally:
             browser.close()
