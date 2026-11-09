@@ -1426,7 +1426,10 @@ function officeHandoverCard(claim) {
 
 function intakeCard(report) {
   const publicIdentity = report.submission_channel === "public"
-    ? '<div class="internal-meta"><strong>Public submission · Roll number: ' + escapeHTML(report.roll_number || "Not supplied") + '</strong></div>' +
+    ? '<div class="internal-meta"><strong>Public submission · Roll number: ' + escapeHTML(report.roll_number || "Not supplied") + '</strong>' +
+      (report.contact_phone ? '<p>Phone: <a href="tel:' + escapeHTML(report.contact_phone) + '">' + escapeHTML(report.contact_phone) + '</a></p>' : '') +
+      (report.contact_email ? '<p>Email: <a href="mailto:' + escapeHTML(report.contact_email) + '">' + escapeHTML(report.contact_email) + '</a></p>' : '') +
+      '</div>' +
       '<label class="wide">Verified roll number<input name="verified_roll_number" required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the physical college ID"></label>' +
       '<label class="checkbox-line wide"><input type="checkbox" name="identity_verified_in_person" required> I physically checked the reporter’s college ID and confirmed the roll number.</label>'
     : "";
@@ -2185,6 +2188,8 @@ async function submitPublicReport(event) {
   const body = {
     report_type: type,
     roll_number: field("publicRollNumber").value.trim(),
+    contact_phone: field("publicContactPhone").value.trim() || null,
+    contact_email: field("publicContactEmail").value.trim().toLowerCase() || null,
     title: field("publicTitle").value.trim(),
     category: field("publicCategory").value,
     description: field("publicDescription").value.trim(),
