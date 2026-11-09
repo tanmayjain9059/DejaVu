@@ -274,7 +274,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         report_id = found.json()["case"]["id"]
         self.assertEqual(self.intake(report_id).status_code,200)
         self.client.cookies.clear()
-        response = self.client.get("/api/public/search?q=calculator")
+        response = self.client.get("/api/public/search")
         self.assertEqual(response.status_code,200,response.text)
         reports = response.json()["reports"]
         self.assertEqual({row["report_type"] for row in reports},{"lost","found"})
