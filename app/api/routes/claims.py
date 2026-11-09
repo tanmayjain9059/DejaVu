@@ -67,6 +67,12 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
                 status_code=409,
                 detail=f"You have reached the limit of {MAX_OPEN_CLAIMS_PER_STUDENT} open claims. Wait for a review or use the existing claim's follow-up controls.",
             )
+        approved_claim = conn.execute(
+            "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
+            (body.report_id,),
+        ).fetchone()
+        if approved_claim:
+            raise HTTPException(status_code=409, detail="A claim is already approved for collection. No additional claims can be submitted.")
         active = conn.execute(
             "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
             (body.report_id,)
