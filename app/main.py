@@ -195,7 +195,15 @@ def health_ready():
         )
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "failed_check": readiness_stage},
+            content={
+                "status": "not_ready",
+                "failed_check": readiness_stage,
+                "fix_hint": {
+                    "database_connection": "Check DATABASE_URL, database availability, network access and credentials.",
+                    "canonical_schema": "Run the latest database migrations and verify the application database role can read reports and claims.",
+                    "object_storage": "Check the private bucket name, endpoint, region, access key, secret key and bucket permissions.",
+                }.get(readiness_stage, "Inspect the server logs for the failing readiness dependency."),
+            },
         )
     return {
         "status": "ready",
