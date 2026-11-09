@@ -1095,8 +1095,6 @@ async function loadMyClaims(append = false) {
     const activeCount = Number.isFinite(Number(data.active_count))
       ? Number(data.active_count)
       : claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
-    $("#claimNavCount").textContent = String(activeCount);
-    $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
     const html = claims.map((claim) => {
       let guidance = "Your claim is awaiting review by authorised office staff.";
       if (claim.status === "disputed") guidance = claim.appeal_note
