@@ -2664,8 +2664,9 @@ body:has(.public-finn-slot #finnDock) .public-finn-slot #finnDock {
 
 /* Public-first navigation: same warm liquid-glass language as the office console. */
 .public-topbar {
-  position: sticky;
-  top: 10px;
+  /* Keep the public nav in document flow so it cannot cover focused form controls. */
+  position: relative;
+  top: auto;
   z-index: 50;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
