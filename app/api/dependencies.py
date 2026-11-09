@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import Header, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from app.core.database import connect_db, now_iso
-from app.core.config import AUTH_PROVIDER, OFFICE_USER_EMAILS, ALLOWED_EMAIL_DOMAINS
+from app.core.config import AUTH_PROVIDER, OFFICE_USER_EMAILS
 from app.services.supabase_auth import verify_supabase_access_token
 
 def user_payload(row: sqlite3.Row) -> dict[str, Any]:
@@ -24,14 +24,11 @@ async def authenticated_user(
         auth_id = str(identity["id"])
         email = str(identity["email"]).strip().lower()
         is_office = email in OFFICE_USER_EMAILS
-        email_domain = email.rsplit("@", 1)[-1] if "@" in email else ""
-        if ALLOWED_EMAIL_DOMAINS and email_domain not in ALLOWED_EMAIL_DOMAINS:
-            raise HTTPException(status_code=403, detail="Use an approved college email address to access LostLink.")
-        if not is_office and not ALLOWED_EMAIL_DOMAINS:
-            raise HTTPException(status_code=403, detail="Student sign-in is not configured. Set ALLOWED_EMAIL_DOMAINS to your verified college domain.")
+        if not is_office:
+            raise HTTPException(status_code=403, detail="Only authorised office staff can access the authenticated workspace.")
         metadata = identity.get("user_metadata") or {}
         display_name = str(metadata.get("display_name") or metadata.get("full_name") or email.split("@")[0]).strip()[:120]
-        expected_role = "office" if is_office else "student"
+        expected_role = "office"
         with connect_db() as conn:
             row = conn.execute("SELECT * FROM users WHERE supabase_user_id=?", (auth_id,)).fetchone()
             if row is None:
@@ -71,7 +68,7 @@ async def authenticated_user(
     if not row:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
-    if row["role"] not in {"office", "student"}:
+    if row["role"] != "office":
         request.session.clear()
         raise HTTPException(status_code=403, detail="This account does not have a valid LostLink role.")
     return user_payload(row)
