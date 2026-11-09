@@ -86,6 +86,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('id="categorySuggestion"', self.html)
         self.assertIn('$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);', self.js)
         self.assertIn('/api/reports/category-suggestion', self.js)
+        self.assertIn("Find AI-assisted matches", self.js)
         self.assertIn('data-use-category=', self.js)
 
     def test_live_notification_polling_is_enabled(self):
