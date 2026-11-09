@@ -2048,6 +2048,10 @@ function getPublicAccess(reference, roll, suppliedSecret) {
   if (!normalizedRoll || !secret) return null;
   return {"X-LostLink-Roll-Number": normalizedRoll, "X-LostLink-Tracking-Secret": secret};
 }
+function publicMatchClaimButton(report) {
+  if (!report || report.report_type !== "found" || report.status !== "available") return "";
+  return '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || report.reference || "") + '">Claim this item <span aria-hidden="true">→</span></button></div>';
+}
 function openPublicClaimDialog(report) {
   if (!report || !report.id || report.report_type !== "found" || report.status !== "available") {
     showToast("This Found item is no longer available for claims. Refresh the list.", true); return;
@@ -2074,7 +2078,7 @@ async function openPublicClaimById(reportId, publicRef) {
 
 let selectedPublicFoundId = null;
 document.addEventListener("click", event => {
-  const button = event.target.closest("#publicBrowseResults [data-public-claim]");
+  const button = event.target.closest("[data-public-claim]");
   if (!button || button.disabled) return;
   event.preventDefault();
   event.stopPropagation();
@@ -2254,7 +2258,7 @@ async function submitPublicReport(event) {
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(item.title) + '</h3><p>' +
         escapeHTML(item.public_ref || item.reference) + ' · ' + escapeHTML(categoryLabel(item.category)) +
         '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
-        escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p></article>';
+        escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p>' + publicMatchClaimButton(item) + '</article>';
     }).join("");
     $("#publicTrackResult").innerHTML = '<p>' + escapeHTML("Report submitted. Reference: " + result.case.reference + ". Private updates are available in this browser.") + '</p>' +
       (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again from this browser.</p>') +
@@ -2283,7 +2287,7 @@ async function refreshPublicMatches(reference, credentials, target) {
       return '<article class="list-card"><strong>' + escapeHTML(report.title || "Possible item") + '</strong><p>' +
         escapeHTML(report.public_ref || report.reference || "") + ' · ' + escapeHTML(report.location_area || report.location || "Campus") +
         '</p><span class="status-pill">' + escapeHTML(match.strength || "Suggested match") + '</span>' +
-        (reasons.length ? '<p class="field-hint">' + escapeHTML(reasons.join(" · ")) + '</p>' : '') + '</article>';
+        (reasons.length ? '<p class="field-hint">' + escapeHTML(reasons.join(" · ")) + '</p>' : '') + publicMatchClaimButton(report) + '</article>';
     }).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
   } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
 }
