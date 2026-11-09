@@ -1,7 +1,10 @@
 import os
+import sys
+import types
 import unittest
 from unittest.mock import patch
 
+from app.services import image_enrichment
 from app.services.image_enrichment import _attributes, _keywords, enrich_image, model_status
 
 
@@ -29,6 +32,23 @@ class ImageEnrichmentTests(unittest.TestCase):
         self.assertEqual(status["state"], "disabled")
         self.assertFalse(status["enabled"])
         self.assertIn("model", status)
+
+    def test_caption_model_loader_uses_configured_revision(self):
+        calls = []
+        fake_module = types.ModuleType("transformers")
+        fake_module.pipeline = lambda *args, **kwargs: calls.append((args, kwargs)) or object()
+        with patch.dict(os.environ, {
+            "USE_IMAGE_ENRICHMENT": "true",
+            "IMAGE_CAPTION_MODEL": "test/blip",
+            "IMAGE_CAPTION_MODEL_REVISION": "test-revision",
+        }), patch.dict(sys.modules, {"transformers": fake_module}), \
+             patch.object(image_enrichment, "_MODEL_ATTEMPTED", False), \
+             patch.object(image_enrichment, "_CAPTION_PIPELINE", None):
+            pipeline = image_enrichment._load_pipeline()
+            self.assertIsNotNone(pipeline)
+        self.assertEqual(calls[0][0], ("image-to-text",))
+        self.assertEqual(calls[0][1]["model"], "test/blip")
+        self.assertEqual(calls[0][1]["revision"], "test-revision")
 
     def test_unknown_attributes_remain_empty(self):
         self.assertEqual(
