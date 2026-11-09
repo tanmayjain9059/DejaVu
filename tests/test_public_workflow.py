@@ -92,6 +92,20 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "sensitivity_level":1,
         })
 
+    def test_public_category_suggestion_is_rate_limited_and_advisory(self):
+        payload = {
+            "title": "Navy backpack",
+            "description": "A dark blue backpack with two front pockets and a zipper.",
+            "brand": None, "primary_color": "Navy", "visible_features": "Two front pockets",
+        }
+        response = self.client.post("/api/public/category-suggestion", json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        suggestion = response.json()["suggestion"]
+        self.assertEqual(suggestion["status"], "suggested")
+        self.assertEqual(suggestion["category"], "bags_wallets")
+        self.assertTrue(suggestion["requires_confirmation"])
+        self.assertEqual(suggestion["engine"], "keyword_fallback")
+
     def test_readiness_reports_database_backend_and_canonical_schema(self):
         response = self.client.get("/health/ready")
         self.assertEqual(response.status_code,200,response.text)
