@@ -210,5 +210,18 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('reportPage.querySelector("#publicDescriptionFound")', self.js)
         self.assertIn('form.id === "publicFoundReportForm"', self.js)
 
+    def test_global_theme_uses_consistent_bone_beige_palette(self):
+        self.assertIn("--ll-paper: #f2e9dc", self.css)
+        self.assertIn("--ll-primary: #96552f", self.css)
+        self.assertIn("--canvas-bg: var(--ll-paper)", self.css)
+        self.assertIn("--water-blue: var(--ll-primary)", self.css)
+        self.assertNotIn("#dcebf5", self.css.lower())
+        self.assertNotIn("#0284c7", self.css.lower())
+        self.assertNotIn("#2563eb", self.css.lower())
+        self.assertNotIn("#00a2ff", self.css.lower())
+        self.assertNotIn("rgba(37,99,235", self.css.lower())
+        self.assertIn(".report-kind-guidance", self.css)
+        self.assertIn(".button-primary", self.css)
+
 if __name__ == "__main__":
     unittest.main()
