@@ -2,6 +2,7 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
+let loginMode = "office";
 let supabaseClient = null;
 let supabaseAccessToken = null;
 const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
@@ -537,9 +538,9 @@ function showLogin() {
 }
 
 function enterApp(user) {
-  if (!user || user.role !== "office") {
+  if (!user || !["student", "office"].includes(user.role)) {
     showPublicHome();
-    throw new Error("Student accounts are disabled. Public reporting does not require sign-in.");
+    throw new Error("This account does not have a valid LostLink role.");
   }
   currentUser = user;
   if (usingMockApi) mockStore.session = mockCopy(user);
@@ -1885,6 +1886,7 @@ function showPublicHome() {
   currentUser = null;
   $("#loginView").classList.remove("hidden");
   $("#loginView").classList.remove("office-access-open");
+  loginMode = "office";
   $("#appView").classList.add("hidden");
   $("#officeLoginPanel").classList.add("hidden");
   $("#publicHomeContent").classList.remove("hidden");
@@ -1957,13 +1959,19 @@ async function loadPublicFound() {
     $("#publicBrowseEmpty").textContent = error.message;
   }
 }
-function openPublicOfficeSignIn() {
-  setPublicNavActive("office");
-  setFinnMessage("Welcome to the campus desk. This sign-in is for authorised office staff.", false);
+function openPublicSignIn(mode = "office") {
+  loginMode = mode === "student" ? "student" : "office";
+  const isStudent = loginMode === "student";
+  setPublicNavActive(isStudent ? "home" : "office");
+  setFinnMessage(isStudent
+    ? "Welcome back. Sign in with your verified college account to open your student dashboard."
+    : "Welcome to the campus desk. This sign-in is for authorised office staff.", false);
   $("#loginView").classList.add("office-access-open");
-  $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
-  $("#loginPanelTitle").textContent = "Office staff sign in";
-  $("#loginPanelCopy").textContent = "Authorised campus staff only. Student accounts are not available.";
+  $("#loginPanelKicker").textContent = isStudent ? "STUDENT ACCOUNT ACCESS" : "OFFICE STAFF ACCESS";
+  $("#loginPanelTitle").textContent = isStudent ? "Student sign in" : "Office staff sign in";
+  $("#loginPanelCopy").textContent = isStudent
+    ? "Use your verified college email and Supabase password to access your reports, claims and activity."
+    : "Authorised campus staff only. Office access is restricted to approved staff email addresses.";
   $("#loginError").textContent = "";
   $("#loginForm").reset();
   $("#publicHomeContent").classList.add("hidden");
@@ -1972,6 +1980,8 @@ function openPublicOfficeSignIn() {
   $("#officeLoginPanel").classList.remove("hidden");
   $("#loginEmail").focus();
 }
+function openPublicOfficeSignIn() { openPublicSignIn("office"); }
+function openPublicStudentSignIn() { openPublicSignIn("student"); }
 // One document-level handler owns all public navigation actions. This avoids
 // losing click behaviour when a public panel or navigation item is replaced.
 document.addEventListener("click", event => {
@@ -1986,6 +1996,7 @@ document.addEventListener("click", event => {
 $("#publicBrowseButton").addEventListener("click",() => showPublicDestination("browse"));
 $("#publicTrackButton").addEventListener("click",() => showPublicDestination("track"));
 $("#publicOfficeButton").addEventListener("click",openPublicOfficeSignIn);
+$("#publicStudentButton").addEventListener("click",openPublicStudentSignIn);
 $("#closeOfficeAccess").addEventListener("click",showPublicHome);
 // Delegate public actions from the document so they continue working if
 // public panels are re-rendered or their buttons are replaced.
@@ -2309,7 +2320,7 @@ async function start() {
       supabaseAccessToken = data && data.session ? data.session.access_token : null;
       if (!supabaseAccessToken) { showPublicHome(); return; }
       const profile = await api("/api/me");
-      if (!profile.user || profile.user.role !== "office") throw new Error("This account is not authorised for office access.");
+      if (!profile.user || !["student", "office"].includes(profile.user.role)) throw new Error("This account is not authorised for LostLink.");
       enterApp(profile.user);
     } catch (error) {
       supabaseAccessToken = null;
@@ -2340,18 +2351,29 @@ $("#loginForm").addEventListener("submit",async event => {
       if (error) throw error;
       supabaseAccessToken = data.session.access_token;
       const profile = await api("/api/me");
-      if (!profile.user || profile.user.role !== "office") {
+      if (!profile.user || !["student", "office"].includes(profile.user.role)) {
         await supabaseClient.auth.signOut();
         supabaseAccessToken = null;
-        throw new Error("This account is not authorised for office access.");
+        throw new Error("This account is not authorised for LostLink.");
+      }
+      if (loginMode === "student" && profile.user.role !== "student") {
+        await supabaseClient.auth.signOut();
+        supabaseAccessToken = null;
+        throw new Error("This email is registered for office access. Use Office staff sign in.");
+      }
+      if (loginMode === "office" && profile.user.role !== "office") {
+        await supabaseClient.auth.signOut();
+        supabaseAccessToken = null;
+        throw new Error("This account is not on the authorised office staff list.");
       }
       enterApp(profile.user);
     } else {
       const result = await api("/api/login",{method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
+      if (loginMode !== "office") throw new Error("Student sign-in requires configured Supabase college authentication. Public reporting remains available without an account.");
       if (!result.user || result.user.role !== "office") throw new Error("Only authorised office staff can sign in.");
       enterApp(result.user);
     }
-    showToast("Office staff signed in successfully.",false);
+    showToast(loginMode === "student" ? "Student signed in successfully." : "Office staff signed in successfully.",false);
   } catch(error) { $("#loginError").textContent = error.message; }
 });
 
