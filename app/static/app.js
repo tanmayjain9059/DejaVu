@@ -763,7 +763,7 @@ function navigate(view) {
   if (!currentUser) return;
   if (view !== "my-reports") selectedLostReportForMatchId = null;
   if (view === "office" && currentUser.role !== "office") view = "start";
-  if (currentUser.role === "office" && ["start", "report", "my-reports", "my-claims", "activity"].includes(view)) view = "office";
+  if (currentUser.role === "office" && ["my-reports", "my-claims", "activity"].includes(view)) view = "office";
   const sections = {
     start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
@@ -1992,7 +1992,10 @@ document.addEventListener("click", (event) => {
     $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
   }
   const reportKind = event.target.closest("[data-report-kind]");
-  if (reportKind) setReportMode(reportKind.dataset.reportKind);
+  if (reportKind) {
+    setReportMode(reportKind.dataset.reportKind);
+    navigate("report");
+  }
   const detailButton = event.target.closest("[data-view-details]");
   if (detailButton) openItemDetails(detailButton.dataset.viewDetails);
   const notificationMatches = event.target.closest("[data-notification-matches]");
@@ -2037,7 +2040,7 @@ $("#reportImage").addEventListener("change", () => {
 });
 $("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("start"); });
 if ($("#backToStartBtn")) $("#backToStartBtn").addEventListener("click", () => { resetReportMode(); navigate("start"); });
-if ($("#homeBrandLink")) $("#homeBrandLink").addEventListener("click", (e) => { e.preventDefault(); navigate(currentUser && currentUser.role === "office" ? "office" : "start"); });
+if ($("#homeBrandLink")) $("#homeBrandLink").addEventListener("click", (e) => { e.preventDefault(); navigate("start"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
   $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
