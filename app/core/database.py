@@ -112,7 +112,7 @@ class PostgresCompatConnection:
     def translate(sql: str) -> tuple[str, bool]:
         statement = sql.strip()
         if statement.upper() == "BEGIN IMMEDIATE":
-            return "SELECT pg_advisory_xact_lock(730021)", True
+            return "SELECT 1", True
 
         ignored_insert = re.match(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", statement, re.I)
         replace_insert = re.match(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+claim_verifications\b", statement, re.I)
@@ -226,6 +226,32 @@ def connect_db():
         raise
     finally:
         conn.close()
+
+
+_ROW_LOCK_TARGETS = {
+    ("users", "id"), ("reports", "id"), ("reports", "public_ref"),
+    ("claims", "id"), ("claims", "public_ref"),
+}
+
+
+def lock_row(conn, table: str, key_column: str, value: Any) -> None:
+    """Lock one workflow entity on PostgreSQL; SQLite BEGIN IMMEDIATE serializes writers."""
+    if (table, key_column) not in _ROW_LOCK_TARGETS:
+        raise ValueError("Unsupported row-lock target.")
+    if isinstance(conn, PostgresCompatConnection):
+        conn.execute(
+            f"SELECT 1 FROM {table} WHERE {key_column}=? FOR UPDATE",
+            (value,),
+        ).fetchone()
+
+
+def lock_advisory_key(conn, namespace: str, key: str) -> None:
+    """Serialize one logical key such as one IP/action rate-limit bucket."""
+    if isinstance(conn, PostgresCompatConnection):
+        conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(?))",
+            (namespace + ":" + key,),
+        )
 
 
 def table_columns(conn, table_name: str) -> set[str]:
