@@ -561,7 +561,7 @@ function enterApp(user) {
     ? "Confirm physical intake and review claims before authorising the next step."
     : "Search office-held items, compare possible matches and submit a private claim.";
   $("#studentNav").classList.remove("hidden");
-  navigate(user.role === "office" ? "office" : "browse");
+  navigate(user.role === "office" ? "office" : "start");
   startNotificationPolling();
 }
 
