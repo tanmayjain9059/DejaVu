@@ -98,8 +98,6 @@ def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, windo
     address = request.client.host if request.client else "unknown"
     hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")
     ip_hash = hmac.new(hash_key, address.encode("utf-8"), hashlib.sha256).hexdigest()
-    retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
-    conn.execute("DELETE FROM public_rate_limits WHERE created_at < ?", (retention_cutoff,))
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
     count = conn.execute(
         "SELECT COUNT(*) AS n FROM public_rate_limits WHERE ip_hash=? AND action=? AND created_at>=?",
@@ -301,6 +299,10 @@ def ensure_public_schema() -> None:
         if DATABASE_URL:
             # Serialise one-time schema setup across simultaneously starting workers.
             conn.execute("SELECT pg_advisory_xact_lock(730022)")
+        # Prune expired anonymous rate-limit digests at startup, not on every
+        # public request. The table contains no raw IP addresses.
+        retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
+        conn.execute("DELETE FROM public_rate_limits WHERE created_at < ?", (retention_cutoff,))
         conn.execute(
             """CREATE TABLE IF NOT EXISTS public_schema_migrations (
                 version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL
