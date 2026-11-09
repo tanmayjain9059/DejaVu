@@ -2,7 +2,7 @@
 import re
 import unittest
 
-from app.core.database import PostgresCompatConnection
+from app.core.database import PostgresCompatConnection, lock_advisory_key, lock_row
 
 
 class PostgresSqlTranslationTests(unittest.TestCase):
@@ -78,10 +78,50 @@ class PostgresSqlTranslationTests(unittest.TestCase):
             "SELECT '100%%' AS literal, value FROM items WHERE id=%s -- 50% comment",
         )
 
-    def test_begin_immediate_uses_transaction_scoped_advisory_lock(self):
+    def test_begin_immediate_starts_transaction_without_global_advisory_lock(self):
         sql, is_lock = PostgresCompatConnection.translate("BEGIN IMMEDIATE")
         self.assertTrue(is_lock)
-        self.assertEqual(sql, "SELECT pg_advisory_xact_lock(730021)")
+        self.assertEqual(sql, "SELECT 1")
+
+    def test_row_lock_uses_targeted_for_update_query(self):
+        class Cursor:
+            def fetchone(self):
+                return None
+
+        class FakeConnection:
+            def __init__(self):
+                self.calls = []
+
+            def execute(self, sql, parameters):
+                self.calls.append((sql, parameters))
+                return Cursor()
+
+        raw = FakeConnection()
+        lock_row(PostgresCompatConnection(raw), "reports", "id", "report-1")
+        self.assertEqual(
+            raw.calls,
+            [("SELECT 1 FROM reports WHERE id=%s FOR UPDATE", ("report-1",))],
+        )
+
+    def test_advisory_lock_is_scoped_to_one_logical_key(self):
+        class Cursor:
+            def fetchone(self):
+                return None
+
+        class FakeConnection:
+            def __init__(self):
+                self.calls = []
+
+            def execute(self, sql, parameters):
+                self.calls.append((sql, parameters))
+                return Cursor()
+
+        raw = FakeConnection()
+        lock_advisory_key(PostgresCompatConnection(raw), "public-rate:report", "192.0.2.10")
+        self.assertEqual(
+            raw.calls,
+            [("SELECT pg_advisory_xact_lock(hashtext(%s))", ("public-rate:report:192.0.2.10",))],
+        )
 
     def test_autoincrement_schema_is_converted_to_serial(self):
         ddl = re.sub(
