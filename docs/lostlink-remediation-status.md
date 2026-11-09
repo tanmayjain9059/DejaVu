@@ -1,8 +1,7 @@
 # LostLink issue-register remediation status
 
-Branch: `fix/lostlink-issue-register-hardening`
-Target: `feat/lostlink-unified-public-workflow`
-Status: implementation changes are committed to the review branch; merge and live browser verification are still release gates.
+Branch: `feat/lostlink-unified-public-workflow`
+Status: remediation merged into the deployment branch. Render backend is live on commit `08780bd33a46380541bfc0ae8229d1eec5b3e41e`; the app starts successfully and the service returned HTTP 200 after deployment. Browser end-to-end smoke audit is being rerun against the updated private-tracking-link flow.
 
 ## Implemented in this branch
 
@@ -26,22 +25,23 @@ Status: implementation changes are committed to the review branch; merge and liv
 | Startup/migrations | Schema bootstrap is serialised; legacy image fingerprint backfill is bounded; expired rate-limit digests are pruned at startup rather than on each request. |
 | References/timeouts | Increased report reference entropy, added bounded API timeouts and cold-start retry messaging, and standardised certificate serial years to UTC. |
 | Static frontend | Added checks for duplicate DOM IDs, missing literal JS selectors, third-party scripts, inline handlers, CSP and duplicate public workflow routes. |
-| CI/deployment | Added GitHub CI for Python compile, JavaScript syntax and tests, plus a manual Cloudflare Pages build/deploy workflow. |
+| CI/deployment | Added GitHub CI for Python compile, JavaScript syntax and tests, Chromium responsive browser audit, plus a manual Cloudflare Pages build/deploy workflow. |
 
 ## Release gates and dependencies
 
-1. **CI execution:** The GitHub CI workflow is committed. Its result must be observed before merge. The existing Vercel status is a platform build-rate-limit failure (`upgradeToPro=build-rate-limit`), not a passing code check. Do not treat that status as successful.
+1. **CI execution:** The latest application CI run passed (173 tests, Python compilation and JavaScript syntax). The PostgreSQL integration suite also passed, including public workflow, competing claims, race regressions and SQLite-to-PostgreSQL migration. A Chromium audit is being rerun after updating its retired tracking-field selectors. Vercel still reports a platform build-rate-limit failure (`upgradeToPro=build-rate-limit`), not a source-code test failure.
 2. **Cloudflare deployment credentials:** The Pages workflow requires repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and repository variable `CLOUDFLARE_PAGES_PROJECT_NAME`. `LOSTLINK_API_ORIGIN` is optional and defaults to the Render API origin.
 3. **DPDP retention approval:** No college-approved retention periods or backup-deletion schedule were supplied. The app therefore does not invent retention durations or automatically purge closed cases. An authorised office reviewer must assess erasure requests and document any retention basis. Provider-side Supabase Auth deletion remains an administrator action.
 4. **Identity assurance:** The public workflow intentionally has no student login. A roll number is not proof of identity. Campus office staff must verify identity and ownership before physical handover; a spoofable roll number is never used as a security principal.
-5. **PostgreSQL integration:** Row-lock unit tests are added, but concurrency must still be exercised against the actual Supabase PostgreSQL instance with simultaneous same-report and same-user claims before production sign-off.
-6. **Live browser smoke tests:** After merge/deploy, test Lost and Found submission, private tracking, matching refresh, claim evidence, office intake, competing claims, handover, photo-consent withdrawal, privacy export/request and office privacy review.
-7. **Frontend origins:** Confirm the exact production `FRONTEND_ORIGINS`, HTTPS redirect and Cloudflare response headers in the deployed environment. Render secret values are intentionally not copied into source control.
+5. **PostgreSQL integration:** The GitHub PostgreSQL 16 integration suite passed targeted row-lock and advisory-lock workflows, concurrent competing claims, duplicate handover, closure-versus-approval race, uniqueness guards, and the SQLite-to-PostgreSQL migration smoke test. Repeat concurrency tests against the actual Supabase PostgreSQL instance before production sign-off.
+6. **Live browser smoke tests:** Render deployment is live, but full interactive browser verification remains pending. Test Lost and Found submission, private tracking, matching refresh, claim evidence, office intake, competing claims, handover, photo-consent withdrawal, privacy export/request and office privacy review.
+7. **Frontend origins:** Render has `FRONTEND_ORIGINS`, HTTPS-only sessions, request-origin enforcement and the API host allowlist configured. Confirm the final production Cloudflare response headers and exact origin set after frontend deployment. Render secret values are intentionally not copied into source control.
 
 ## Security design notes
 
 - Public tracking secrets are high-entropy, displayed once and stored only as hashes.
 - Public request rate limits use the validated Cloudflare edge IP, not arbitrary forwarding headers.
+- PostgreSQL pooled connections disable automatic prepared statements to remain compatible with transaction-pooler deployments.
 - AI is advisory. No model score establishes ownership or authorises a handover.
 - A photo can be stored privately for human office review without consenting to AI photo processing.
 - Erasure is not automatically applied to an open ownership dispute or custody record. Office staff must review the case and record the action taken.
