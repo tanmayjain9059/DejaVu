@@ -2026,13 +2026,37 @@ document.addEventListener("click", event => {
 });
 $("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
 const publicAccessMemory = new Map();
+function buildPublicTrackingUrl(reference, roll, secret) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("track", reference);
+  url.searchParams.set("roll", String(roll).trim().toUpperCase());
+  url.hash = "secret=" + encodeURIComponent(secret);
+  return url.toString();
+}
+function parsePublicTrackingUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim(), window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    const reference = url.searchParams.get("track");
+    const roll = url.searchParams.get("roll");
+    const secret = new URLSearchParams(url.hash.replace(/^#/, "")).get("secret");
+    if (!reference || !roll || !secret || secret.length < 20) return null;
+    return {reference, roll: roll.trim().toUpperCase(), secret};
+  } catch (_) { return null; }
+}
+function privateTrackingReceiptMarkup(message, trackingUrl) {
+  return '<p>' + escapeHTML(message) + '</p><p><a class="button button-liquid button-small" href="' +
+    escapeHTML(trackingUrl) + '">Open private tracking link ↗</a></p>' +
+    '<p class="field-hint">Keep this link private. Anyone who has it can view this case status.</p>';
+}
 function storePublicAccess(reference, roll, secret) {
   if (!reference || !roll || !secret) return;
   const access = {roll: String(roll).trim().toUpperCase(), secret: String(secret)};
   publicAccessMemory.set(reference, access);
   try { sessionStorage.setItem("lostlink:private-access:" + reference, JSON.stringify(access)); } catch (_) {}
-  const secretField = $("#publicTrackSecret");
-  if (secretField) secretField.value = access.secret;
+  const linkField = $("#publicTrackLink");
+  if (linkField) linkField.value = buildPublicTrackingUrl(reference, access.roll, access.secret);
 }
 function getPublicAccess(reference, roll, suppliedSecret) {
   const normalizedRoll = String(roll || "").trim().toUpperCase();
@@ -2106,10 +2130,11 @@ $("#publicClaimForm").addEventListener("submit", async event => {
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({roll_number:roll,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
-    $("#publicTrackReference").value = result.claim.reference;
-    $("#publicTrackRoll").value = roll;
     storePublicAccess(result.claim.reference, roll, result.tracking_secret);
-    $("#publicTrackResult").textContent = "Claim submitted. Save the private tracking secret shown above; you will need it to access this claim from another browser.";
+    const claimTrackingUrl = $("#publicTrackLink").value;
+    $("#publicTrackResult").innerHTML = privateTrackingReceiptMarkup(
+      "Claim submitted. Your private tracking link is ready.", claimTrackingUrl
+    );
     $("#publicClaimDialog").close();
     selectedPublicFoundId = null;
     showPublicDestination("track");
@@ -2233,9 +2258,8 @@ async function submitPublicReport(event) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)
     });
-    $("#publicTrackReference").value = result.case.reference;
-    $("#publicTrackRoll").value = body.roll_number;
     storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
+    const reportTrackingUrl = $("#publicTrackLink").value;
     let photoStatus = "";
     const photo = field("publicImage").files && field("publicImage").files[0];
     if (photo) {
@@ -2259,8 +2283,9 @@ async function submitPublicReport(event) {
         '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
         escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p>' + publicMatchClaimButton(item) + '</article>';
     }).join("");
-    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML("Report submitted. Reference: " + result.case.reference + ". Save the private tracking secret shown above to access this case from another browser or device.") + '</p>' +
-      (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again from this browser.</p>') +
+    $("#publicTrackResult").innerHTML = privateTrackingReceiptMarkup(
+      "Report submitted. Reference: " + result.case.reference + ".", reportTrackingUrl
+    ) + (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again later.</p>') +
       (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
     form.reset();
     showPublicDestination("track");
@@ -2290,27 +2315,31 @@ async function refreshPublicMatches(reference, credentials, target) {
     }).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
   } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
 }
-$("#copyPublicTrackingSecret").addEventListener("click", async () => {
-  const value = $("#publicTrackSecret").value;
-  if (!value) { showToast("No tracking secret is available to copy.", true); return; }
-  try { await navigator.clipboard.writeText(value); showToast("Private tracking secret copied.", false); }
-  catch (_) { $("#publicTrackSecret").focus(); $("#publicTrackSecret").select(); showToast("Select and copy the tracking secret manually.", false); }
+$("#copyPublicTrackingLink").addEventListener("click", async () => {
+  const field = $("#publicTrackLink");
+  const value = field.value.trim();
+  if (!value) { showToast("Paste or open the private tracking link from your receipt first.", true); return; }
+  try { await navigator.clipboard.writeText(value); showToast("Private tracking link copied.", false); }
+  catch (_) { field.focus(); field.select(); showToast("Select and copy the private tracking link.", false); }
 });
 $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
-  const reference = $("#publicTrackReference").value.trim();
-  const roll = $("#publicTrackRoll").value.trim().toUpperCase();
   const resultNode = $("#publicTrackResult");
-  resultNode.textContent = "Checking private case access…";
-  const suppliedSecret = $("#publicTrackSecret").value.trim();
-  const credentials = getPublicAccess(reference, roll, suppliedSecret);
-  if (!credentials) {
+  const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+  if (!access) {
     lastPublicTracking = null;
-    resultNode.textContent = "Enter the private tracking secret you received when submitting this report or claim. Your roll number alone cannot unlock private case details.";
+    resultNode.textContent = "Paste the private LostLink tracking link from your submission receipt. Roll number alone cannot unlock private case details.";
     return;
   }
-  if (suppliedSecret) storePublicAccess(reference, roll, suppliedSecret);
-  else $("#publicTrackSecret").value = credentials["X-LostLink-Tracking-Secret"];
+  const {reference, roll, secret} = access;
+  resultNode.textContent = "Checking private case access…";
+  const credentials = getPublicAccess(reference, roll, secret);
+  if (!credentials) {
+    lastPublicTracking = null;
+    resultNode.textContent = "This private tracking link is incomplete. Open the original link from your receipt.";
+    return;
+  }
+  storePublicAccess(reference, roll, secret);
   try {
     const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
     lastPublicTracking = {reference,roll,data};
@@ -2337,7 +2366,7 @@ $("#publicTrackForm").addEventListener("submit", async event => {
 $("#publicTrackResult").addEventListener("click", async event => {
   const state = lastPublicTracking;
   if (!state) return;
-  const credentials = getPublicAccess(state.reference, state.roll, $("#publicTrackSecret").value.trim());
+  const credentials = getPublicAccess(state.reference, state.roll);
   if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
   if (event.target.closest("[data-public-refresh-matches]")) {
     await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
@@ -2650,4 +2679,11 @@ async function loadReportForClaimByRef(reportId, publicRef) {
 }
 
 observeAuthImages();
-start();
+start().then(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("track")) {
+    showPublicDestination("track");
+    $("#publicTrackLink").value = window.location.href;
+    $("#publicTrackForm").requestSubmit();
+  }
+});
