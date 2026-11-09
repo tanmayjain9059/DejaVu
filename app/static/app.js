@@ -7,7 +7,8 @@ let supabaseAccessToken = null;
 const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
 
 function createSupabaseRestAuthClient(supabaseUrl, anonKey) {
-  const base = String(supabaseUrl || "").replace(/\\/$/, "");
+  let base = String(supabaseUrl || "");
+  while (base.endsWith("/")) base = base.slice(0, -1);
   const storageKey = "lostlink:supabase-office-session";
   let session = null;
   try {
