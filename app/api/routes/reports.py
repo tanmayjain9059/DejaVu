@@ -341,11 +341,8 @@ async def upload_report_image(
                 raise HTTPException(status_code=403, detail="You cannot update this report.")
             if not is_office and row["report_type"] == "found" and row["status"] != "awaiting_intake":
                 raise HTTPException(status_code=409, detail="A found item's photo can only be changed before office intake.")
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(
-                    status_code=409,
-                    detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
-                )
+            if is_office and image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(status_code=409, detail="This image cannot be attached. Please choose another image.")
             old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
