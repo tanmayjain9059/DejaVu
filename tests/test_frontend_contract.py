@@ -92,6 +92,20 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("buildPublicTrackingUrl", self.js)
         self.assertIn('new URLSearchParams(link.hash.slice(1)).get("secret")', self.js)
 
+    def test_all_student_and_public_claim_entry_points_are_wired(self):
+        for selector in (
+            '#publicBrowseResults',
+            '#publicTrackResult',
+            '#browseResults',
+            '#matchResults',
+            '#itemDetailsClaimButton',
+            '#claimForm',
+        ):
+            self.assertIn(selector, self.js)
+        self.assertIn('submitPublicClaim(button.dataset.publicClaim)', self.js)
+        self.assertIn('loadReportForClaimByRef(button.dataset.claim', self.js)
+        self.assertIn('addEventListener("submit", submitClaim)', self.js)
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
