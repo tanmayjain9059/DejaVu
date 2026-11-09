@@ -87,7 +87,6 @@ def _run_supabase_profile(monkeypatch, identity, *, allowed_domains, office_emai
         yield connection
 
     monkeypatch.setattr(auth_dependencies, "AUTH_PROVIDER", "supabase")
-    monkeypatch.setattr(auth_dependencies, "ALLOWED_EMAIL_DOMAINS", set(allowed_domains))
     monkeypatch.setattr(auth_dependencies, "OFFICE_USER_EMAILS", set(office_emails))
     monkeypatch.setattr(auth_dependencies, "verify_supabase_access_token", lambda token: identity)
     monkeypatch.setattr(auth_dependencies, "connect_db", fake_connect_db)
