@@ -2208,3 +2208,7 @@ button:disabled { opacity:.55; cursor:not-allowed; transform:none !important; }
   .brand-text { font-size: 14px; }
   .profile-liquid-pill { padding-left: 7px; padding-right: 7px; }
 }
+
+
+/* Public found-item image previews are watermarked by the server. */
+.public-item-image { display: block; width: 100%; max-height: 190px; object-fit: cover; border-radius: 14px; margin: 0 0 12px; }
