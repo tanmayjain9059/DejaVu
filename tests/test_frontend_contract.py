@@ -77,8 +77,8 @@ class FrontendContractTests(unittest.TestCase):
         }
         missing = [view for view in self.views if expected.get(view) not in self.id_set]
         self.assertEqual(missing, [], f"Navigation views missing their section: {missing}")
-        self.assertTrue({"start", "browse", "report", "notifications"}.issubset(self.views))
-        self.assertTrue({"my-reports", "my-claims", "activity", "office"}.isdisjoint(self.views))
+        self.assertTrue({"start", "browse", "report", "notifications", "office"}.issubset(self.views))
+        self.assertTrue({"my-reports", "my-claims", "activity"}.isdisjoint(self.views))
         for section in expected.values():
             self.assertIn(section, self.id_set, f"View section {section} must remain available to its authorized workflow")
 
@@ -341,16 +341,17 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('locations.aliases', self.js)
         self.assertIn(".public-handover-fields", self.css)
 
-    def test_public_tracking_never_displays_or_requests_a_tracking_secret(self):
-        self.assertNotIn('id="publicTrackSecret"', self.html)
-        self.assertNotIn("tracking secret", self.html.lower())
+    def test_public_tracking_accepts_private_secret_without_using_roll_number_as_authentication(self):
+        self.assertIn('id="publicTrackSecret"', self.html)
+        self.assertIn("tracking secret", self.html.lower())
         self.assertIn('id="publicTrackReference"', self.html)
         self.assertIn('id="publicTrackRoll"', self.html)
         self.assertIn("sessionStorage.setItem", self.js)
         self.assertIn("sessionStorage.getItem", self.js)
-        self.assertIn("function getPublicAccess(reference, roll)", self.js)
-        self.assertNotIn("#publicTrackSecret", self.js)
-        self.assertNotIn("tracking secret", self.js.lower())
+        self.assertIn("function getPublicAccess(reference, roll, suppliedSecret)", self.js)
+        self.assertIn("#publicTrackSecret", self.js)
+        self.assertIn("X-LostLink-Tracking-Secret", self.js)
+        self.assertNotIn("tracking_secret=", self.js.lower())
 
     def test_campus_dropdowns_do_not_show_pending_verification_badges(self):
         self.assertNotIn("pending verification", self.js.lower())
