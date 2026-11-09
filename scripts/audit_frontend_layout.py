@@ -103,7 +103,7 @@ def tiny_png_bytes() -> bytes:
 
 
 def submit_public_report(page, kind: str) -> None:
-    """Exercise the actual Lost/Found submit button and one-time tracking response."""
+    """Exercise Lost/Found submission and browser-managed private tracking."""
     found = kind == "found"
     suffix = "Found" if found else ""
     page_id = "publicFoundPage" if found else "publicLostPage"
@@ -143,13 +143,18 @@ def submit_public_report(page, kind: str) -> None:
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
     reference = page.locator("#publicTrackReference").input_value()
-    secret = page.locator("#publicTrackSecret").input_value()
-    if not reference.startswith("LL-") or not secret:
-        raise AssertionError(f"{kind} report did not return a case reference and tracking secret")
+    if not reference.startswith("LL-"):
+        raise AssertionError(f"{kind} report did not return a case reference")
+    if page.locator("#publicTrackSecret").count() or "tracking secret" in page.locator("#publicTrackPage").inner_text().lower():
+        raise AssertionError("Tracking secret is visible in the public interface")
     if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
         raise AssertionError("Lost report photo picker/upload did not complete successfully")
     if form.locator("#publicTitle" + suffix).input_value():
         raise AssertionError(f"{kind} report form did not reset after successful submission")
+    page.locator("#publicTrackForm button[type=submit]").click()
+    page.get_by_text("Status:", exact=False).wait_for(state="visible", timeout=10000)
+    if "tracking secret" in page.locator("#publicTrackResult").inner_text().lower():
+        raise AssertionError("Tracking result exposed credential wording")
     return_home(page)
 
 
