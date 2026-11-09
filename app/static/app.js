@@ -1976,11 +1976,14 @@ async function loadPublicFound() {
   if (category) params.set("category",category);
   try {
     const data = await publicApi("/api/public/search"+(params.size ? "?"+params.toString() : ""));
-    $("#publicBrowseResults").innerHTML = (data.reports || []).map(item =>
-      '<article class="list-card"><div class="list-card-head"><div><span class="eyebrow">'+(item.report_type === "lost" ? "LOST REPORT" : "FOUND ITEM")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(item.report_type === "found" ? '<button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item</button>' : '')+'</article>'
-    ).join("");
-    $("#publicBrowseEmpty").textContent = "No public reports match that search yet.";
-    $("#publicBrowseEmpty").classList.toggle("hidden",(data.reports || []).length > 0);
+    const reports = Array.isArray(data.reports) ? data.reports : [];
+    $("#publicBrowseResults").innerHTML = reports.map(item => {
+      const isFound = String(item.report_type || "").toLowerCase() === "found";
+      const canClaim = isFound && String(item.status || "").toLowerCase() === "available";
+      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item <span aria-hidden="true">→</span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
+    }).join("");
+    $("#publicBrowseEmpty").textContent = reports.length ? "No claimable Found items yet. Found items appear here after the campus office receives and lists them." : "No public reports match that search yet.";
+    $("#publicBrowseEmpty").classList.toggle("hidden", reports.length > 0);
   } catch(error) {
     $("#publicBrowseResults").innerHTML = "";
     $("#publicBrowseEmpty").classList.remove("hidden");
@@ -2056,13 +2059,21 @@ function getPublicAccess(reference, roll) {
   };
 }
 let selectedPublicFoundId = null;
-$("#publicBrowseResults").addEventListener("click", event => {
-  const button = event.target.closest("[data-public-claim]");
-  if (!button) return;
+document.addEventListener("click", event => {
+  const button = event.target.closest("#publicBrowseResults [data-public-claim]");
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const dialog = $("#publicClaimDialog");
+  const form = $("#publicClaimForm");
+  if (!dialog || !form || typeof dialog.showModal !== "function") {
+    showToast("The claim form could not be opened. Please refresh and try again.", true);
+    return;
+  }
   selectedPublicFoundId = button.dataset.publicClaim;
   $("#publicClaimError").textContent = "";
-  $("#publicClaimForm").reset();
-  $("#publicClaimDialog").showModal();
+  form.reset();
+  if (!dialog.open) dialog.showModal();
 });
 $("#publicClaimClose").addEventListener("click", () => $("#publicClaimDialog").close());
 $("#publicClaimCancel").addEventListener("click", () => $("#publicClaimDialog").close());
