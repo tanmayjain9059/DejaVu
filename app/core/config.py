@@ -22,6 +22,10 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 UPLOAD_STORAGE_BACKEND = os.getenv("UPLOAD_STORAGE_BACKEND", "local").strip().lower()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
+ALLOW_MODEL_DOWNLOADS = os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() == "true"
+MODEL_DOWNLOAD_REVISION = os.getenv("MODEL_DOWNLOAD_REVISION", "").strip()
+if ALLOW_MODEL_DOWNLOADS and (not MODEL_DOWNLOAD_REVISION or not __import__("re").fullmatch(r"[0-9a-f]{40}", MODEL_DOWNLOAD_REVISION)):
+    raise RuntimeError("ALLOW_MODEL_DOWNLOADS requires MODEL_DOWNLOAD_REVISION to be an immutable 40-character commit SHA.")
 IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base").strip()
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
