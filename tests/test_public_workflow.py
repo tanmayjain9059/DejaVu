@@ -161,6 +161,18 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(internal_found["handover_note"], "Left with the staff member at the office counter.")
         self.assertEqual(found_row["status"], "awaiting_intake")
 
+    def test_unlisted_campus_location_requires_a_free_text_detail(self):
+        response = self.client.post("/api/public/reports", json={
+            "report_type": "lost",
+            "roll_number": "25B81A66J8",
+            "title": "Lost black calculator",
+            "description": "Black scientific calculator with a cracked protective cover.",
+            "category": "electronics",
+            "location_block": "Other / Not listed",
+        })
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertIn("location detail", response.json()["detail"].lower())
+
     def test_public_category_suggestion_is_rate_limited_and_advisory(self):
         payload = {
             "title": "Navy backpack",
