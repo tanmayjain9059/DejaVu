@@ -100,11 +100,16 @@
             <label><span>Distinctive visible features · Optional</span><textarea id="publicFeatures" rows="2" maxlength="400" placeholder="Stickers, scratches, patterns or other visible details"></textarea></label>
             <label><span>Description · Required</span><textarea id="publicDescription" required minlength="10" maxlength="1200" rows="4" placeholder="Describe visible details. Keep private proof of ownership out of this description."></textarea></label>
             <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestion" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You confirm the final choice.</small></div>
-            <div class="two-columns">
-              <label><span>Campus block</span><select id="publicBlock"><option value="">Choose block</option></select></label>
-              <label><span>Nearby area / landmark</span><input id="publicArea" maxlength="120" placeholder="Library, cafeteria…"></label>
+            <div class="public-location-group">
+              <label><span>Last-known building / campus area</span><select id="publicBlock"><option value="">Choose a building or outdoor area</option></select></label>
+              <div class="two-columns">
+                <label><span>Floor · Optional</span><select id="publicFloor"><option value="">Not sure</option></select></label>
+                <label><span>Room / specific spot · Optional</span><input id="publicRoom" maxlength="80" placeholder="e.g. CSE Lab, corridor, classroom"></label>
+              </div>
+              <label><span>Nearby landmark / additional detail · Optional</span><input id="publicArea" maxlength="120" placeholder="e.g. near the library issue counter"></label>
             </div>
-            <label><span>Approximate date and time</span><input id="publicDate" type="datetime-local"></label>
+            <label><span>When did you last see it?</span><input id="publicDate" type="datetime-local"></label>
+            <label><span>Private ownership clues · Staff only</span><textarea id="publicPrivateDetail" rows="3" maxlength="1200" placeholder="Hidden marks, unique stickers, scratches or details only you would know. Do not include these in the public description."></textarea><small class="field-hint">Visible only to authorised campus office staff. Never shown in public listings or matching results.</small></label>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImage" type="file" accept="image/jpeg,image/png,image/webp"></label>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportError" class="form-error" role="alert"></p>
@@ -128,11 +133,23 @@
             <label><span>Visible condition and features · Optional</span><textarea id="publicFeaturesFound" rows="2" maxlength="400" placeholder="Scratches, damage, colour, brand or visible exterior details"></textarea></label>
             <label><span>Describe the found item · Required</span><textarea id="publicDescriptionFound" required minlength="10" maxlength="1200" rows="4" placeholder="Describe only observable details. Do not publish names, student IDs, serial numbers, contents or hidden identifying marks."></textarea></label>
             <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestionFound" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You confirm the final choice.</small></div>
-            <div class="two-columns">
-              <label><span>Found at block / building</span><select id="publicBlockFound"><option value="">Choose block</option></select></label>
-              <label><span>Found near / specific spot</span><input id="publicAreaFound" maxlength="120" placeholder="Outside Lab 3, under a library desk…"></label>
+            <div class="public-location-group">
+              <label><span>Discovery building / campus area</span><select id="publicBlockFound"><option value="">Choose a building or outdoor area</option></select></label>
+              <div class="two-columns">
+                <label><span>Floor · Optional</span><select id="publicFloorFound"><option value="">Not sure</option></select></label>
+                <label><span>Room / specific spot · Optional</span><input id="publicRoomFound" maxlength="80" placeholder="e.g. classroom, lab, corridor"></label>
+              </div>
+              <label><span>Nearby landmark / exact discovery spot · Optional</span><input id="publicAreaFound" maxlength="120" placeholder="e.g. outside the library entrance"></label>
             </div>
             <label><span>When did you find it?</span><input id="publicDateFound" type="datetime-local"></label>
+            <label><span>Item condition</span><select id="publicItemConditionFound"><option value="">Choose condition</option><option value="good">Good condition</option><option value="damaged">Damaged</option><option value="partially_damaged">Partially damaged</option><option value="unknown">Unknown</option></select></label>
+            <fieldset class="public-handover-fields">
+              <legend>Handover details · If already handed over</legend>
+              <label><span>Date and time handed over · Optional</span><input id="publicHandoverAtFound" type="datetime-local"></label>
+              <label><span>Office / person who received it · Optional</span><input id="publicHandoverRecipientFound" maxlength="120" placeholder="Office name or receiving staff member"></label>
+              <label><span>Handover notes · Optional</span><textarea id="publicHandoverNoteFound" rows="2" maxlength="800" placeholder="Any details that may help the office locate the item"></textarea></label>
+              <small class="field-hint">Submitting these details does not confirm office receipt. Staff must verify physical receipt before the item becomes searchable.</small>
+            </fieldset>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImageFound" type="file" accept="image/jpeg,image/png,image/webp"></label>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportErrorFound" class="form-error" role="alert"></p>
