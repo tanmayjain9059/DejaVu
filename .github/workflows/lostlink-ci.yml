@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      PYTHONPATH: .
       SESSION_SECRET: ci-only-secret-not-used-for-deployment-0123456789abcdef0123456789abcdef
       AUTH_PROVIDER: local
       DEMO_MODE: "false"
