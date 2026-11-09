@@ -319,8 +319,13 @@ def _migration_move_legacy_additive_columns(conn) -> None:
         "AND (storage_location IS NULL OR TRIM(storage_location)='')",
         ("Location needs confirmation",),
     )
+    # Bound startup work. Remaining legacy images are picked up in batches
+    # on later boots instead of hashing the entire photo library in one boot.
     for image_row in conn.execute(
-        "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
+        """SELECT id, image_path, image_sha256, image_phash FROM reports
+           WHERE image_path IS NOT NULL
+             AND (image_sha256 IS NULL OR image_phash IS NULL)
+           ORDER BY created_at ASC LIMIT 100"""
     ).fetchall():
         image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
         if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
