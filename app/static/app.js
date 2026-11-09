@@ -1459,6 +1459,9 @@ function officeClaimCard(claim) {
     '<div class="verification-check-grid">' + checks.map(([value, label]) =>
       '<label class="verify-check"><input type="checkbox" data-verification-check="true" value="' + escapeHTML(value) + '"><span>' + escapeHTML(label) + '</span></label>'
     ).join("") + '</div></div>';
+  const claimantPhone = claim.claimant_phone
+    ? '<div class="internal-meta">Claimant phone: <a href="tel:' + escapeHTML(claim.claimant_phone) + '">' + escapeHTML(claim.claimant_phone) + '</a></div>'
+    : '<div class="internal-meta">Claimant phone: Not provided</div>';
   const publicIdentity = claim.submission_channel === "public"
     ? '<div class="internal-meta"><strong>Public claim · Roll number: ' + escapeHTML(claim.claimant_roll_number || "Not supplied") + '</strong></div>' +
       '<label class="wide">Verified roll number<input type="text" data-verified-roll required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the claimant’s college ID"></label>' +
