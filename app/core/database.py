@@ -538,6 +538,7 @@ SCHEMA_MIGRATIONS = (
     (11, "public_rate_limit_retention_index", _migration_add_public_rate_limit_retention_index),
     (12, "public_report_context_and_handover_fields", _migration_add_public_report_context_fields),
     (13, "private_public_report_contact_fields", _migration_add_public_report_contact_fields),
+    (14, "private_public_claimant_phone", _migration_add_public_claimant_phone),
 )
 
 
