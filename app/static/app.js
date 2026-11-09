@@ -820,8 +820,8 @@ function itemCard(report, options) {
   const visual = report.image_url
     ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
-  const claimButton = opts.claim
-    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
+  const claimButton = opts.claim && report.report_type === "found" && report.status === "available"
+    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || "") + '">Submit private claim ↗</button>'
     : "";
   const detailsButton = '<button class="button button-quiet button-small" type="button" data-view-details="' + escapeHTML(report.id) + '">View details</button>';
   const characteristics = [
@@ -876,7 +876,7 @@ async function loadBrowse(append = false) {
     const data = await api(pageUrl(path, append ? state.cursor : null));
     const reports = data.reports || [];
     lastKnownReports = append ? lastKnownReports.concat(reports) : reports;
-    const html = reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
+    const html = reports.map((report) => itemCard(report, { claim: true })).join("");
     if (append) $("#browseResults").insertAdjacentHTML("beforeend", html);
     else $("#browseResults").innerHTML = html;
     $("#browseCount").textContent = lastKnownReports.length + (lastKnownReports.length === 1 ? " item loaded" : " items loaded");
@@ -1181,7 +1181,7 @@ async function openItemDetails(reportId) {
   $("#itemDetailsContent").innerHTML = photo + '<p class="item-detail-description">' + escapeHTML(report.description || "") + '</p><dl class="item-detail-grid">' +
     facts.map(([key, value]) => '<div><dt>' + escapeHTML(key) + '</dt><dd>' + escapeHTML(value) + '</dd></div>').join("") +
     '</dl>' + matchDetails + '<p class="field-hint">Keep hidden marks, serial numbers and access codes private. Ownership is verified separately by office staff.</p>';
-  const canClaim = currentUser && currentUser.role === "student" && report.report_type === "found" && report.status === "available";
+  const canClaim = report.report_type === "found" && report.status === "available";
   $("#itemDetailsClaimButton").classList.toggle("hidden", !canClaim);
   $("#itemDetailsDialog").showModal();
 }
@@ -1204,28 +1204,11 @@ function findReportById(id) {
 }
 
 async function loadClaimReport(reportId) {
-  try {
-    const data = await api("/api/reports?q=" + encodeURIComponent(reportId));
-    const report = data.reports.find((item) => item.id === reportId);
-    if (!report) throw new Error("That item is no longer available to claim. Refresh the list.");
-    selectedClaimReport = report;
-    showClaimDialog(report);
-  } catch (error) { showToast(error.message, true); }
+  return openPublicClaimById(reportId);
 }
 
 function showClaimDialog(report) {
-  $("#claimError").textContent = "";
-  $("#claimItemSummary").innerHTML = "<strong>" + escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
-    "</strong><small>" + escapeHTML(categoryLabel(report.category)) + " · " + escapeHTML(report.location) + "</small>";
-  $("#claimEvidence").value = "";
-  $$('input[name="claimEvidenceType"]').forEach((input) => { input.checked = false; });
-  $("#claimEvidenceImage").value = "";
-  $("#claimEvidenceImageLabel").textContent = "Attach one supporting photo (optional)";
-  const preferredLostReportId = selectedLostReportForMatchId;
-  selectedLostReportForMatchId = null;
-  $("#claimSubmitButton").disabled = true;
-  $("#claimDialog").showModal();
-  loadClaimLostReports(preferredLostReportId);
+  openPublicClaimDialog(report);
 }
 
 async function loadClaimLostReports(preferredReportId) {
@@ -1985,7 +1968,7 @@ async function loadPublicFound() {
     $("#publicBrowseResults").innerHTML = reports.map(item => {
       const isFound = String(item.report_type || "").toLowerCase() === "found";
       const canClaim = isFound && String(item.status || "").toLowerCase() === "available";
-      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'">Claim this item <span aria-hidden="true">→</span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
+      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'" data-public-ref="'+escapeHTML(item.public_ref || item.reference || '')+'">Claim this item <span aria-hidden="true">→</span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
     }).join("");
     $("#publicBrowseEmpty").textContent = reports.length ? "No claimable Found items yet. Found items appear here after the campus office receives and lists them." : "No public reports match that search yet.";
     $("#publicBrowseEmpty").classList.toggle("hidden", reports.length > 0);
@@ -2048,37 +2031,54 @@ function storePublicAccess(reference, roll, secret) {
   const access = {roll: String(roll).trim().toUpperCase(), secret: String(secret)};
   publicAccessMemory.set(reference, access);
   try { sessionStorage.setItem("lostlink:private-access:" + reference, JSON.stringify(access)); } catch (_) {}
+  const secretField = $("#publicTrackSecret");
+  if (secretField) secretField.value = access.secret;
 }
-function getPublicAccess(reference, roll) {
-  let access = publicAccessMemory.get(reference) || null;
-  if (!access) {
-    try {
-      const raw = sessionStorage.getItem("lostlink:private-access:" + reference);
-      access = raw ? JSON.parse(raw) : null;
-    } catch (_) { access = null; }
+function getPublicAccess(reference, roll, suppliedSecret) {
+  const normalizedRoll = String(roll || "").trim().toUpperCase();
+  let secret = String(suppliedSecret || "").trim();
+  if (!secret) {
+    let access = publicAccessMemory.get(reference) || null;
+    if (!access) {
+      try { const raw = sessionStorage.getItem("lostlink:private-access:" + reference); access = raw ? JSON.parse(raw) : null; }
+      catch (_) { access = null; }
+    }
+    if (access && access.roll === normalizedRoll) secret = String(access.secret || "");
   }
-  if (!access || access.roll !== String(roll).trim().toUpperCase() || !access.secret) return null;
-  return {
-    "X-LostLink-Roll-Number": access.roll,
-    "X-LostLink-Tracking-Secret": access.secret
-  };
+  if (!normalizedRoll || !secret) return null;
+  return {"X-LostLink-Roll-Number": normalizedRoll, "X-LostLink-Tracking-Secret": secret};
 }
+function openPublicClaimDialog(report) {
+  if (!report || !report.id || report.report_type !== "found" || report.status !== "available") {
+    showToast("This Found item is no longer available for claims. Refresh the list.", true); return;
+  }
+  selectedPublicFoundId = report.id;
+  $("#publicClaimItemSummary").innerHTML = "<strong>" + escapeHTML(report.title || "Found item") + " · " + escapeHTML(report.public_ref || "") + "</strong><small>" + escapeHTML(categoryLabel(report.category)) + " · " + escapeHTML(report.location_area || report.location || "Campus") + "</small>";
+  $("#publicClaimError").textContent = "";
+  $("#publicClaimForm").reset();
+  const dialog = $("#publicClaimDialog");
+  if (!dialog.open) dialog.showModal();
+}
+async function openPublicClaimById(reportId, publicRef) {
+  try {
+    let report = findReportById(reportId);
+    if (!report) {
+      const query = publicRef || reportId || "";
+      const data = await publicApi("/api/public/search" + (query ? "?q=" + encodeURIComponent(query) : ""));
+      report = (data.reports || []).find(item => item.id === reportId || (publicRef && item.public_ref === publicRef));
+    }
+    if (!report) throw new Error("This Found item could not be loaded. Refresh Browse and try again.");
+    openPublicClaimDialog(report);
+  } catch (error) { showToast(error.message, true); }
+}
+
 let selectedPublicFoundId = null;
 document.addEventListener("click", event => {
   const button = event.target.closest("#publicBrowseResults [data-public-claim]");
   if (!button || button.disabled) return;
   event.preventDefault();
   event.stopPropagation();
-  const dialog = $("#publicClaimDialog");
-  const form = $("#publicClaimForm");
-  if (!dialog || !form || typeof dialog.showModal !== "function") {
-    showToast("The claim form could not be opened. Please refresh and try again.", true);
-    return;
-  }
-  selectedPublicFoundId = button.dataset.publicClaim;
-  $("#publicClaimError").textContent = "";
-  form.reset();
-  if (!dialog.open) dialog.showModal();
+  void openPublicClaimById(button.dataset.publicClaim, button.dataset.publicRef);
 });
 $("#publicClaimClose").addEventListener("click", () => $("#publicClaimDialog").close());
 $("#publicClaimCancel").addEventListener("click", () => $("#publicClaimDialog").close());
@@ -2105,7 +2105,8 @@ $("#publicClaimForm").addEventListener("submit", async event => {
     storePublicAccess(result.claim.reference, roll, result.tracking_secret);
     $("#publicTrackReference").value = result.claim.reference;
     $("#publicTrackRoll").value = roll;
-    $("#publicTrackResult").textContent = "Claim submitted. Your private updates are available in this browser.";
+    storePublicAccess(result.claim.reference, roll, result.tracking_secret);
+    $("#publicTrackResult").textContent = "Claim submitted. Save the private tracking secret shown above; you will need it to access this claim from another browser.";
     $("#publicClaimDialog").close();
     selectedPublicFoundId = null;
     showPublicDestination("track");
@@ -2248,6 +2249,7 @@ async function submitPublicReport(event) {
     }
     $("#publicTrackReference").value = result.case.reference;
     $("#publicTrackRoll").value = body.roll_number;
+    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
     const matchCards = (result.matches || []).map(match => {
       const item = match.report;
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(item.title) + '</h3><p>' +
@@ -2286,18 +2288,26 @@ async function refreshPublicMatches(reference, credentials, target) {
     }).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
   } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
 }
+$("#copyPublicTrackingSecret").addEventListener("click", async () => {
+  const value = $("#publicTrackSecret").value;
+  if (!value) { showToast("No tracking secret is available to copy.", true); return; }
+  try { await navigator.clipboard.writeText(value); showToast("Private tracking secret copied.", false); }
+  catch (_) { $("#publicTrackSecret").focus(); $("#publicTrackSecret").select(); showToast("Select and copy the tracking secret manually.", false); }
+});
 $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
   const reference = $("#publicTrackReference").value.trim();
   const roll = $("#publicTrackRoll").value.trim().toUpperCase();
   const resultNode = $("#publicTrackResult");
   resultNode.textContent = "Checking private case access…";
-  const credentials = getPublicAccess(reference, roll);
+  const suppliedSecret = $("#publicTrackSecret").value.trim();
+  const credentials = getPublicAccess(reference, roll, suppliedSecret);
   if (!credentials) {
     lastPublicTracking = null;
-    resultNode.textContent = "Private access for this reference is not saved in this browser. Open the browser used to submit the report or claim.";
+    resultNode.textContent = "Enter the private tracking secret you received when submitting this report or claim. Your roll number alone cannot unlock private case details.";
     return;
   }
+  if (suppliedSecret) storePublicAccess(reference, roll, suppliedSecret);
   try {
     const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
     lastPublicTracking = {reference,roll,data};
@@ -2324,7 +2334,7 @@ $("#publicTrackForm").addEventListener("submit", async event => {
 $("#publicTrackResult").addEventListener("click", async event => {
   const state = lastPublicTracking;
   if (!state) return;
-  const credentials = getPublicAccess(state.reference, state.roll);
+  const credentials = getPublicAccess(state.reference, state.roll, $("#publicTrackSecret").value.trim());
   if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
   if (event.target.closest("[data-public-refresh-matches]")) {
     await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
@@ -2568,9 +2578,11 @@ $("#closeItemDetails").addEventListener("click", () => { $("#itemDetailsDialog")
 $("#cancelItemDetails").addEventListener("click", () => { $("#itemDetailsDialog").close(); selectedDetailsReportId = null; });
 $("#itemDetailsClaimButton").addEventListener("click", () => {
   const reportId = selectedDetailsReportId;
+  const report = reportId ? findReportById(reportId) : null;
   $("#itemDetailsDialog").close();
   selectedDetailsReportId = null;
-  if (reportId) openClaim(reportId);
+  if (report) openPublicClaimDialog(report);
+  else if (reportId) openPublicClaimById(reportId);
 });
 document.addEventListener("contextmenu", (event) => {
   if (event.target.closest(".item-visual img, .item-detail-photo, .evidence-image-preview img")) event.preventDefault();
@@ -2620,15 +2632,14 @@ $("#appView").addEventListener("submit", submitIntake);
 $("#browseResults").addEventListener("click", (event) => {
   const button = event.target.closest("[data-claim]");
   if (!button) return;
-  const card = button.closest(".item-card");
-  const ref = card.querySelector(".item-ref").textContent;
-  // Keep the current browse records available to the claim dialog without exposing internal fields.
-  const query = $("#filterQuery").value;
-  loadReportForClaimByRef(button.dataset.claim, ref, query);
+  event.preventDefault();
+  void openPublicClaimById(button.dataset.claim, button.dataset.publicRef || button.closest(".item-card")?.querySelector(".item-ref")?.textContent);
 });
 $("#matchResults").addEventListener("click", (event) => {
   const button = event.target.closest("[data-claim]");
-  if (button) loadReportForClaimByRef(button.dataset.claim, button.closest(".item-card").querySelector(".item-ref").textContent, "");
+  if (!button) return;
+  event.preventDefault();
+  void openPublicClaimById(button.dataset.claim, button.dataset.publicRef || button.closest(".item-card")?.querySelector(".item-ref")?.textContent);
 });
 
 async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
