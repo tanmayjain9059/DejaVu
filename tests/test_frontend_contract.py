@@ -300,3 +300,9 @@ if __name__ == "__main__":
     def test_navigation_destinations_are_oval_on_desktop_and_mobile(self):
         self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
         self.assertIn('#appView #studentNav .nimbus-item { flex:1 0 auto;', self.css)
+
+    def test_student_sign_in_entry_and_role_gating_are_present(self):
+        self.assertIn('id="publicStudentButton"', self.html)
+        self.assertIn('function openPublicStudentSignIn()', self.js)
+        self.assertIn('loginMode === "student"', self.js)
+        self.assertIn('["student", "office"].includes(profile.user.role)', self.js)
