@@ -18,7 +18,7 @@ if not TEST_WITH_POSTGRES:
     app_database.DATABASE_URL = ""
 import app.main as main
 from app.api.routes import public_workflow as public_routes
-from app.services import object_storage
+from app.services import object_storage, reports as report_service
 
 
 class PublicWorkflowIntegrationTests(unittest.TestCase):
@@ -124,8 +124,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         lost_ref = lost_response.json()["case"]["reference"]
         with main.connect_db() as conn:
             lost_row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (lost_ref,)).fetchone()
-        public_lost = main.serialise_report(lost_row, internal=False)
-        internal_lost = main.serialise_report(lost_row, internal=True)
+        public_lost = report_service.serialise_report(lost_row, internal=False)
+        internal_lost = report_service.serialise_report(lost_row, internal=True)
         self.assertEqual(public_lost["location_floor"], "First Floor")
         self.assertIsNone(public_lost["location_room"])
         self.assertNotIn("private_verification_detail", public_lost)
@@ -150,8 +150,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         found_ref = found_response.json()["case"]["reference"]
         with main.connect_db() as conn:
             found_row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (found_ref,)).fetchone()
-        public_found = main.serialise_report(found_row, internal=False)
-        internal_found = main.serialise_report(found_row, internal=True)
+        public_found = report_service.serialise_report(found_row, internal=False)
+        internal_found = report_service.serialise_report(found_row, internal=True)
         self.assertEqual(public_found["item_condition"], "partially_damaged")
         self.assertNotIn("handover_note", public_found)
         self.assertEqual(internal_found["handover_recipient"], "Campus office desk")
