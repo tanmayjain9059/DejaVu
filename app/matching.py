@@ -167,12 +167,14 @@ class MatchingEngine:
                 "enabled": self.semantic_enabled,
                 "state": self._text_status,
                 "model": os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+                "revision": os.getenv("SEMANTIC_MODEL_REVISION", "main"),
                 "failed": self._text_failure is not None,
             },
             "image": {
                 "enabled": self.clip_enabled,
                 "state": self._clip_status,
                 "model": os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32"),
+                "revision": os.getenv("CLIP_MODEL_REVISION", "main"),
                 "failed": self._clip_failure is not None,
             },
         }
@@ -191,7 +193,8 @@ class MatchingEngine:
             try:
                 from sentence_transformers import SentenceTransformer
                 self._text_model = SentenceTransformer(
-                    os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+                    os.getenv("SEMANTIC_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+                    revision=os.getenv("SEMANTIC_MODEL_REVISION", "main"),
                 )
                 self._text_status = "ready"
             except Exception as exc:
@@ -255,8 +258,9 @@ class MatchingEngine:
             try:
                 from transformers import CLIPModel, CLIPProcessor
                 model_name = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
-                self._clip_processor = CLIPProcessor.from_pretrained(model_name)
-                self._clip_model = CLIPModel.from_pretrained(model_name)
+                revision = os.getenv("CLIP_MODEL_REVISION", "main")
+                self._clip_processor = CLIPProcessor.from_pretrained(model_name, revision=revision)
+                self._clip_model = CLIPModel.from_pretrained(model_name, revision=revision)
                 self._clip_model.eval()
                 self._clip_status = "ready"
             except Exception as exc:
