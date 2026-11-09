@@ -2233,7 +2233,6 @@ async function submitPublicReport(event) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)
     });
-    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
     let photoStatus = "";
     const photo = field("publicImage").files && field("publicImage").files[0];
     if (photo) {
@@ -2260,7 +2259,7 @@ async function submitPublicReport(event) {
         '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
         escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p>' + publicMatchClaimButton(item) + '</article>';
     }).join("");
-    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML("Report submitted. Reference: " + result.case.reference + ". Private updates are available in this browser.") + '</p>' +
+    $("#publicTrackResult").innerHTML = '<p>' + escapeHTML("Report submitted. Reference: " + result.case.reference + ". Save the private tracking secret shown above to access this case from another browser or device.") + '</p>' +
       (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again from this browser.</p>') +
       (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
     form.reset();
