@@ -466,14 +466,21 @@ async function loadConfig() {
   const blocks = Array.isArray(locations.blocks) ? locations.blocks : [];
   const pendingLocations = new Set(Array.isArray(locations.pending_verification) ? locations.pending_verification : []);
   const aliases = locations.aliases && typeof locations.aliases === "object" ? locations.aliases : {};
-  const blockOptions = blocks.map((block) => {
+  const formatLocationOption = (block) => {
     const aliasText = Array.isArray(aliases[block]) && aliases[block].length ? " · " + aliases[block].join(" / ") : "";
     const verificationText = pendingLocations.has(block) ? " · pending verification" : "";
     return '<option value="' + escapeHTML(block) + '">' + escapeHTML(block + aliasText + verificationText) + "</option>";
-  }).join("");
+  };
+  const blockOptions = blocks.map(formatLocationOption).join("");
+  const locationGroups = locations.groups && typeof locations.groups === "object" ? locations.groups : {};
+  const groupedPublicOptions = Object.entries(locationGroups).map(([label, entries]) =>
+    '<optgroup label="' + escapeHTML(label) + '">' +
+    (Array.isArray(entries) ? entries : []).map(formatLocationOption).join("") +
+    "</optgroup>"
+  ).join("") + '<option value="Other / Not listed">Other / Not listed</option>';
   ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
-  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a building or outdoor area</option>' + blockOptions; });
+  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a building or outdoor area</option>' + groupedPublicOptions; });
   const floorOptions = (Array.isArray(locations.floors) ? locations.floors : []).map((floor) =>
     '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>"
   ).join("");
