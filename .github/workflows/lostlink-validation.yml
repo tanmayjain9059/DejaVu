@@ -1,0 +1,42 @@
+name: LostLink validation
+
+on:
+  push:
+    branches:
+      - fix/lostlink-issue-register-hardening
+  pull_request:
+    branches:
+      - feat/lostlink-unified-public-workflow
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SESSION_SECRET: ci-validation-secret-not-used-for-deployment-0123456789abcdef0123456789abcdef
+      AUTH_PROVIDER: local
+      DEMO_MODE: "false"
+      ALLOW_MODEL_DOWNLOADS: "false"
+      USE_CLIP_MODEL: "false"
+      USE_IMAGE_ENRICHMENT: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest httpx
+      - name: Compile application and tests
+        run: python -m compileall -q app tests
+      - name: Validate frontend JavaScript
+        run: node --check app/static/app.js
+      - name: Run test suite
+        run: pytest -q
