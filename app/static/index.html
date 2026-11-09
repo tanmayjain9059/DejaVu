@@ -49,7 +49,7 @@
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="lost"><span class="nv-ico">−</span><span>Lost</span></button>
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="found"><span class="nv-ico">＋</span><span>Found</span></button>
           <button class="nimbus-item public-nav-item" type="button" data-public-destination="track"><span class="nv-ico">◷</span><span>Track</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button>
+          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button><a class="nimbus-item public-nav-item" href="/static/privacy.html"><span class="nv-ico">⌑</span><span>Privacy</span></a>
         </nav>
       </header>
 
@@ -116,6 +116,9 @@
             <label><span>When did you last see it?</span><input id="publicDate" type="datetime-local"></label>
             <label><span>Private ownership clues · Staff only</span><textarea id="publicPrivateDetail" rows="3" maxlength="1200" placeholder="Hidden marks, unique stickers, scratches or details only you would know. Do not include these in the public description."></textarea><small class="field-hint">Visible only to authorised campus office staff. Never shown in public listings or matching results.</small></label>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImage" type="file" accept="image/jpeg,image/png,image/webp"></label>
+            <small class="field-hint">Photos are stored privately for office review. AI analysis is optional and requires the separate consent below. Do not upload identity cards or documents.</small>
+            <label class="field-hint"><input id="publicImageAiConsentFound" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional.</label>
+            <label class="field-hint"><input id="publicImageAiConsent" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional.</label>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportError" class="form-error" role="alert"></p>
             <button class="button button-liquid" type="submit">Submit lost report ↗</button>
@@ -161,6 +164,7 @@
               <small class="field-hint">Submitting these details does not confirm office receipt. Staff must verify physical receipt before the item becomes searchable.</small>
             </fieldset>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImageFound" type="file" accept="image/jpeg,image/png,image/webp"></label>
+            <small class="field-hint">Photos are stored privately for office review. AI analysis is optional and requires the separate consent below. Do not upload identity cards or documents.</small>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportErrorFound" class="form-error" role="alert"></p>
             <button class="button button-liquid" type="submit">Submit found report ↗</button>
@@ -270,7 +274,7 @@
 <button id="officeDashboardNav" class="nimbus-item tab-button hidden" type="button" data-view="office" aria-label="Office dashboard"><span class="nv-ico">⌂</span><span class="nimbus-label">Dashboard</span></button><button class="nimbus-item tab-button" type="button" data-view="start"><span class="nv-ico">⌂</span><span class="nimbus-label">Start</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="browse"><span class="nv-ico">⌕</span><span class="nimbus-label">Browse</span></button>
 <button class="nimbus-item tab-button" type="button" data-view="report"><span class="nv-ico">＋</span><span class="nimbus-label">Reports</span></button>
-<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button>
+<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button><button class="nimbus-item tab-button hidden" type="button" id="privacyRequestsNav" data-view="privacyRequests"><span class="nv-ico">⌑</span><span class="nimbus-label">Privacy requests</span></button>
 </nav></div>
 <div class="header-right"><span id="roleChip" class="role-chip">Student</span><div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Campus user</span></div>
 <button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button><button id="finnTipsToggle" class="button button-quiet button-small" type="button" aria-pressed="false">Hide Finn’s tips</button><button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button></div>
@@ -542,6 +546,7 @@
             <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
           </label>
           <p id="reportImageWarning" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
+          <label class="field-hint"><input id="reportImageAiConsent" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional; text-based matching remains available.</label>
           <p id="reportError" class="form-error" role="alert"></p>
 
           <div class="form-actions">
@@ -666,6 +671,7 @@
             <input id="reportImageFound" name="image" type="file" accept="image/jpeg,image/png,image/webp">
           </label>
           <p id="reportImageWarningFound" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
+          <label class="field-hint"><input id="reportImageAiConsentFound" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional; text-based matching remains available.</label>
           <p id="reportErrorFound" class="form-error" role="alert"></p>
 
           <div class="form-actions">
@@ -731,6 +737,12 @@
     </section>
 
     <!-- ==================== 6. NOTIFICATIONS VIEW ==================== -->
+    <section id="privacyRequestsView" class="content-view hidden">
+      <div class="section-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Privacy requests</h2><p class="muted">Review verified requests for access, correction or erasure. Record the action taken and any retention reason.</p></div><button class="button button-quiet button-small" type="button" id="refreshPrivacyRequests">Refresh</button></div>
+      <div id="privacyRequestsList" class="stack-list"></div>
+      <p id="privacyRequestsEmpty" class="empty-state hidden">No privacy requests are waiting for review.</p>
+    </section>
+
     <section id="notificationsView" class="content-view hidden">
       <div class="section-heading">
         <div>
@@ -1042,7 +1054,7 @@
     <form id="publicClaimForm" class="form-stack">
       <div class="dialog-heading"><div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Claim this found item</h2></div><button id="publicClaimClose" type="button" class="icon-button" aria-label="Close">×</button></div>
       <div id="publicClaimItemSummary" class="claim-item-summary"></div>
-      <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"></label>
+      <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"><small class="field-hint">This is attribution only, not identity verification. The campus office verifies the claimant before handover.</small></label>
       <label><span>Phone number · Optional</span><input id="publicClaimPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"><small class="field-hint">Shared privately with authorised campus office staff for claim follow-up.</small></label>
       <label><span>Link to your Lost report <span class="field-optional">Optional</span></span><input id="publicClaimLostReference" maxlength="24" placeholder="e.g. LL-XXXXXXX"></label>
       <fieldset class="evidence-type-fieldset"><legend>Supporting evidence <span class="field-required">Choose at least one</span></legend>
@@ -1102,8 +1114,27 @@
       </svg>
     </button>
   </div>
+  <dialog id="privacyDecisionDialog" class="modal-dialog">
+    <form id="privacyDecisionForm" class="form-card form-stack">
+      <div class="dialog-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Update privacy request</h2></div><button type="button" class="dialog-close" id="closePrivacyDecision" aria-label="Close">×</button></div>
+      <p id="privacyDecisionSummary" class="field-hint"></p>
+      <label><span>Decision</span><select id="privacyDecisionAction" required><option value="in_review">Move to review</option><option value="completed">Mark completed</option><option value="declined">Decline request</option></select></label>
+      <label><span>Review note / action taken</span><textarea id="privacyDecisionNote" required minlength="10" maxlength="2000" rows="4" placeholder="Record what was reviewed, action taken, or why retention is necessary."></textarea></label>
+      <div class="form-actions"><button class="button button-liquid" type="submit">Save decision</button><button class="button button-quiet" type="button" id="cancelPrivacyDecision">Cancel</button></div>
+      <p id="privacyDecisionError" class="form-error" role="alert"></p>
+    </form>
+  </dialog>
+  <dialog id="publicPrivacyDialog" class="modal-dialog">
+    <form id="publicPrivacyForm" class="form-card form-stack">
+      <div class="dialog-heading"><div><p class="eyebrow">YOUR DATA</p><h2>Request a privacy action</h2></div><button type="button" class="dialog-close" id="closePublicPrivacy" aria-label="Close">×</button></div>
+      <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share the tracking link with anyone else.</p>
+      <label><span>Request type</span><select id="publicPrivacyType" required><option value="access">Access / copy of my data</option><option value="correction">Correct my data</option><option value="erasure">Request erasure</option></select></label>
+      <label><span>Details (optional)</span><textarea id="publicPrivacyDetails" rows="4" maxlength="2000" placeholder="Describe the information or correction requested."></textarea></label>
+      <div class="form-actions"><button class="button button-liquid" type="submit">Submit request</button><button class="button button-quiet" type="button" id="cancelPublicPrivacy">Cancel</button></div>
+      <p id="publicPrivacyError" class="form-error" role="alert"></p>
+    </form>
+  </dialog>
   <script src="/deployment-config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/static/app.js?v=office-claim-contact-20261109a" defer></script>
+  <script src="/static/app.js?v=lostlink-privacy-ai-auth-20261109c" defer></script>
 </body>
 </html>

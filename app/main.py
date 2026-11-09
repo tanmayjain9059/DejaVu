@@ -21,6 +21,7 @@ from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
 from app.api.routes.public_workflow import router as public_workflow_router, ensure_public_schema
+from app.api.routes.privacy import router as privacy_router
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
@@ -94,7 +95,7 @@ def _apply_security_headers(response, private_api=False):
             "form-action 'self'; img-src 'self' data: blob:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
+            "script-src 'self'; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
         )
     return response
 
@@ -195,7 +196,15 @@ def health_ready():
         )
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "failed_check": readiness_stage},
+            content={
+                "status": "not_ready",
+                "failed_check": readiness_stage,
+                "fix_hint": {
+                    "database_connection": "Check DATABASE_URL, database availability, network access and credentials.",
+                    "canonical_schema": "Run the latest database migrations and verify the application database role can read reports and claims.",
+                    "object_storage": "Check the private bucket name, endpoint, region, access key, secret key and bucket permissions.",
+                }.get(readiness_stage, "Inspect the server logs for the failing readiness dependency."),
+            },
         )
     return {
         "status": "ready",
@@ -212,5 +221,6 @@ app.include_router(reports_router)
 app.include_router(claims_router)
 app.include_router(engagement_router)
 app.include_router(public_workflow_router)
+app.include_router(privacy_router)
 initialise_db()
 ensure_public_schema()

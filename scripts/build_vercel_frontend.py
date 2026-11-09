@@ -29,4 +29,16 @@ if DIST.exists():
 shutil.copytree(STATIC, DIST / "static")
 shutil.copy2(STATIC / "index.html", DIST / "index.html")
 shutil.copy2(STATIC / "deployment-config.js", DIST / "deployment-config.js")
+
+(DIST / "_headers").write_text(
+    """/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cross-Origin-Resource-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: """ + origin + """; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; script-src 'self'; connect-src 'self' """ + origin + """ https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests
+""",
+    encoding="utf-8",
+)
 print("Prepared Vercel static frontend for " + origin)

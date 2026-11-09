@@ -9,6 +9,7 @@ and reward services can be reused without exposing a student sign-in surface.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import hmac
 import json
 import logging
@@ -21,19 +22,21 @@ from typing import Any, Literal
 from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
+from app.schemas import ImageAiConsentBody
 
 from app.core.config import (
     ALLOWED_EVIDENCE_TYPES,
     CATEGORY_LABELS,
+    DATABASE_URL,
     MATCHING_CANDIDATE_LIMIT,
     MAX_UPLOAD_BYTES,
     SESSION_SECRET,
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
-from app.core.database import audit, connect_db, now_iso, table_columns
+from app.core.database import audit, connect_db, lock_advisory_key, lock_row, now_iso, table_columns
 from app.core.security import hash_password
-from app.core.images import canonicalise_image, image_fingerprint_matches
+from app.core.images import canonicalise_image
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
 from app.services.reports import read_report, serialise_report
 from app.services.object_storage import delete_upload, read_upload, save_upload
@@ -63,7 +66,7 @@ def _verify_token(stored_hash: str | None, token: str | None) -> bool:
 
 
 def _reference(prefix: str) -> str:
-    return prefix + "-" + secrets.token_hex(4).upper()
+    return prefix + "-" + secrets.token_hex(16).upper()
 
 
 def _public_actor_for_roll(conn, roll_number: str) -> int:
@@ -92,13 +95,22 @@ def _public_actor_for_roll(conn, roll_number: str) -> int:
     return actor_id
 
 
+def _trusted_client_ip(request: Request) -> str:
+    """Use Cloudflare's edge-overwritten client IP; never trust client-supplied X-Forwarded-For."""
+    candidate = (request.headers.get("cf-connecting-ip") or "").strip()
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return request.client.host if request.client else "unknown"
+
+
 def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
     """Rate-limit anonymous writes while storing only a one-way IP digest."""
-    address = request.client.host if request.client else "unknown"
+    address = _trusted_client_ip(request)
+    from app.core.database import lock_advisory_key as _lock_advisory_key
+    _lock_advisory_key(conn, "public-rate:" + action, address)
     hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")
     ip_hash = hmac.new(hash_key, address.encode("utf-8"), hashlib.sha256).hexdigest()
-    retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
-    conn.execute("DELETE FROM public_rate_limits WHERE created_at < ?", (retention_cutoff,))
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
     count = conn.execute(
         "SELECT COUNT(*) AS n FROM public_rate_limits WHERE ip_hash=? AND action=? AND created_at>=?",
@@ -117,7 +129,29 @@ def _public_report(row) -> dict[str, Any]:
     # Public image access is deliberately withheld until the private-storage,
     # per-case signed-access flow is enabled for anonymous tracking tokens.
     item["image_url"] = None
+    item.pop("image_ai_consent", None)
     item.pop("location_room", None)
+    # Found-item free text may contain a finder's or owner's personal data.
+    # Public browse exposes controlled descriptors only; full notes remain
+    # available to authorised office staff during ownership verification.
+    if item.get("report_type") == "found":
+        item["title"] = "Found item"
+        item["description"] = "A found item is held by the campus office. Share private ownership evidence when claiming."
+        item["brand"] = None
+        item["visible_features"] = None
+    if item.get("category") in {"identity_documents", "keys_access"}:
+        # Do not publicly label identity documents or access credentials.
+        item["category"] = "other"
+        item["category_label"] = "Personal item"
+        if item.get("report_type") == "found":
+            item["title"] = "Personal item held by the campus office"
+    # Public Lost listings must not reveal a precise loss location or time.
+    if item.get("report_type") == "lost":
+        item["location"] = "CVR campus"
+        item["location_block"] = None
+        item["location_floor"] = None
+        item["location_area"] = None
+        item["occurred_at"] = None
     item["reference"] = item["public_ref"]
     return item
 
@@ -232,6 +266,7 @@ class PublicCategorySuggestionBody(BaseModel):
 
 class PublicReportBody(BaseModel):
     report_type: Literal["lost", "found"]
+    image_ai_consent: bool = False
     roll_number: str = Field(min_length=5, max_length=20)
     contact_phone: str | None = Field(default=None, max_length=20)
     contact_email: str | None = Field(default=None, max_length=254)
@@ -253,12 +288,20 @@ class PublicReportBody(BaseModel):
     handover_note: str | None = Field(default=None, max_length=800)
 
 
+class PublicPrivacyRequestBody(BaseModel):
+    reference: str = Field(min_length=4, max_length=32)
+    roll_number: str = Field(min_length=5, max_length=20)
+    tracking_secret: str = Field(min_length=24, max_length=128)
+    request_type: Literal["access", "correction", "erasure"]
+    details: str = Field(default="", max_length=2000)
+
+
 class PublicClaimBody(BaseModel):
     roll_number: str = Field(min_length=5, max_length=20)
     contact_phone: str | None = Field(default=None, max_length=20)
     evidence: str = Field(min_length=20, max_length=1800)
     evidence_types: list[str] = Field(min_length=1, max_length=6)
-    lost_report_reference: str | None = Field(default=None, max_length=24)
+    lost_report_reference: str | None = Field(default=None, max_length=40)
 
 
 class PublicEvidenceBody(BaseModel):
@@ -273,11 +316,22 @@ class PublicCloseBody(BaseModel):
 def ensure_public_schema() -> None:
     """Idempotently migrate records from the retired parallel public tables."""
     with connect_db() as conn:
+        if DATABASE_URL:
+            # Serialise one-time schema setup across simultaneously starting workers.
+            conn.execute("SELECT pg_advisory_xact_lock(730022)")
+        # Prune expired anonymous rate-limit digests at startup, not on every
+        # public request. The table contains no raw IP addresses.
+        retention_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec="seconds")
+        conn.execute("DELETE FROM public_rate_limits WHERE created_at < ?", (retention_cutoff,))
         conn.execute(
             """CREATE TABLE IF NOT EXISTS public_schema_migrations (
                 version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL
             )"""
         )
+        if DATABASE_URL:
+            # Migration bookkeeping is server-only; browser roles have no access.
+            conn.execute("ALTER TABLE public_schema_migrations ENABLE ROW LEVEL SECURITY")
+            conn.execute("REVOKE ALL ON TABLE public_schema_migrations FROM anon, authenticated")
         case_columns = table_columns(conn, "public_cases")
         claim_columns = table_columns(conn, "public_claims")
         if case_columns and {"id", "public_ref", "roll_number", "tracking_hash"}.issubset(case_columns):
@@ -373,19 +427,21 @@ async def submit_public_report(body: PublicReportBody, request: Request):
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         _enforce_rate_limit(conn, request, "report", 10)
+        from app.core.database import lock_advisory_key as _lock_advisory_key
+        _lock_advisory_key(conn, "public-roll", roll)
         actor_id = _public_actor_for_roll(conn, roll)
         timestamp = now_iso()
         conn.execute(
             """INSERT INTO reports
                (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
                 category,occurred_at,location_block,location_floor,location_room,location_area,
-                private_detail,item_condition,handover_at,handover_recipient,handover_note,
+                image_ai_consent,private_detail,item_condition,handover_at,handover_recipient,handover_note,
                 contact_phone,contact_email,status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
             (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
              body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
-             body.private_detail if body.report_type == "lost" else None,
+             int(body.image_ai_consent), body.private_detail if body.report_type == "lost" else None,
              body.item_condition,body.handover_at,body.handover_recipient,body.handover_note,
              contact_phone,contact_email,status,actor_id,timestamp,timestamp,roll,_hash(token)),
         )
@@ -422,13 +478,9 @@ async def submit_public_report(body: PublicReportBody, request: Request):
 def _verify_public_image_access(reference: str, roll: str, tracking_secret: str, request: Request) -> dict[str, Any]:
     """Authenticate the case and consume its upload quota before image processing."""
     with connect_db() as conn:
+        lock_row(conn, "reports", "public_ref", reference)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
-        if (
-            not row
-            or row["submission_channel"] != "public"
-            or row["roll_number"] != roll
-            or not _verify_token(row["tracking_hash"], tracking_secret)
-        ):
+        if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
             raise HTTPException(status_code=404, detail="Tracking access not found.")
         if row["status"] not in {"open", "awaiting_intake"}:
             raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
@@ -437,18 +489,20 @@ def _verify_public_image_access(reference: str, roll: str, tracking_secret: str,
 
 
 def _persist_public_report_image(reference: str, case_id: str, actor_id: int, raw: bytes) -> None:
-    """Run Pillow, fingerprint lookup and synchronous storage/database work off-loop."""
+    """Persist image bytes outside the DB transaction; serialize only the final fingerprint check."""
     normalized, image_sha256, image_phash = canonicalise_image(raw)
     new_key = uuid.uuid4().hex + ".jpg"
     old_key = None
     saved = False
     try:
+        # Object storage I/O must never happen while holding a database write lock.
+        save_upload(new_key, normalized)
+        saved = True
         with connect_db() as conn:
-            # Deliberately do not use BEGIN IMMEDIATE: image work must not hold
-            # the Postgres compatibility layer's global advisory write lock.
-            duplicate = image_fingerprint_matches(conn, image_sha256, image_phash)
-            if duplicate:
-                raise HTTPException(status_code=409, detail="This photo cannot be attached. Please choose another image.")
+            # Recheck under the write transaction so simultaneous uploads of the
+            # same image cannot both pass the duplicate test.
+            conn.execute("BEGIN IMMEDIATE")
+            lock_row(conn, "reports", "id", case_id)
             row = conn.execute(
                 "SELECT image_path,status FROM reports WHERE id=? AND public_ref=? AND submission_channel='public'",
                 (case_id, reference),
@@ -456,8 +510,6 @@ def _persist_public_report_image(reference: str, case_id: str, actor_id: int, ra
             if not row or row["status"] not in {"open", "awaiting_intake"}:
                 raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
             old_key = row["image_path"]
-            save_upload(new_key, normalized)
-            saved = True
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
                 (new_key, image_sha256, image_phash, now_iso(), case_id),
@@ -476,49 +528,6 @@ def _persist_public_report_image(reference: str, case_id: str, actor_id: int, ra
         except Exception:
             logging.exception("Could not remove replaced public report image %s", old_key)
 
-
-def _verify_public_image_access(reference: str, roll: str, tracking_secret: str, request: Request) -> dict[str, Any]:
-    """Authenticate the case and consume its upload quota before image processing."""
-    with connect_db() as conn:
-        row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
-        if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
-            raise HTTPException(status_code=404, detail="Tracking access not found.")
-        if row["status"] not in {"open", "awaiting_intake"}:
-            raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
-        _enforce_rate_limit(conn, request, "image", 5)
-        return {"id": row["id"], "created_by": int(row["created_by"])}
-
-
-def _persist_public_report_image(reference: str, case_id: str, actor_id: int, raw: bytes) -> None:
-    """Run synchronous image, database and storage work outside the event loop."""
-    normalized, image_sha256, image_phash = canonicalise_image(raw)
-    new_key = uuid.uuid4().hex + ".jpg"
-    old_key = None
-    saved = False
-    try:
-        with connect_db() as conn:
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(status_code=409, detail="This photo cannot be attached. Please choose another image.")
-            row = conn.execute("SELECT image_path,status FROM reports WHERE id=? AND public_ref=? AND submission_channel='public'", (case_id, reference)).fetchone()
-            if not row or row["status"] not in {"open", "awaiting_intake"}:
-                raise HTTPException(status_code=409, detail="This report is no longer accepting photo updates.")
-            old_key = row["image_path"]
-            save_upload(new_key, normalized)
-            saved = True
-            conn.execute("UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?", (new_key, image_sha256, image_phash, now_iso(), case_id))
-            audit(conn, actor_id, "public_report_image_added", "report", case_id)
-    except Exception:
-        if saved:
-            try:
-                delete_upload(new_key)
-            except Exception:
-                logging.exception("Could not clean up failed public report image %s", new_key)
-        raise
-    if old_key and old_key != new_key:
-        try:
-            delete_upload(old_key)
-        except Exception:
-            logging.exception("Could not remove replaced public report image %s", old_key)
 
 
 @router.post("/reports/{reference}/image")
@@ -555,9 +564,9 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
         where += " AND category=?"
         params.append(category)
     if q and q.strip():
-        term = "%" + q.strip().lower() + "%"
-        where += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ? OR LOWER(COALESCE(public_ref,'')) LIKE ?)"
-        params.extend([term,term,term,term,term])
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+        where += " AND (LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
+        params.extend([term,term,term])
     with connect_db() as conn:
         rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
     return {"reports": [_public_report(row) for row in rows]}
@@ -586,12 +595,11 @@ def browse_public_found(category: str | None = Query(default=None, max_length=60
         clauses.append("category=?")
         params.append(category)
     if q and q.strip():
-        term = "%" + q.strip().lower() + "%"
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
         clauses.append(
-            "(LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR "
-            "LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
+            "(LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
         )
-        params.extend([term,term,term,term])
+        params.extend([term,term,term])
     with connect_db() as conn:
         rows = conn.execute(
             "SELECT * FROM reports WHERE " + " AND ".join(clauses) +
@@ -604,11 +612,13 @@ def browse_public_found(category: str | None = Query(default=None, max_length=60
 @router.get("/reports/{reference}/matches")
 async def public_report_matches(
     reference: str,
+    request: Request,
     roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
     with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "matches", 20, window_minutes=60)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if not row or row["report_type"] != "lost" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
@@ -629,11 +639,14 @@ def track_one_case(
     with connect_db() as conn:
         report = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if report and report["roll_number"] == roll and report["submission_channel"] == "public" and _verify_token(report["tracking_hash"],tracking_secret):
+            case_data = _public_report(report)
+            case_data["image_ai_consent"] = bool(report["image_ai_consent"])
             return {
-                "case": _public_report(report),
+                "case": case_data,
                 "events": _tracking_events(conn,int(report["created_by"]),"report",report["id"]),
                 "case_points": _case_points(conn,int(report["created_by"]),report["id"]),
             }
+        lock_row(conn, "claims", "public_ref", reference)
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
         if claim and claim["claimant_roll_number"] == roll and claim["submission_channel"] == "public" and _verify_token(claim["tracking_hash"],tracking_secret):
             parent = conn.execute("SELECT * FROM reports WHERE id=?", (claim["report_id"],)).fetchone()
@@ -661,6 +674,7 @@ def close_public_case(
     roll = _roll(roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "public_ref", reference)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if not row or row["submission_channel"] != "public" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
@@ -704,6 +718,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
         _enforce_rate_limit(conn,request,"claim",8)
+        lock_row(conn, "reports", "id", report_id)
         report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
         if not report or report["report_type"] != "found" or report["status"] != "available":
             raise HTTPException(status_code=404,detail="This found item is not available for claims.")
@@ -716,13 +731,10 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         ).fetchone()
         if duplicate:
             raise HTTPException(status_code=409,detail="You already have an active claim for this item.")
-        active_status_placeholders = ",".join("?" for _ in ACTIVE_CLAIMS)
-        active_count = conn.execute(
-            f"SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ({active_status_placeholders})",
-            (actor_id, *ACTIVE_CLAIMS),
-        ).fetchone()["n"]
-        if int(active_count) >= MAX_OPEN_CLAIMS_PER_STUDENT:
-            raise HTTPException(status_code=429,detail="You have reached the active claim limit.")
+        # Public roll numbers are attribution only, not authenticated identity.
+        # Do not let an unauthenticated visitor exhaust another student's
+        # per-student active-claim quota by submitting that student's roll.
+        # Anonymous claim volume is bounded by the IP-based rate limiter above.
         lost_report_id = None
         if body.lost_report_reference:
             linked = conn.execute(
@@ -733,8 +745,14 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
             if not linked:
                 raise HTTPException(status_code=404,detail="The linked Lost report was not found for this roll number.")
             lost_report_id = linked["id"]
+        approved_claim = conn.execute(
+            "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
+            (report_id,),
+        ).fetchone()
+        if approved_claim:
+            raise HTTPException(status_code=409, detail="A claim is already approved for collection. No additional claims can be submitted.")
         competing = conn.execute(
-            "SELECT id,claimant_id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+            "SELECT id,claimant_id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
             (report_id,),
         ).fetchall()
         status = "disputed" if competing else "pending"
@@ -749,7 +767,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         )
         if competing:
             conn.execute(
-                "UPDATE claims SET status='disputed',updated_at=? WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+                "UPDATE claims SET status='disputed',updated_at=? WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
                 (timestamp,report_id,claim_id),
             )
             for previous in competing:
@@ -780,6 +798,7 @@ def add_public_claim_evidence(
     roll = _roll(roll_number)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "public_ref", reference)
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=?", (reference,)).fetchone()
         if not claim or claim["submission_channel"] != "public" or claim["claimant_roll_number"] != roll or not _verify_token(claim["tracking_hash"],tracking_secret):
             raise HTTPException(status_code=404,detail="Tracking access not found.")
@@ -795,3 +814,119 @@ def add_public_claim_evidence(
                     "A claimant has supplied the additional evidence requested by the office.",
                     "claim",claim["id"])
     return {"reference":reference,"status":"pending","message":"Additional evidence submitted."}
+
+
+
+@router.get("/privacy-export/{reference}")
+def export_public_case_data(
+    reference: str,
+    request: Request,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    """Return the data attached to a public case only after its private credentials verify."""
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "privacy-export", 5)
+        report = conn.execute("SELECT * FROM reports WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
+        if report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], tracking_secret):
+            allowed = (
+                "public_ref", "report_type", "title", "description", "brand", "primary_color",
+                "visible_features", "category", "occurred_at", "location_block", "location_floor",
+                "location_room", "location_area", "private_detail", "contact_phone", "contact_email",
+                "item_condition", "handover_at", "handover_recipient", "handover_note", "status",
+                "created_at", "updated_at", "image_ai_consent",
+            )
+            return {"type": "report", "data": {key: report[key] for key in allowed if key in report.keys()}}
+        claim = conn.execute("SELECT * FROM claims WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
+        if claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret):
+            allowed = (
+                "public_ref", "evidence", "evidence_types", "status", "reviewer_note",
+                "created_at", "updated_at", "claimant_phone",
+            )
+            return {"type": "claim", "data": {key: claim[key] for key in allowed if key in claim.keys()}}
+    raise HTTPException(status_code=404, detail="Private tracking access not found.")
+
+
+@router.post("/privacy-requests", status_code=201)
+def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Request):
+    roll = _roll(body.roll_number)
+    request_id = uuid.uuid4().hex
+    timestamp = now_iso()
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "privacy", 5)
+        report = conn.execute(
+            "SELECT roll_number,tracking_hash,contact_email FROM reports WHERE public_ref=? AND submission_channel='public'",
+            (body.reference,),
+        ).fetchone()
+        claim = None
+        if not report:
+            claim = conn.execute(
+                "SELECT claimant_roll_number,tracking_hash,claimant_phone FROM claims WHERE public_ref=? AND submission_channel='public'",
+                (body.reference,),
+            ).fetchone()
+        verified = bool(
+            (report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], body.tracking_secret))
+            or (claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], body.tracking_secret))
+        )
+        if not verified:
+            raise HTTPException(status_code=404, detail="Private tracking access not found.")
+        requester_email = report["contact_email"] if report else None
+        roll_hash = hmac.new(SESSION_SECRET.encode("utf-8"), roll.encode("utf-8"), hashlib.sha256).hexdigest()
+        conn.execute(
+            """INSERT INTO privacy_requests
+               (id,public_reference,requester_email,roll_hash,request_type,details,status,created_at,updated_at)
+               VALUES (?,?,?,?,?,?,'pending',?,?)""",
+            (request_id, body.reference, requester_email, roll_hash, body.request_type,
+             body.details.strip(), timestamp, timestamp),
+        )
+        actor_id = _public_actor_for_roll(conn, roll)
+        audit(conn, actor_id, "public_privacy_request_created", "privacy_request", request_id,
+              {"request_type": body.request_type, "public_reference": body.reference})
+        notify_role(
+            conn, "office", "privacy-request:" + request_id,
+            "Public personal-data request received",
+            "A verified public case holder submitted a " + body.request_type + " request.",
+            "privacy_request", request_id,
+        )
+    return {"id": request_id, "status": "pending", "message": "Your verified request has been sent to authorised office staff."}
+
+@router.post("/reports/{reference}/ai-consent")
+def update_public_ai_consent(
+    reference: str,
+    body: ImageAiConsentBody,
+    request: Request,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "ai-consent", 10)
+        lock_row(conn, "reports", "public_ref", reference)
+        row = conn.execute(
+            "SELECT * FROM reports WHERE public_ref=? AND submission_channel='public'",
+            (reference,),
+        ).fetchone()
+        if not row or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404, detail="Private tracking access not found.")
+        consent = int(bool(body.consent))
+        conn.execute(
+            """UPDATE reports SET image_ai_consent=?,
+               ai_caption=CASE WHEN ?=0 THEN NULL ELSE ai_caption END,
+               ai_keywords=CASE WHEN ?=0 THEN NULL ELSE ai_keywords END,
+               ai_attributes_json=CASE WHEN ?=0 THEN NULL ELSE ai_attributes_json END,
+               ai_enriched_at=CASE WHEN ?=0 THEN NULL ELSE ai_enriched_at END,
+               ai_enrichment_model=CASE WHEN ?=0 THEN NULL ELSE ai_enrichment_model END,
+               updated_at=? WHERE id=?""",
+            (consent, consent, consent, consent, consent, consent, now_iso(), row["id"]),
+        )
+        if not consent and row["image_sha256"]:
+            conn.execute(
+                "DELETE FROM ai_embedding_cache WHERE content_hash=? AND model_name LIKE ?",
+                (row["image_sha256"], "%:image"),
+            )
+        audit(conn, int(row["created_by"]), "public_report_image_ai_consent_updated", "report", row["id"],
+              {"consent": bool(consent)})
+    return {"reference": reference, "image_ai_consent": bool(body.consent)}
+
+

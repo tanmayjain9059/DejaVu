@@ -297,7 +297,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(leaderboard.status_code, 200, leaderboard.text)
         self.assertEqual(leaderboard.json()["my_rank"], 1)
         self.assertEqual(leaderboard.json()["my_total_points"], 15)
-        self.assertEqual(leaderboard.json()["leaders"][0]["display_name"], "Finder Student")
+        self.assertEqual(leaderboard.json()["leaders"][0]["display_name"], "Contributor 1")
         self.assertNotIn("email", leaderboard.json()["leaders"][0])
         self.logout()
 
@@ -618,7 +618,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         image.save(output, format="PNG")
         return output.getvalue()
 
-    def test_report_image_rejects_duplicate_already_used_on_another_report(self):
+    def test_report_image_upload_does_not_disclose_cross_report_duplicates(self):
         self.login("finder@example.test", "finder-password")
         first = self.client.post("/api/reports", json=self.report_body(
             "found", "Black headphones", "Black over-ear headphones with padded band and silver hinge."
@@ -634,10 +634,10 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 200, upload.text)
         duplicate = self.client.post(f"/api/reports/{second.json()['report']['id']}/image",
                                      files={"file": ("copy.png", image, "image/png")})
-        self.assertEqual(duplicate.status_code, 409, duplicate.text)
-        self.assertIn("duplicates or closely matches", duplicate.json()["detail"])
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
+        self.assertTrue(duplicate.json()["report"]["image_url"])
 
-    def test_claim_evidence_rejects_image_already_used_on_a_report(self):
+    def test_claim_evidence_upload_does_not_disclose_cross_report_duplicates(self):
         self.login("finder@example.test", "finder-password")
         found = self.client.post(
             "/api/reports",
@@ -682,11 +682,10 @@ class LostLinkWorkflowTests(unittest.TestCase):
             f"/api/claims/{claim_id}/evidence-image",
             files={"file": ("same-headphones.png", original_image, "image/png")},
         )
-        self.assertEqual(duplicate.status_code, 409, duplicate.text)
-        self.assertIn("duplicates or closely matches", duplicate.json()["detail"])
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
         listed_claim = next(item for item in self.client.get("/api/claims").json()["claims"] if item["id"] == claim_id)
         self.assertEqual(listed_claim["evidence_types"], ["distinctive_features", "purchase_or_receipt"])
-        self.assertFalse(listed_claim["evidence_image_available"])
+        self.assertTrue(listed_claim["evidence_image_available"])
         self.logout()
 
     def test_private_claim_evidence_image_is_only_visible_to_claimant_and_office(self):

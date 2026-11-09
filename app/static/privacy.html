@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>LostLink · Privacy & AI processing</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#17312d;background:#f5f7f2}
+    body{max-width:850px;margin:0 auto;padding:32px 20px 64px;line-height:1.65}
+    a{color:#126c5b}h1,h2{line-height:1.2}h1{font-size:2.3rem}h2{margin-top:2rem;font-size:1.25rem}
+    .panel{background:#fff;border:1px solid #dce5dc;border-radius:18px;padding:20px;margin:18px 0}
+    .note{font-size:.92rem;color:#5d716a}.back{display:inline-block;margin-bottom:18px}
+    li{margin:.4rem 0}
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Back to LostLink</a>
+  <p class="note">CAMPUS LOST & FOUND · DATA NOTICE</p>
+  <h1>Privacy & AI processing</h1>
+  <p>LostLink handles report, claim and campus-custody information so that lost property can be matched, verified and returned. This page explains the application behaviour currently implemented. It is not a substitute for the college's approved privacy notice or legal review.</p>
+
+  <section class="panel">
+    <h2>Information collected</h2>
+    <ul>
+      <li>Report details: item description, category, visible characteristics, campus location and dates.</li>
+      <li>Claim details: ownership evidence, selected evidence types and review history.</li>
+      <li>Contact and attribution details: college roll number and any phone/email supplied in a public report.</li>
+      <li>Operational records: notifications, office actions, audit events, custody and reward records.</li>
+      <li>Optional photographs, stored in private object storage and not served in public browse results.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>AI and photographs</h2>
+    <p>Photo upload and AI photo analysis are separate choices. A photograph can be stored for office review without granting AI-processing consent. Image-based CLIP matching and optional image-caption suggestions run only when the report's explicit AI-consent flag is true.</p>
+    <p>AI model inference runs in the LostLink backend. Model downloads are disabled by default. If the operator enables downloads, the deployment must pin an immutable model revision. Text matching can continue without image AI. AI suggestions are advisory and never establish ownership.</p>
+    <p>Do not upload identity cards, access credentials, passwords, PINs, one-time codes or unrelated personal documents.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Private case access and data copies</h2>
+    <p>Use the private tracking link from your submission receipt. The link contains a case reference, roll-number attribution and a private secret. Anyone who obtains that link may be able to access the case, so keep it confidential.</p>
+    <p>After opening your case in Track, use <strong>Download my case data</strong> to export the data associated with that public report or claim. Use <strong>Request a privacy action</strong> to submit an access, correction or erasure request to the authorised campus office.</p>
+    <p>Authenticated application users can use <code>/api/privacy/export</code> for an application-data export and <code>/api/privacy/requests</code> to submit or review their own requests.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Erasure, retention and review</h2>
+    <p>Erasure requests are not executed automatically. Authorised staff must check whether an active ownership dispute, custody record, fraud-prevention need, audit obligation or other lawful retention basis requires some information to be preserved. A completed request must include a recorded action and reason. Supabase Auth identity removal, where applicable, also requires the authorised Supabase administrator to complete the provider-side action.</p>
+    <p><strong>Retention schedule:</strong> the college has not yet supplied an approved retention schedule to encode. LostLink therefore does not automatically purge closed reports, claims, audit records or backups on an invented timetable. The college owner must approve retention periods and backup deletion procedures before representing this prototype as institutionally compliant.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Who handles requests?</h2>
+    <p>Requests submitted through LostLink are routed to authorised office staff. The office review queue records the request type, status, decision note and timestamps. For a case submitted without an authenticated account, use the private tracking link to verify control of the case before requesting a privacy action.</p>
+  </section>
+
+  <p class="note">Last updated: 9 November 2026 · LostLink prototype privacy notice · College approval required before production use.</p>
+</body>
+</html>

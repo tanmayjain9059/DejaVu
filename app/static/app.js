@@ -5,6 +5,94 @@ let currentUser = null;
 let supabaseClient = null;
 let supabaseAccessToken = null;
 const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
+
+function createSupabaseRestAuthClient(supabaseUrl, anonKey) {
+  let base = String(supabaseUrl || "");
+  while (base.endsWith("/")) base = base.slice(0, -1);
+  const storageKey = "lostlink:supabase-office-session";
+  let session = null;
+  try {
+    const stored = sessionStorage.getItem(storageKey);
+    session = stored ? JSON.parse(stored) : null;
+  } catch (_) { session = null; }
+
+  function persist(next) {
+    session = next || null;
+    try {
+      if (session) sessionStorage.setItem(storageKey, JSON.stringify(session));
+      else sessionStorage.removeItem(storageKey);
+    } catch (_) {}
+  }
+  async function authRequest(path, body, accessToken) {
+    const headers = {"apikey": anonKey, "Content-Type": "application/json"};
+    if (accessToken) headers.Authorization = "Bearer " + accessToken;
+    const response = await fetch(base + path, {
+      method: "POST", headers, body: JSON.stringify(body || {}), credentials: "omit"
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.msg || payload.message || payload.error_description || payload.error || "Supabase authentication failed.");
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  }
+  async function refreshIfNeeded() {
+    if (!session) return null;
+    const expiresAt = Number(session.expires_at || 0);
+    if (!expiresAt || expiresAt * 1000 > Date.now() + 60000) return session;
+    if (!session.refresh_token) { persist(null); return null; }
+    try {
+      const refreshed = await authRequest("/auth/v1/token?grant_type=refresh_token", {
+        refresh_token: session.refresh_token
+      });
+      persist({
+        ...refreshed,
+        expires_at: refreshed.expires_at || Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600)
+      });
+      return session;
+    } catch (_) {
+      persist(null);
+      return null;
+    }
+  }
+  return {
+    auth: {
+      async getSession() {
+        const current = await refreshIfNeeded();
+        return {data: {session: current}, error: null};
+      },
+      async signInWithPassword(credentials) {
+        try {
+          const signedIn = await authRequest("/auth/v1/token?grant_type=password", {
+            email: String(credentials.email || "").trim().toLowerCase(),
+            password: String(credentials.password || "")
+          });
+          persist({
+            ...signedIn,
+            expires_at: signedIn.expires_at || Math.floor(Date.now() / 1000) + Number(signedIn.expires_in || 3600)
+          });
+          return {data: {session, user: session.user || null}, error: null};
+        } catch (error) {
+          return {data: {session: null, user: null}, error};
+        }
+      },
+      async signOut() {
+        try {
+          const current = await refreshIfNeeded();
+          if (current && current.access_token) {
+            await authRequest("/auth/v1/logout", {}, current.access_token);
+          }
+          persist(null);
+          return {error: null};
+        } catch (error) {
+          return {error};
+        }
+      }
+    }
+  };
+}
+
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
@@ -54,7 +142,8 @@ const pageState = {
   intake: { cursor: null, hasMore: false, loading: false, items: [] },
   inventory: { cursor: null, hasMore: false, loading: false, items: [] },
   officeClaims: { cursor: null, hasMore: false, loading: false, items: [] },
-  handovers: { cursor: null, hasMore: false, loading: false, items: [] }
+  handovers: { cursor: null, hasMore: false, loading: false, items: [] },
+  privacyRequests: { cursor: null, hasMore: false, loading: false, items: [] }
 };
 let inspectedUser = null;
 let notificationPollTimer = null;
@@ -374,9 +463,22 @@ async function api(url, options) {
     if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
   }
   let response;
-  try { response = await fetch(API_BASE_URL + url, opts); }
-  catch (_) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  try {
+    response = await fetch(API_BASE_URL + url, opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
     throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
@@ -496,12 +598,12 @@ async function loadConfig() {
     $("#demoAccess").classList.add("hidden");
     const modeNote = $("#officeAccessModeNote");
     try {
-      if (!window.supabase || !appConfig.supabase_url || !appConfig.supabase_anon_key) {
-        throw new Error("Supabase Auth client configuration is missing.");
+      if (!appConfig.supabase_url || !appConfig.supabase_anon_key) {
+        throw new Error("Supabase Auth configuration is missing.");
       }
-      supabaseClient = window.supabase.createClient(appConfig.supabase_url, appConfig.supabase_anon_key, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      });
+      // Use Supabase's documented Auth REST endpoints directly. This removes
+      // the third-party browser SDK/CDN from the trusted script supply chain.
+      supabaseClient = createSupabaseRestAuthClient(appConfig.supabase_url, appConfig.supabase_anon_key);
       modeNote.textContent = "Live campus deployment: sign in with your verified college account. Office access is limited to the authorised staff email allowlist.";
       modeNote.classList.remove("hidden");
     } catch (error) {
@@ -568,6 +670,7 @@ function enterApp(user) {
     button.classList.toggle("hidden", user.role === "office");
   });
   $("#officeDashboardNav").classList.toggle("hidden", user.role !== "office");
+  $("#privacyRequestsNav").classList.toggle("hidden", user.role !== "office");
   $('[data-view="start"]').classList.toggle("hidden", user.role === "office");
   $("#welcomeTitle").textContent = user.role === "office" ? "Manage found items and claims." : "Find what you are looking for.";
   $("#welcomeSubtitle").textContent = user.role === "office"
@@ -610,7 +713,7 @@ function navigate(view) {
   const sections = {
     start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
-    activity: "#activityView", office: "#officeView"
+    activity: "#activityView", office: "#officeView", privacyRequests: "#privacyRequestsView"
   };
   Object.values(sections).forEach((selector) => $(selector).classList.add("hidden"));
   $(sections[view] || sections.browse).classList.remove("hidden");
@@ -620,6 +723,7 @@ function navigate(view) {
   if (view === "my-reports") loadMyReports();
   if (view === "my-claims") loadMyClaims();
   if (view === "office") loadOffice();
+  if (view === "privacyRequests") loadOffice("privacyRequests");
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
   updateFinnForView(view);
@@ -971,7 +1075,8 @@ async function submitReport(event) {
     location_block: reportField("reportBlock", form).value || null,
     location_floor: reportField("reportFloor", form).value || null,
     location_room: reportField("reportRoom", form).value.trim() || null,
-    location_area: reportField("reportArea", form).value.trim() || null
+    location_area: reportField("reportArea", form).value.trim() || null,
+    image_ai_consent: Boolean(reportField("reportImageAiConsent", form)?.checked)
   };
   const image = reportField("reportImage", form).files[0];
   if (!body.location_block && !body.location_area) {
@@ -997,7 +1102,7 @@ async function submitReport(event) {
       fileBody.append("file", image);
       try {
         await api("/api/reports/" + encodeURIComponent(result.report.id) + "/image", { method: "POST", body: fileBody });
-        if (appConfig && appConfig.image_enrichment_enabled) {
+        if (body.image_ai_consent && appConfig && appConfig.image_enrichment_enabled) {
           try {
             const ai = await api("/api/reports/" + encodeURIComponent(result.report.id) + "/enrichment", { method: "POST" });
             const enrichment = ai.enrichment || {};
@@ -1329,7 +1434,8 @@ async function loadOffice(appendKey = null) {
     intake: { path: "/api/reports?report_type=found&status=awaiting_intake", target: "#intakeQueue", button: "#intakeLoadMore", empty: "#intakeEmpty", key: "reports", render: intakeCard },
     inventory: { path: "/api/reports?report_type=found&status=available,claim_approved", target: "#officeInventory", button: "#inventoryLoadMore", empty: "#officeInventoryEmpty", key: "reports", render: officeInventoryCard },
     officeClaims: { path: "/api/claims?queue=active", target: "#officeClaims", button: "#officeClaimsLoadMore", empty: "#officeClaimsEmpty", key: "claims", render: officeClaimCard },
-    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard }
+    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard },
+    privacyRequests: { path: "/api/office/privacy-requests", target: "#privacyRequestsList", button: null, empty: "#privacyRequestsEmpty", key: "requests", render: privacyRequestCard }
   };
   const keys = appendKey ? [appendKey] : Object.keys(definitions);
   if (appendKey && !definitions[appendKey]) return;
@@ -1373,6 +1479,51 @@ async function loadOffice(appendKey = null) {
     }));
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
+}
+
+function privacyRequestCard(request) {
+  const subject = request.account_email || (request.public_reference ? "Public case " + request.public_reference : "Account " + request.user_id);
+  const type = ({access:"Access / data copy",correction:"Correction",erasure:"Erasure"})[request.request_type] || request.request_type;
+  const status = ({pending:"Awaiting review",in_review:"In review",completed:"Completed",declined:"Declined"})[request.status] || request.status;
+  const terminal = ["completed","declined"].includes(request.status);
+  return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(type) + '</h3><p>' +
+    escapeHTML(subject) + " · " + escapeHTML(humanDateTime(request.created_at)) + '</p></div><span class="status-pill">' +
+    escapeHTML(status) + '</span></div><p>' + escapeHTML(request.details || "No additional details supplied.") + '</p>' +
+    (request.reviewer_note ? '<p class="field-hint"><strong>Last review note:</strong> ' + escapeHTML(request.reviewer_note) + '</p>' : '') +
+    (terminal ? '<p class="field-hint">This request is closed.</p>' : '<div class="card-actions"><button class="button button-primary button-small" type="button" data-privacy-review="' +
+      escapeHTML(request.id) + '" data-privacy-type="' + escapeHTML(request.request_type) + '" data-privacy-subject="' + escapeHTML(subject) +
+      '">Review request</button></div>') + '</article>';
+}
+
+let selectedPrivacyRequestId = null;
+function openPrivacyDecision(requestId, requestType, subject) {
+  selectedPrivacyRequestId = requestId;
+  $("#privacyDecisionSummary").textContent = requestType + " request · " + subject;
+  $("#privacyDecisionAction").value = "in_review";
+  $("#privacyDecisionNote").value = "";
+  $("#privacyDecisionError").textContent = "";
+  $("#privacyDecisionDialog").showModal();
+}
+async function submitPrivacyDecision(event) {
+  event.preventDefault();
+  if (!selectedPrivacyRequestId) return;
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#privacyDecisionError").textContent = "";
+  try {
+    const result = await api("/api/office/privacy-requests/" + encodeURIComponent(selectedPrivacyRequestId) + "/decision", {
+      method: "POST",
+      body: {action: $("#privacyDecisionAction").value, note: $("#privacyDecisionNote").value.trim()}
+    });
+    $("#privacyDecisionDialog").close();
+    selectedPrivacyRequestId = null;
+    showToast(result.message || "Privacy request updated.", false);
+    await loadOffice("privacyRequests");
+  } catch (error) {
+    $("#privacyDecisionError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function officeInventoryCard(report) {
@@ -1590,7 +1741,8 @@ async function loadActivity() {
     const data = await api("/api/activity/me");
     const total = Number(data.total_points || 0);
     const next = data.next_milestone;
-    const progress = next ? Math.min(100, total / next.threshold * 100) : 100;
+    const rawProgress = next ? total / next.threshold * 100 : 100;
+    const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
     const nextText = next
       ? (data.points_to_next_milestone + " more points to " + next.tier)
       : "All current recognition milestones earned";
@@ -1957,7 +2109,24 @@ function showPublicDestination(type) {
 }
 async function publicApi(path, options) {
   const opts = Object.assign({method:"GET",credentials:"omit",headers:{}},options || {});
-  const response = await fetch(API_BASE_URL + path,opts);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  let response;
+  try {
+    response = await fetch(API_BASE_URL + path,opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
+    throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data,"Request failed ("+response.status+")."));
   return data;
@@ -2240,7 +2409,8 @@ async function submitPublicReport(event) {
     item_condition: type === "found" ? field("publicItemCondition").value || null : null,
     handover_at: type === "found" ? field("publicHandoverAt").value || null : null,
     handover_recipient: type === "found" ? field("publicHandoverRecipient").value.trim() || null : null,
-    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null
+    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null,
+    image_ai_consent: Boolean(field("publicImageAiConsent")?.checked)
   };
   const errorNode = field("publicReportError");
   const button = form.querySelector('button[type="submit"]');
@@ -2328,6 +2498,37 @@ $("#copyPublicTrackingLink").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(value); showToast("Private tracking link copied.", false); }
   catch (_) { field.focus(); field.select(); showToast("Select and copy the private tracking link.", false); }
 });
+$("#publicPrivacyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!lastPublicTracking) return;
+  const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+  if (!access) { $("#publicPrivacyError").textContent = "Open the private tracking link from your receipt first."; return; }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#publicPrivacyError").textContent = "";
+  try {
+    const result = await publicApi("/api/public/privacy-requests", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        reference: lastPublicTracking.reference,
+        roll_number: access.roll,
+        tracking_secret: access.secret,
+        request_type: $("#publicPrivacyType").value,
+        details: $("#publicPrivacyDetails").value.trim()
+      })
+    });
+    $("#publicPrivacyDialog").close();
+    showToast(result.message || "Privacy request submitted.", false);
+  } catch(error) {
+    $("#publicPrivacyError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#closePublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+$("#cancelPublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+
 $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
   const resultNode = $("#publicTrackResult");
@@ -2361,6 +2562,11 @@ $("#publicTrackForm").addEventListener("submit", async event => {
     if (!isCase && record.status === "needs_more_evidence") {
       actions.push('<button class="button button-liquid button-small" type="button" data-public-add-evidence>Submit requested evidence</button>');
     }
+    if (isCase && item.image_ai_consent) {
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-revoke-ai-consent>Withdraw AI photo consent</button>');
+    }
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-export>Download my case data</button>');
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-privacy>Request a privacy action</button>');
     resultNode.innerHTML = '<section class="track-summary"><p><strong>Reference ' + escapeHTML(record.reference || reference) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '</p><p>' + escapeHTML(record.title || item.title || "Claim") + '</p>' +
       (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : '') +
       '<div class="form-actions">' + actions.join("") + '</div></section>' +
@@ -2374,6 +2580,51 @@ $("#publicTrackResult").addEventListener("click", async event => {
   if (!state) return;
   const credentials = getPublicAccess(state.reference, state.roll);
   if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
+  if (event.target.closest("[data-public-revoke-ai-consent]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before changing photo consent.", true); return; }
+    const button = event.target.closest("[data-public-revoke-ai-consent]");
+    button.disabled = true;
+    try {
+      await publicApi("/api/public/reports/" + encodeURIComponent(state.reference) + "/ai-consent", {
+        method: "POST",
+        headers: {"Content-Type":"application/json", ...getPublicAccess(state.reference, state.roll, access.secret)},
+        body: JSON.stringify({consent:false})
+      });
+      if (state.data && state.data.case) state.data.case.image_ai_consent = false;
+      button.remove();
+      showToast("AI photo consent withdrawn. Stored AI captions and cached image vectors were cleared.", false);
+    } catch(error) {
+      button.disabled = false;
+      showToast(error.message, true);
+    }
+    return;
+  }
+  if (event.target.closest("[data-public-export]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before exporting data.", true); return; }
+    try {
+      const data = await publicApi("/api/public/privacy-export/" + encodeURIComponent(state.reference), {
+        headers: getPublicAccess(state.reference, state.roll, access.secret)
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lostlink-" + state.reference + "-data.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch(error) { showToast(error.message, true); }
+    return;
+  }
+  if (event.target.closest("[data-public-privacy]")) {
+    $("#publicPrivacyError").textContent = "";
+    $("#publicPrivacyDetails").value = "";
+    $("#publicPrivacyDialog").showModal();
+    return;
+  }
   if (event.target.closest("[data-public-refresh-matches]")) {
     await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
   } else if (event.target.closest("[data-public-close-case]")) {
@@ -2420,7 +2671,7 @@ function assertLocalOfficeLoginAllowed() {
     throw new Error("LostLink configuration has not loaded. Refresh the page before signing in.");
   }
   if (appConfig.auth_mode === "supabase") {
-    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL, anon key, and script connection. Local demo login is disabled.");
+    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL and anon key. Local demo login is disabled.");
   }
 }
 
@@ -2590,6 +2841,8 @@ document.addEventListener("click", (event) => {
   }
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
+  const privacyReview = event.target.closest("[data-privacy-review]");
+  if (privacyReview) openPrivacyDecision(privacyReview.dataset.privacyReview, privacyReview.dataset.privacyType, privacyReview.dataset.privacySubject);
   const certificate = event.target.closest("[data-certificate-download]");
   if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
@@ -2602,6 +2855,10 @@ $("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeCla
 $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
+$("#refreshPrivacyRequests").addEventListener("click", () => loadOffice("privacyRequests"));
+$("#privacyDecisionForm").addEventListener("submit", submitPrivacyDecision);
+$("#closePrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
+$("#cancelPrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
 $("#clearFilters").addEventListener("click", resetSearch);
 document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
   form.addEventListener("submit", submitReport);

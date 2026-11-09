@@ -13,6 +13,7 @@ class ReportBody(BaseModel):
     title: str = Field(min_length=4, max_length=100)
     description: str = Field(min_length=10, max_length=1200)
     category: str
+    image_ai_consent: bool = False
     # Optional public characteristics improve search/matching; never put secret proof here.
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
@@ -81,3 +82,7 @@ class CategorySuggestionBody(BaseModel):
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
     visible_features: str | None = Field(default=None, max_length=400)
+
+
+class ImageAiConsentBody(BaseModel):
+    consent: bool

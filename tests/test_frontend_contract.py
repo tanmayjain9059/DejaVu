@@ -74,6 +74,7 @@ class FrontendContractTests(unittest.TestCase):
             "notifications": "notificationsView",
             "activity": "activityView",
             "office": "officeView",
+            "privacyRequests": "privacyRequestsView",
         }
         missing = [view for view in self.views if expected.get(view) not in self.id_set]
         self.assertEqual(missing, [], f"Navigation views missing their section: {missing}")

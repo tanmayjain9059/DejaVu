@@ -67,7 +67,7 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
 
 
 def new_public_ref() -> str:
-    return "LL-" + secrets.token_hex(3).upper()
+    return "LL-" + secrets.token_hex(16).upper()
 
 
 def effective_level(category: str, value_band: str, sensitivity_level: int) -> int:

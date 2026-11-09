@@ -41,6 +41,17 @@ class RewardSystemTests(unittest.TestCase):
                 created_at TEXT NOT NULL,
                 UNIQUE(user_id, event_key)
             );
+            CREATE TABLE reports (
+                id TEXT PRIMARY KEY,
+                report_type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_by INTEGER NOT NULL
+            );
+            CREATE TABLE handovers (
+                id TEXT PRIMARY KEY,
+                report_id TEXT NOT NULL,
+                office_user_id INTEGER NOT NULL
+            );
             CREATE TABLE reward_ledger (
                 id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,
@@ -70,6 +81,7 @@ class RewardSystemTests(unittest.TestCase):
         self.conn.close()
 
     def test_reward_is_awarded_once_for_same_event(self):
+        self.conn.execute("INSERT INTO reports VALUES ('report-1', 'found', 'available', 1)")
         first = award_points(
             self.conn, 1, 10, "verified-intake:report-1",
             "Found item accepted by office", "report-1", 2
@@ -84,6 +96,7 @@ class RewardSystemTests(unittest.TestCase):
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM reward_ledger").fetchone()[0], 1)
 
     def test_office_account_does_not_receive_student_activity_points(self):
+        self.conn.execute("INSERT INTO reports VALUES ('report-office', 'found', 'available', 2)")
         changed = award_points(
             self.conn, 2, 10, "verified-intake:report-office",
             "Found item accepted by office", "report-office", 2
@@ -93,6 +106,10 @@ class RewardSystemTests(unittest.TestCase):
 
     def test_milestone_certificates_issue_once(self):
         for index in range(1, 11):
+            self.conn.execute(
+                "INSERT INTO reports VALUES (?, 'found', 'available', 1)",
+                ("report-" + str(index),),
+            )
             award_points(
                 self.conn, 1, 10, "verified-intake:report-" + str(index),
                 "Found item accepted by office", "report-" + str(index), 2

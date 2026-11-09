@@ -1,5 +1,6 @@
 """HTTP route group."""
 from fastapi import APIRouter
+from starlette.concurrency import run_in_threadpool
 from app.core.runtime import *
 from app.schemas import *
 from app.services.object_storage import delete_upload, read_upload, save_upload
@@ -17,11 +18,14 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
     evidence_types = list(body.evidence_types)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", body.report_id)
+        lock_row(conn, "users", "id", user["id"])
         report = read_report(conn, body.report_id)
         if report["report_type"] != "found" or report["status"] != "available":
             raise HTTPException(status_code=409, detail="This item is not accepting claims.")
         linked_lost = None
         if body.lost_report_id:
+            lock_row(conn, "reports", "id", body.lost_report_id)
             linked_lost = read_report(conn, body.lost_report_id)
             if (linked_lost["report_type"] != "lost" or
                     linked_lost["created_by"] != user["id"] or
@@ -63,6 +67,12 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
                 status_code=409,
                 detail=f"You have reached the limit of {MAX_OPEN_CLAIMS_PER_STUDENT} open claims. Wait for a review or use the existing claim's follow-up controls.",
             )
+        approved_claim = conn.execute(
+            "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
+            (body.report_id,),
+        ).fetchone()
+        if approved_claim:
+            raise HTTPException(status_code=409, detail="A claim is already approved for collection. No additional claims can be submitted.")
         active = conn.execute(
             "SELECT id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
             (body.report_id,)
@@ -117,11 +127,14 @@ async def upload_claim_evidence_image(
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
+    filename = "claim-" + uuid.uuid4().hex + ".jpg"
     image_key = None
     try:
+        # S3/object-storage writes happen before opening the DB write transaction.
+        image_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
-            # Serialize duplicate checks across simultaneous student and office processes.
             conn.execute("BEGIN IMMEDIATE")
+            lock_row(conn, "claims", "id", claim_id)
             claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
             if not claim or claim["claimant_id"] != user["id"]:
                 raise HTTPException(status_code=404, detail="Claim not found.")
@@ -129,13 +142,8 @@ async def upload_claim_evidence_image(
                 raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
             if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
                 raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(
-                    status_code=409,
-                    detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
-                )
-            filename = "claim-" + uuid.uuid4().hex + ".jpg"
-            image_key = save_upload(filename, normalized)
+            # Do not expose a global duplicate-photo oracle to claimants.
+            # Fingerprints are retained for private office review and matching.
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
@@ -148,14 +156,14 @@ async def upload_claim_evidence_image(
                         "Claim evidence image submitted", "A claimant attached private image evidence for review.",
                         "claim", claim_id)
     except Exception:
-        # Also catches commit failures from the connection context manager.
         if image_key is not None:
             try:
-                delete_upload(image_key)
+                await run_in_threadpool(delete_upload, image_key)
             except Exception:
                 pass
         raise
     return {"ok": True, "message": "Private evidence image attached."}
+
 
 @router.get("/api/claims/{claim_id}/evidence-image")
 async def get_claim_evidence_image(
@@ -257,7 +265,7 @@ async def list_claims(
         active_count = 0
         if not internal:
             count_row = conn.execute(
-                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
                 (user["id"],),
             ).fetchone()
             active_count = int(count_row["n"])
@@ -337,13 +345,14 @@ async def update_claim_evidence(
         raise HTTPException(status_code=403, detail="This action is available to the claimant.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
         if claim["status"] != "needs_more_evidence":
             raise HTTPException(status_code=409, detail="Additional evidence is not currently requested.")
         active_other = conn.execute(
-            "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+            "SELECT id FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
             (claim["report_id"], claim_id)
         ).fetchall()
         status = "disputed" if active_other else "pending"
@@ -376,6 +385,7 @@ async def dispute_rejected_claim(
         raise HTTPException(status_code=422, detail="Explain why the decision should be reviewed (at least 20 characters).")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim or claim["claimant_id"] != user["id"]:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -413,6 +423,7 @@ async def decide_claim(
     require_office(user)
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")
@@ -497,7 +508,7 @@ async def decide_claim(
                     notice_title, notice_text, "claim", claim_id)
         if body.action == "reject":
             other_active = conn.execute(
-                "SELECT 1 FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
+                "SELECT 1 FROM claims WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
                 (claim["report_id"], claim_id)
             ).fetchone()
             if not other_active and report["status"] == "available":
@@ -520,6 +531,7 @@ async def record_handover(
         raise HTTPException(status_code=422, detail="Confirm the physical handover and claimant identity.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
         if not claim:
             raise HTTPException(status_code=404, detail="Claim not found.")

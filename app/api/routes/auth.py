@@ -11,6 +11,11 @@ def home():
     return FileResponse(ROOT / "app" / "static" / "index.html")
 
 
+@router.get("/privacy")
+def privacy_notice():
+    return FileResponse(ROOT / "app" / "static" / "privacy.html")
+
+
 @router.get("/api/config")
 def public_config():
     return {
