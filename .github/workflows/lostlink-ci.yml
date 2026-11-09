@@ -8,8 +8,7 @@ on:
   push:
     branches:
       - feat/lostlink-unified-public-workflow
-      - fix/lostlink-issue-register-hardening
-      - fix/lostlink-hardening-ci-final
+      - 'fix/**'
 
 permissions:
   contents: read
