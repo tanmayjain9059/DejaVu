@@ -192,7 +192,7 @@ def main():
                     ).fetchone()["sequence"]
                     if sequence:
                         target.execute(
-                            f"SELECT setval(%s, COALESCE((SELECT MAX(id) FROM {table}), 1), "
+                            f"SELECT setval(?, COALESCE((SELECT MAX(id) FROM {table}), 1), "
                             f"EXISTS(SELECT 1 FROM {table}))",
                             (sequence,),
                         )
