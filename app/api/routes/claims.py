@@ -259,7 +259,7 @@ async def list_claims(
         active_count = 0
         if not internal:
             count_row = conn.execute(
-                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence')",
+                "SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
                 (user["id"],),
             ).fetchone()
             active_count = int(count_row["n"])
