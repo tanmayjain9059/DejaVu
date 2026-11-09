@@ -2089,13 +2089,12 @@ function openPublicClaimDialog(report) {
 }
 async function openPublicClaimById(reportId, publicRef) {
   try {
-    let report = null;
-    if (publicRef) {
-      const data = await publicApi("/api/public/search?q=" + encodeURIComponent(publicRef));
-      report = (data.reports || []).find(item => item.id === reportId || item.public_ref === publicRef);
+    if (!reportId) throw new Error("This Found item link is incomplete. Refresh Browse and try again.");
+    const data = await publicApi("/api/public/found/" + encodeURIComponent(reportId));
+    const report = data.report;
+    if (!report || report.id !== reportId || report.report_type !== "found" || report.status !== "available") {
+      throw new Error("This Found item is no longer available for claims. Refresh Browse.");
     }
-    if (!report) report = findReportById(reportId);
-    if (!report) throw new Error("This Found item could not be loaded. Refresh Browse and try again.");
     openPublicClaimDialog(report);
   } catch (error) { showToast(error.message, true); }
 }
