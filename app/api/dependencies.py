@@ -49,6 +49,8 @@ async def authenticated_user(
                     )
                     row = conn.execute("SELECT * FROM users WHERE supabase_user_id=?", (auth_id,)).fetchone()
             if row:
+                if row["role"] == "office" and not is_office:
+                    raise HTTPException(status_code=403, detail="Office access has been revoked. Contact the LostLink administrator.")
                 if row["email"].strip().lower() != email:
                     collision = conn.execute("SELECT id FROM users WHERE lower(email)=?", (email,)).fetchone()
                     if collision and collision["id"] != row["id"]:
