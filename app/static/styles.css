@@ -3427,7 +3427,6 @@ a:hover { color: var(--ll-primary-hover); }
 #reportView > .section-heading .muted { max-width: 760px; margin: 0; line-height: 1.6; }
 #reportView > .section-heading .button { flex: 0 0 auto; }
 #reportView .report-intro { display: none !important; }
-#reportView .report-mode-switch { display: none; }
 #reportView .form-layout {
   display: grid !important;
   grid-template-columns: minmax(0, 1.75fr) minmax(260px, .75fr) !important;
