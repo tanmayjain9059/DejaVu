@@ -4033,3 +4033,28 @@ a:hover { color: var(--ll-primary-hover); }
     padding-inline: 2px;
   }
 }
+\n
+/* Public Browse claim action: visible, high-contrast and reliably tappable. */
+#publicBrowseResults .public-browse-card { position:relative; }
+#publicBrowseResults .public-browse-actions {
+  position:relative; z-index:2; display:flex; flex-wrap:wrap;
+  align-items:center; gap:8px 14px; margin-top:4px;
+  pointer-events:auto;
+}
+#publicBrowseResults .public-claim-action {
+  position:relative; z-index:3; display:inline-flex !important;
+  align-items:center; justify-content:center; gap:10px;
+  min-width:172px; min-height:46px; padding:0 18px;
+  border-radius:999px; cursor:pointer; pointer-events:auto;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+#publicBrowseResults .public-claim-hint {
+  color:#806e60; font-size:.75rem; line-height:1.4;
+}
+#publicBrowseResults .public-claim-action:focus-visible {
+  outline:3px solid rgba(168,94,50,.38); outline-offset:3px;
+}
+@media(max-width:560px) {
+  #publicBrowseResults .public-browse-actions { align-items:stretch; flex-direction:column; }
+  #publicBrowseResults .public-claim-action { width:100%; }
+}
