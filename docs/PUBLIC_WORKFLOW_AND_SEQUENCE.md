@@ -34,7 +34,7 @@ The public website must be one coherent website with real view/route transitions
 4. **Item Details** — public description, public reference and Claim this item action. No Tag ID, private intake notes, exact custody shelf, claimant identity, or private image.
 5. **Submit Claim** — mandatory roll number, private ownership explanation, evidence checklist and optional private evidence image.
 6. **Case Receipt** — public reference plus a high-entropy tracking code shown once. Explain that the code must be saved.
-7. **Track a Case** — requires both public reference and tracking code. Roll number may be an additional consistency check, but is not a secret.
+7. **Track a Case** — opens or accepts the private receipt link. No separate tracking-secret field is shown; roll number remains attribution, not authentication.
 8. **Office Console** — separate staff login and protected routes.
 
 The public student workflow has no student dashboard session. A student's cases are accessed using the case receipt credential. A future institutional identity provider can replace this mechanism without changing the case lifecycle.
