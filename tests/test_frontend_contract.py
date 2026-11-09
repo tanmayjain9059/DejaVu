@@ -229,6 +229,32 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('/api/public/category-suggestion', self.js)
         self.assertIn('document.addEventListener("click", event => {', self.js)
 
+
+    def test_office_workspace_is_outside_student_navigation_capsule(self):
+        self.assertIn('id="officeWorkspaceButton"', self.html)
+        self.assertNotIn('id="officeNavButton"', self.html)
+        nav = re.search(r'<nav id="studentNav".*?</nav>', self.html, re.S)
+        self.assertIsNotNone(nav)
+        self.assertNotIn("officeWorkspaceButton", nav.group(0))
+        self.assertIn('$("#officeWorkspaceButton").addEventListener("click"', self.js)
+        self.assertIn('$("#officeWorkspaceButton").classList.toggle("hidden", user.role !== "office")', self.js)
+
+    def test_reference_header_has_responsive_phone_layout(self):
+        self.assertIn('class="brand-lockup compact"', self.html)
+        self.assertIn('class="header-center"', self.html)
+        self.assertIn('class="header-right"', self.html)
+        self.assertIn("@media (max-width:680px)", self.css)
+        self.assertIn("scroll-snap-type:x proximity", self.css)
+        self.assertIn("overscroll-behavior-x:contain", self.css)
+
+    def test_ai_category_controls_are_present_in_both_authenticated_report_forms(self):
+        self.assertIn('id="suggestCategoryButton"', self.html)
+        self.assertIn('id="suggestCategoryButtonFound"', self.html)
+        self.assertIn('class="category-ai-control ai-assist-inline"', self.html)
+        self.assertIn('class="ai-suggest-button"', self.html)
+        self.assertIn("#reportView .ai-suggest-button", self.css)
+        self.assertIn("async function suggestReportCategory(event)", self.js)
+
     def test_global_theme_uses_consistent_bone_beige_palette(self):
         self.assertIn("--ll-paper: #f2e9dc", self.css)
         self.assertIn("--ll-primary: #96552f", self.css)
