@@ -1970,7 +1970,7 @@ function openPublicSignIn(mode = "office") {
   $("#loginPanelKicker").textContent = isStudent ? "STUDENT ACCOUNT ACCESS" : "OFFICE STAFF ACCESS";
   $("#loginPanelTitle").textContent = isStudent ? "Student sign in" : "Office staff sign in";
   $("#loginPanelCopy").textContent = isStudent
-    ? "Use your verified college email and Supabase password to access your reports, claims and activity."
+    ? "Use your provisioned student account to access your reports, claims and activity."
     : "Authorised campus staff only. Office access is restricted to approved staff email addresses.";
   $("#loginError").textContent = "";
   $("#loginForm").reset();
@@ -2369,8 +2369,11 @@ $("#loginForm").addEventListener("submit",async event => {
       enterApp(profile.user);
     } else {
       const result = await api("/api/login",{method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
-      if (loginMode !== "office") throw new Error("Student sign-in requires configured Supabase college authentication. Public reporting remains available without an account.");
-      if (!result.user || result.user.role !== "office") throw new Error("Only authorised office staff can sign in.");
+      if (!result.user || result.user.role !== loginMode) {
+        throw new Error(loginMode === "student"
+          ? "Student sign-in is available only for provisioned student accounts. Public reporting remains available without an account."
+          : "Only authorised office staff can sign in.");
+      }
       enterApp(result.user);
     }
     showToast(loginMode === "student" ? "Student signed in successfully." : "Office staff signed in successfully.",false);
