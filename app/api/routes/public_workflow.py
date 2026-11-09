@@ -555,8 +555,8 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
         params.append(category)
     if q and q.strip():
         term = "%" + q.strip().lower() + "%"
-        where += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
-        params.extend([term,term,term,term])
+        where += " AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(COALESCE(location_area,'')) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ? OR LOWER(COALESCE(public_ref,'')) LIKE ?)"
+        params.extend([term,term,term,term,term])
     with connect_db() as conn:
         rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
     return {"reports": [_public_report(row) for row in rows]}
