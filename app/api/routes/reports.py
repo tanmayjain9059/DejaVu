@@ -366,6 +366,40 @@ async def upload_report_image(
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
 
 
+
+@router.post("/api/reports/{report_id}/ai-consent")
+async def update_report_ai_consent(
+    report_id: str,
+    body: ImageAiConsentBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
+        row = read_report(conn, report_id)
+        if user["role"] != "office" and int(row["created_by"]) != int(user["id"]):
+            raise HTTPException(status_code=404, detail="Report not found.")
+        consent = int(bool(body.consent))
+        conn.execute(
+            """UPDATE reports SET image_ai_consent=?,
+               ai_caption=CASE WHEN ?=0 THEN NULL ELSE ai_caption END,
+               ai_keywords=CASE WHEN ?=0 THEN NULL ELSE ai_keywords END,
+               ai_attributes_json=CASE WHEN ?=0 THEN NULL ELSE ai_attributes_json END,
+               ai_enriched_at=CASE WHEN ?=0 THEN NULL ELSE ai_enriched_at END,
+               ai_enrichment_model=CASE WHEN ?=0 THEN NULL ELSE ai_enrichment_model END,
+               updated_at=? WHERE id=?""",
+            (consent, consent, consent, consent, consent, consent, now_iso(), report_id),
+        )
+        if not consent and row["image_sha256"]:
+            conn.execute(
+                "DELETE FROM ai_embedding_cache WHERE content_hash=? AND model_name LIKE ?",
+                (row["image_sha256"], "%:image"),
+            )
+        audit(conn, user["id"], "report_image_ai_consent_updated", "report", report_id,
+              {"consent": bool(consent)})
+    return {"report_id": report_id, "image_ai_consent": bool(body.consent)}
+
+
 @router.post("/api/reports/{report_id}/enrichment")
 async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
     """Generate private-to-owner image suggestions; never overwrite student-authored fields."""
