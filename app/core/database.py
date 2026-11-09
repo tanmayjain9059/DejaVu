@@ -562,6 +562,12 @@ def _migration_add_public_roll_attribution(conn) -> None:
 
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
+def _migration_add_image_ai_consent(conn) -> None:
+    """Record explicit per-report consent before a model processes an uploaded photo."""
+    if "image_ai_consent" not in table_columns(conn, "reports"):
+        conn.execute("ALTER TABLE reports ADD COLUMN image_ai_consent INTEGER NOT NULL DEFAULT 0")
+
+
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
@@ -576,6 +582,7 @@ SCHEMA_MIGRATIONS = (
     (12, "public_report_context_and_handover_fields", _migration_add_public_report_context_fields),
     (13, "private_public_report_contact_fields", _migration_add_public_report_contact_fields),
     (14, "private_public_claimant_phone", _migration_add_public_claimant_phone),
+    (15, "explicit_image_ai_consent", _migration_add_image_ai_consent),
 )
 
 
