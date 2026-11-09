@@ -2308,6 +2308,7 @@ $("#publicTrackForm").addEventListener("submit", async event => {
     return;
   }
   if (suppliedSecret) storePublicAccess(reference, roll, suppliedSecret);
+  else $("#publicTrackSecret").value = credentials["X-LostLink-Tracking-Secret"];
   try {
     const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
     lastPublicTracking = {reference,roll,data};
