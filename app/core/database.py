@@ -64,7 +64,9 @@ def _translate_placeholders(statement: str) -> str:
             continue
 
         if quote:
-            output.append(char)
+            # Psycopg treats percent signs as parameter markers even inside
+            # SQL string literals whenever a parameter sequence is supplied.
+            output.append("%%" if char == "%" else char)
             if char == quote:
                 if index + 1 < len(statement) and statement[index + 1] == quote:
                     output.append(statement[index + 1])
@@ -88,6 +90,10 @@ def _translate_placeholders(statement: str) -> str:
             index += 1
         elif char == "?":
             output.append("%s")
+            index += 1
+        elif char == "%":
+            # Preserve a literal percent through psycopg's pyformat parser.
+            output.append("%%")
             index += 1
         else:
             output.append(char)
