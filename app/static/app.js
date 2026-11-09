@@ -374,9 +374,22 @@ async function api(url, options) {
     if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
   }
   let response;
-  try { response = await fetch(API_BASE_URL + url, opts); }
-  catch (_) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  try {
+    response = await fetch(API_BASE_URL + url, opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
     throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
@@ -1957,7 +1970,24 @@ function showPublicDestination(type) {
 }
 async function publicApi(path, options) {
   const opts = Object.assign({method:"GET",credentials:"omit",headers:{}},options || {});
-  const response = await fetch(API_BASE_URL + path,opts);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  let response;
+  try {
+    response = await fetch(API_BASE_URL + path,opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
+    throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data,"Request failed ("+response.status+")."));
   return data;
