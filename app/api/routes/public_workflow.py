@@ -10,14 +10,18 @@ import hashlib
 import re
 import secrets
 import uuid
+from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, File, UploadFile
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from pydantic import BaseModel, Field
 
 from app.core.runtime import (
     connect_db, now_iso, CATEGORY_LABELS, CATEGORY_DEFAULT_LEVEL, require_office, authenticated_user,
-    audit,
+    audit, UPLOAD_DIR, MAX_UPLOAD_BYTES, canonicalise_image, image_fingerprint_matches,
+    watermark_image,
 )
 from app.matching import matching_engine
 
@@ -59,7 +63,15 @@ def ensure_public_schema() -> None:
             intake_by INTEGER,
             intake_at TEXT,
             reviewed_by INTEGER,
-            closure_reason TEXT
+            closure_reason TEXT,
+            image_path TEXT,
+            image_sha256 TEXT,
+            image_phash TEXT,
+            ai_caption TEXT,
+            ai_keywords TEXT,
+            ai_attributes_json TEXT,
+            ai_enriched_at TEXT,
+            ai_enrichment_model TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_public_cases_roll_created
             ON public_cases(roll_number, created_at DESC);
@@ -100,9 +112,25 @@ def ensure_public_schema() -> None:
             created_at TEXT NOT NULL
         );
         """)
+        # Additive upgrades for public image/matching metadata on existing installs.
+        for column in (
+            "image_path TEXT", "image_sha256 TEXT", "image_phash TEXT", "ai_caption TEXT",
+            "ai_keywords TEXT", "ai_attributes_json TEXT", "ai_enriched_at TEXT",
+            "ai_enrichment_model TEXT",
+        ):
+            try:
+                conn.execute("ALTER TABLE public_cases ADD COLUMN " + column)
+            except Exception as exc:
+                message = str(exc).lower()
+                if "duplicate column" not in message and "already exists" not in message:
+                    raise
         conn.execute(
             "INSERT OR IGNORE INTO public_schema_migrations(version,name,applied_at) VALUES (1,?,?)",
             ("public_roll_attribution_and_tracking_tokens", now_iso()),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO public_schema_migrations(version,name,applied_at) VALUES (2,?,?)",
+            ("public_case_images_and_ai_matching", now_iso()),
         )
 
 
@@ -263,6 +291,84 @@ def submit_public_report(body: PublicReportBody, request: Request):
             "message": "Save this tracking secret now. It is shown once and cannot be recovered. Roll number alone never grants access."}
 
 
+@router.post("/cases/{reference}/image", status_code=201)
+async def upload_public_case_image(
+    reference: str,
+    file: UploadFile = File(...),
+    roll_number: str = "",
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    """Store a private report photo using the same validation and fingerprint pipeline as legacy reports."""
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        row = conn.execute("SELECT * FROM public_cases WHERE public_ref=?", (reference,)).fetchone()
+        if not row or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404, detail="Tracking access not found.")
+        if row["status"] not in ("open", "awaiting_intake"):
+            raise HTTPException(status_code=409, detail="A report photo can only be added before office intake or closure.")
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
+    normalized, image_sha256, image_phash = canonicalise_image(raw)
+    new_path = None
+    try:
+        with connect_db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM public_cases WHERE public_ref=?", (reference,)).fetchone()
+            if not row or row["roll_number"] != roll or not _verify_token(row["tracking_hash"], tracking_secret):
+                raise HTTPException(status_code=404, detail="Tracking access not found.")
+            if row["status"] not in ("open", "awaiting_intake"):
+                raise HTTPException(status_code=409, detail="A report photo can only be added before office intake or closure.")
+            if image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(status_code=409, detail="This image duplicates or closely matches an image already in LostLink.")
+            filename = uuid.uuid4().hex + ".jpg"
+            new_path = (UPLOAD_DIR / filename).resolve()
+            if new_path.parent != UPLOAD_DIR.resolve():
+                raise HTTPException(status_code=500, detail="Upload storage is not configured safely.")
+            new_path.write_bytes(normalized)
+            old = row["image_path"]
+            conn.execute(
+                "UPDATE public_cases SET image_path=?,image_sha256=?,image_phash=?,updated_at=? WHERE id=?",
+                (filename,image_sha256,image_phash,now_iso(),row["id"]),
+            )
+            conn.execute(
+                "INSERT INTO public_case_events(id,case_id,event_type,details_json,created_at) VALUES (?,?,?,?,?)",
+                (uuid.uuid4().hex,row["id"],"report_image_added",'{"channel":"public"}',now_iso()),
+            )
+    except Exception:
+        if new_path is not None:
+            try:
+                new_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+    if old:
+        old_path = (UPLOAD_DIR / old).resolve()
+        if old_path.parent == UPLOAD_DIR.resolve() and old_path != new_path:
+            try:
+                old_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+    return {"reference": reference, "image_uploaded": True, "message": "Photo saved privately and added to AI matching signals."}
+
+
+@router.get("/found/{reference}/image")
+def get_public_found_image(reference: str):
+    """Serve a watermarked preview only after office-confirmed physical intake."""
+    with connect_db() as conn:
+        row = conn.execute("SELECT * FROM public_cases WHERE public_ref=?", (reference,)).fetchone()
+    if not row or row["report_type"] != "found" or row["status"] != "available" or not row["image_path"]:
+        raise HTTPException(status_code=404, detail="Image not available.")
+    if row["category"] in {"identity_documents", "keys_access"}:
+        raise HTTPException(status_code=404, detail="Images of sensitive items are restricted.")
+    path = (UPLOAD_DIR / row["image_path"]).resolve()
+    if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Image not found.")
+    return StreamingResponse(BytesIO(watermark_image(path, row["public_ref"])),
+                             media_type="image/jpeg",
+                             headers={"Cache-Control":"public, max-age=300","X-Content-Type-Options":"nosniff"})
+
+
 @router.get("/found")
 def browse_public_found(category: str | None = None, q: str | None = None, limit: int = 50):
     limit = max(1, min(limit, 100))
@@ -300,7 +406,16 @@ def track_one_case(reference: str, roll_number: str,
                        ORDER BY created_at DESC LIMIT 500""",
                     (roll,),
                 ).fetchall()
-                ranked = matching_engine.rank(dict(case), [dict(row) for row in candidates], limit=5)
+                lost_data = dict(case)
+                if lost_data.get("image_path"):
+                    lost_data["image_path"] = str(UPLOAD_DIR / lost_data["image_path"])
+                candidate_data = []
+                for candidate in candidates:
+                    item = dict(candidate)
+                    if item.get("image_path"):
+                        item["image_path"] = str(UPLOAD_DIR / item["image_path"])
+                    candidate_data.append(item)
+                ranked = matching_engine.rank(lost_data, candidate_data, limit=5)
                 by_id = {row["id"]: row for row in candidates}
                 response["matches"] = [
                     {
