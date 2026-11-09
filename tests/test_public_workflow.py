@@ -342,6 +342,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(intake.status_code,200,intake.text)
         report_id = intake.json()["report"]["id"]
 
+        # Claim submission must work without a student or office session.
+        self.client.cookies.clear()
         claim_response = self.client.post("/api/public/found/"+report_id+"/claims",json={
             "roll_number":"25B81A66J9",
             "evidence":"I can identify a blue sticker below the battery cover and a small scratch on the right edge.",
@@ -350,7 +352,21 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         })
         self.assertEqual(claim_response.status_code,201,claim_response.text)
         claim = claim_response.json()["claim"]
+        tracking_secret = claim_response.json()["tracking_secret"]
         self.assertTrue(claim["reference"])
+        self.assertTrue(tracking_secret)
+        tracked = self.client.get("/api/public/track/"+claim["reference"],headers={
+            "X-LostLink-Roll-Number":"25B81A66J9",
+            "X-LostLink-Tracking-Secret":tracking_secret,
+        })
+        self.assertEqual(tracked.status_code,200,tracked.text)
+        self.assertEqual(tracked.json()["claim"]["status"],"pending")
+        self.assertEqual(tracked.json()["item"]["status"],"available")
+        denied_tracking = self.client.get("/api/public/track/"+claim["reference"],headers={
+            "X-LostLink-Roll-Number":"25B81A66J9",
+            "X-LostLink-Tracking-Secret":"incorrect-secret",
+        })
+        self.assertEqual(denied_tracking.status_code,404)
         with main.connect_db() as conn:
             stored = conn.execute("SELECT * FROM claims WHERE public_ref=?",(claim["reference"],)).fetchone()
             self.assertIsNotNone(stored)
@@ -365,6 +381,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         })
         self.assertEqual(duplicate.status_code,409,duplicate.text)
 
+        self.office_login()
         office_queue = self.client.get("/api/claims?queue=active")
         self.assertEqual(office_queue.status_code,200,office_queue.text)
         self.assertEqual(office_queue.json()["claims"][0]["claimant_roll_number"],"25B81A66J9")
