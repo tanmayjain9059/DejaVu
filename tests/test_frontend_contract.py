@@ -341,5 +341,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('locations.aliases', self.js)
         self.assertIn(".public-handover-fields", self.css)
 
+    def test_office_intake_displays_found_item_condition_and_handover_context(self):
+        start = self.js.index("function intakeCard(report)")
+        end = self.js.index("\nfunction officeClaimCard", start)
+        renderer = self.js[start:end]
+        for field in ("item_condition", "handover_at", "handover_recipient", "handover_note"):
+            self.assertIn(field, renderer)
+        self.assertIn("handoverContext", renderer)
+        self.assertIn("escapeHTML(value)", renderer)
+
 if __name__ == "__main__":
     unittest.main()
