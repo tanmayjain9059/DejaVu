@@ -1971,15 +1971,13 @@ document.querySelectorAll("[data-public-report]").forEach(button => button.addEv
 }));
 document.querySelectorAll("[data-public-home]").forEach(button => button.addEventListener("click", showPublicHome));
 $("#publicBrowseForm").addEventListener("submit", event => { event.preventDefault(); loadPublicFound(); });
-$("#publicBrowseResults").addEventListener("click", async event => {
-  const button = event.target.closest("[data-public-claim]");
-  if (!button) return;
-  const roll = prompt("Enter your college roll number to start a claim:");
+async function submitPublicClaim(caseId, suggestedRoll) {
+  const roll = suggestedRoll || prompt("Enter your college roll number to start a claim:");
   if (!roll) return;
   const evidence = prompt("Describe a private detail that helps prove ownership (at least 20 characters):");
   if (!evidence) return;
   try {
-    const result = await publicApi("/api/public/found/"+encodeURIComponent(button.dataset.publicClaim)+"/claims", {
+    const result = await publicApi("/api/public/found/"+encodeURIComponent(caseId)+"/claims", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({roll_number:roll,evidence,evidence_types:["owner_specific_detail","distinctive_features"]})
     });
@@ -1988,6 +1986,17 @@ $("#publicBrowseResults").addEventListener("click", async event => {
     $("#publicTrackResult").innerHTML = trackingReceiptMarkup(result.message, trackingUrl);
     showPublicDestination("track");
   } catch(error) { showToast(error.message,true); }
+}
+$("#publicBrowseResults").addEventListener("click", event => {
+  const button = event.target.closest("[data-public-claim]");
+  if (button) submitPublicClaim(button.dataset.publicClaim);
+});
+$("#publicTrackResult").addEventListener("click", event => {
+  const button = event.target.closest("[data-public-claim]");
+  if (!button) return;
+  let roll = "";
+  try { roll = new URL($("#publicTrackLink").value).searchParams.get("roll") || ""; } catch (_) {}
+  submitPublicClaim(button.dataset.publicClaim, roll);
 });
 $("#publicReportForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -2037,7 +2046,15 @@ $("#publicTrackForm").addEventListener("submit", async event => {
     resultNode.textContent = "Checking private case access…";
     const data = await publicApi("/api/public/track/"+encodeURIComponent(reference)+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
     const record = data.case || data.claim;
-    resultNode.textContent = "Reference "+(record.reference || reference)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || "");
+    let markup = '<p><strong>Reference '+escapeHTML(record.reference || reference)+'</strong> · Status: '+escapeHTML(statusLabel(record.status || "unknown"))+'. '+escapeHTML(record.title || "")+'</p>';
+    if (data.matches && data.matches.length) {
+      markup += '<section class="stack-list"><h3>AI-suggested possible matches</h3><p class="field-hint">'+escapeHTML(data.matching_note || "Suggestions are leads, not proof of ownership.")+'</p>';
+      markup += data.matches.map(match => '<article class="list-card"><div class="list-card-head"><div><h3>'+escapeHTML(match.report.title)+'</h3><p>'+escapeHTML(match.report.reference)+' · '+escapeHTML(match.strength)+' match</p></div></div><ul>'+match.reasons.map(reason => '<li>'+escapeHTML(reason)+'</li>').join("")+'</ul><button class="button button-quiet button-small" type="button" data-public-claim="'+escapeHTML(match.report.id)+'">Claim this item</button></article>').join("");
+      markup += '</section>';
+    } else if (data.case && data.case.report_type === "lost") {
+      markup += '<p class="field-hint">No possible found-item matches are available yet. Check again after new items are received.</p>';
+    }
+    resultNode.innerHTML = markup;
   } catch(error) { resultNode.textContent = error.message; }
 });
 let finnLines = {
