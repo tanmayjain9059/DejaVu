@@ -3863,17 +3863,33 @@ a:hover { color: var(--ll-primary-hover); }
   min-width:0;
 }
 .public-handover-fields {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
   margin:0;
   padding:14px;
   border:1px solid rgba(150,85,47,.22);
   border-radius:16px;
   background:rgba(255,253,249,.58);
 }
+.public-handover-fields > label,
+.public-handover-fields > small,
+.public-handover-fields input,
+.public-handover-fields textarea {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
 .public-handover-fields legend {
+  max-width:100%;
   padding:0 7px;
   color:#6f4a32;
   font-size:.86rem;
   font-weight:750;
+  overflow-wrap:anywhere;
 }
 .public-handover-fields .field-hint { margin:0; }
 .public-location-group .two-columns { align-items:start; }
