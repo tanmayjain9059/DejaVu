@@ -233,6 +233,8 @@ class PublicCategorySuggestionBody(BaseModel):
 class PublicReportBody(BaseModel):
     report_type: Literal["lost", "found"]
     roll_number: str = Field(min_length=5, max_length=20)
+    contact_phone: str | None = Field(default=None, max_length=20)
+    contact_email: str | None = Field(default=None, max_length=254)
     title: str = Field(min_length=4, max_length=100)
     description: str = Field(min_length=10, max_length=1200)
     category: str = Field(min_length=2, max_length=60)
@@ -335,6 +337,14 @@ async def suggest_public_category(body: PublicCategorySuggestionBody, request: R
 @router.post("/reports", status_code=201)
 async def submit_public_report(body: PublicReportBody, request: Request):
     roll = _roll(body.roll_number)
+    contact_phone = (body.contact_phone or "").strip() or None
+    contact_email = (body.contact_email or "").strip().lower() or None
+    if contact_phone:
+        phone_digits = re.sub(r"\D", "", contact_phone)
+        if not 7 <= len(phone_digits) <= 15:
+            raise HTTPException(status_code=422, detail="Enter a valid phone number with 7 to 15 digits.")
+    if contact_email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
+        raise HTTPException(status_code=422, detail="Enter a valid email address.")
     if body.category not in CATEGORY_LABELS:
         raise HTTPException(status_code=422, detail="Choose a valid item category.")
     if not (body.location_block or body.location_area):
@@ -369,14 +379,14 @@ async def submit_public_report(body: PublicReportBody, request: Request):
                (id,public_ref,report_type,title,description,brand,primary_color,visible_features,
                 category,occurred_at,location_block,location_floor,location_room,location_area,
                 private_detail,item_condition,handover_at,handover_recipient,handover_note,
-                status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
+                contact_phone,contact_email,status,created_by,created_at,updated_at,roll_number,tracking_hash,submission_channel)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'public')""",
             (report_id,public_ref,body.report_type,body.title.strip(),body.description.strip(),
              body.brand,body.primary_color,body.visible_features,body.category,body.occurred_at,
              body.location_block,body.location_floor,body.location_room,body.location_area,
              body.private_detail if body.report_type == "lost" else None,
              body.item_condition,body.handover_at,body.handover_recipient,body.handover_note,
-             status,actor_id,timestamp,timestamp,roll,_hash(token)),
+             contact_phone,contact_email,status,actor_id,timestamp,timestamp,roll,_hash(token)),
         )
         audit(conn, actor_id, "public_report_submitted", "report", report_id,
               {"report_type": body.report_type, "channel": "public"})
