@@ -294,9 +294,6 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn(".report-kind-guidance", self.css)
         self.assertIn(".button-primary", self.css)
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_navigation_destinations_are_oval_on_desktop_and_mobile(self):
         self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
         self.assertIn('#appView #studentNav .nimbus-item { flex:1 0 auto;', self.css)
@@ -313,3 +310,19 @@ if __name__ == "__main__":
         self.assertIn('data-go="my-reports"', self.html)
         self.assertIn('data-go="my-claims"', self.html)
         self.assertIn('data-go="activity"', self.html)
+
+    def test_public_navigation_does_not_cover_scrolled_form_controls(self):
+        public_topbar = re.search(r"\.public-topbar\\s*\\{([^}]*)\\}", self.css)
+        self.assertIsNotNone(public_topbar)
+        self.assertRegex(public_topbar.group(1), r"position:\\s*relative")
+        self.assertNotRegex(public_topbar.group(1), r"position:\\s*sticky")
+
+    def test_tablet_browse_date_filters_stay_inside_their_grid_track(self):
+        self.assertIn("@media (min-width: 601px) and (max-width: 960px)", self.css)
+        self.assertIn(".search-secondary-row > .date-filter", self.css)
+        self.assertIn("grid-column: 1 / -1;", self.css)
+        self.assertIn(".date-filter input[type=\"date\"]", self.css)
+        self.assertIn("min-width: 0;", self.css)
+
+if __name__ == "__main__":
+    unittest.main()
