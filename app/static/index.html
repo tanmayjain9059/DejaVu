@@ -177,14 +177,12 @@
         <section id="publicTrackPage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
-          <p class="public-lede">Enter your reference, college roll number and private tracking secret. The secret is provided once when you submit a report or claim; you can use it from another browser or device.</p>
+          <p class="public-lede">Open or paste the private tracking link from your submission receipt. You do not need to enter a separate secret; your roll number alone cannot unlock a case.</p>
           <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicTrackForm" class="form-stack">
-            <label><span>Case / claim reference</span><input id="publicTrackReference" required maxlength="24" placeholder="LL-XXXXXXXX or CL-XXXXXXXX"></label>
-            <label><span>College roll number</span><input id="publicTrackRoll" required minlength="5" maxlength="20" autocomplete="off"></label>
-            <label><span>Private tracking secret</span><input id="publicTrackSecret" type="text" minlength="20" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Paste the secret saved when you submitted"></label>
-            <p class="field-hint">Your roll number is not a password. Keep this private secret safe; LostLink cannot recover it if you lose it.</p>
-            <div class="form-actions"><button class="button button-liquid" type="submit">View private status</button><button id="copyPublicTrackingSecret" class="button button-quiet" type="button">Copy secret</button></div>
+            <label><span>Private tracking link</span><input id="publicTrackLink" type="url" required autocomplete="url" placeholder="Paste the private link from your receipt"></label>
+            <p class="field-hint">Keep this link private. Anyone who has it can view the associated case status.</p>
+            <div class="form-actions"><button class="button button-liquid" type="submit">View private status</button><button id="copyPublicTrackingLink" class="button button-quiet" type="button">Copy private link</button></div>
           </form>
           <div id="publicTrackResult" class="stack-list" aria-live="polite"><div id="publicTrackMatches" class="track-matches"></div></div>
         </section>
