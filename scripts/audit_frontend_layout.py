@@ -57,7 +57,7 @@ def audit(page, label: str) -> None:
         raise AssertionError(f"{label}: layout issues: {result}")
 
 def return_home(page) -> None:
-    back = page.locator("[data-public-home]").first
+    back = page.locator("[data-public-home]:visible").first
     if back.is_visible():
         back.click()
         page.locator("#publicHomeContent").wait_for(state="visible")
@@ -85,8 +85,8 @@ def main() -> int:
                 return_home(page)
 
                 page.locator("#publicNav [data-public-destination='found']").click()
-                page.locator("#publicLostPage").wait_for(state="visible")
-                assert page.locator("#publicReportType").input_value() == "found"
+                page.locator("#publicFoundPage").wait_for(state="visible")
+                assert page.locator("#publicReportTypeFound").input_value() == "found"
                 audit(page, f"public nav found {width}x{height}")
                 return_home(page)
 
@@ -102,8 +102,8 @@ def main() -> int:
                 audit(page, f"landing after lost {width}x{height}")
 
                 page.locator('[data-public-report="found"]').click()
-                page.locator("#publicLostPage").wait_for(state="visible")
-                assert page.locator("#publicReportType").input_value() == "found"
+                page.locator("#publicFoundPage").wait_for(state="visible")
+                assert page.locator("#publicReportTypeFound").input_value() == "found"
                 audit(page, f"found report {width}x{height}")
                 return_home(page)
 
