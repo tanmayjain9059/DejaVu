@@ -9,6 +9,7 @@ and reward services can be reused without exposing a student sign-in surface.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import hmac
 import json
 import logging
@@ -91,6 +92,15 @@ def _public_actor_for_roll(conn, roll_number: str) -> int:
         (roll_number, actor_id, now_iso()),
     )
     return actor_id
+
+
+def _trusted_client_ip(request: Request) -> str:
+    """Use Cloudflare's edge-overwritten client IP; never trust client-supplied X-Forwarded-For."""
+    candidate = (request.headers.get("cf-connecting-ip") or "").strip()
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return request.client.host if request.client else "unknown"
 
 
 def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
