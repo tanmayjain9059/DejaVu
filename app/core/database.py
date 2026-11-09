@@ -230,7 +230,7 @@ def connect_db():
 
 _ROW_LOCK_TARGETS = {
     ("users", "id"), ("reports", "id"), ("reports", "public_ref"),
-    ("claims", "id"), ("claims", "public_ref"),
+    ("claims", "id"), ("claims", "public_ref"), ("privacy_requests", "id"),
 }
 
 
