@@ -22,6 +22,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
+from app.schemas import ImageAiConsentBody
 
 from app.core.config import (
     ALLOWED_EVIDENCE_TYPES,
