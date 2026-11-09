@@ -116,16 +116,13 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertIn(payload["storage"],{"local","s3"})
         self.assertGreaterEqual(payload["schema_version"],11)
 
-    def test_provisioned_students_can_sign_in_and_public_reports_remain_available(self):
+    def test_student_login_is_rejected_and_public_reports_need_no_account(self):
         signed_in = self.client.post("/api/login",json={
             "email":"student@test.invalid","password":"student-password"
         })
-        self.assertEqual(signed_in.status_code,200,signed_in.text)
-        self.assertEqual(signed_in.json()["user"]["role"],"student")
+        self.assertEqual(signed_in.status_code,401,signed_in.text)
         profile = self.client.get("/api/me")
-        self.assertEqual(profile.status_code,200,profile.text)
-        self.assertEqual(profile.json()["user"]["role"],"student")
-        self.client.post("/api/logout")
+        self.assertEqual(profile.status_code,401,profile.text)
         created = self.create_public_report()
         self.assertEqual(created.status_code,201,created.text)
         payload = created.json()
