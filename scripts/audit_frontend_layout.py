@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import struct
 import sys
+import zlib
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.getenv("LOSTLINK_AUDIT_URL", "http://127.0.0.1:8000").rstrip("/")
@@ -76,6 +78,29 @@ def exercise_public_category_ai(page, page_id: str, suffix: str = "") -> None:
     if selected != "bags_wallets":
         raise AssertionError(f"{page_id}: AI category selection mismatch: {selected!r}")
 
+def tiny_png_bytes() -> bytes:
+    """Build a small valid PNG without adding a test-only image dependency."""
+    width = height = 32
+    rows = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            shade = 190 if (x // 4 + y // 4) % 2 else 72
+            row.extend((shade, 116, 48, 255))
+        rows.append(bytes(row))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    raw = b"".join(rows)
+    return (
+        b"\\x89PNG\\r\\n\\x1a\\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
+
+
 def submit_public_report(page, kind: str) -> None:
     """Exercise the actual Lost/Found submit button and one-time tracking response."""
     found = kind == "found"
@@ -96,12 +121,22 @@ def submit_public_report(page, kind: str) -> None:
     form.locator("#publicArea" + suffix).fill(
         "Outside the library entrance" if found else "Library reading room"
     )
+    if not found:
+        with page.expect_file_chooser() as chooser_info:
+            form.locator('label:has(#publicImage)').click()
+        chooser_info.value.set_files({
+            "name": "lostlink-audit.png",
+            "mimeType": "image/png",
+            "buffer": tiny_png_bytes(),
+        })
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
     reference = page.locator("#publicTrackReference").input_value()
     secret = page.locator("#publicTrackSecret").input_value()
     if not reference.startswith("LL-") or not secret:
         raise AssertionError(f"{kind} report did not return a case reference and tracking secret")
+    if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
+        raise AssertionError("Lost report photo picker/upload did not complete successfully")
     if form.locator("#publicTitle" + suffix).input_value():
         raise AssertionError(f"{kind} report form did not reset after successful submission")
     return_home(page)
