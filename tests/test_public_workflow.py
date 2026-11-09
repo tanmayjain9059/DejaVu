@@ -302,7 +302,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         report_id = found.json()["case"]["id"]
         lost = self.client.post("/api/public/reports", json={
             "report_type": "lost",
-            "roll_number": "25B81A66J8",
+            "roll_number": "25B81A66J9",
             "title": "Lost matching calculator",
             "description": "Black scientific calculator with a cracked protective cover.",
             "category": "electronics",
