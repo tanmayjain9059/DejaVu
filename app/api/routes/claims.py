@@ -102,7 +102,6 @@ async def create_claim(body: ClaimBody, user: dict[str, Any] = Depends(authentic
                     "This item is on hold while authorised office staff review the competing claims.",
                     "claim", previous_claim["id"]
                 )
-        lock_row(conn, "claims", "id", claim_id)
         claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
     return {"claim": {"id": claim["id"], "status": claim["status"], "created_at": claim["created_at"],
                       "report": serialise_report(report), "message": "Claim submitted for review."}}
