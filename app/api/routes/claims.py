@@ -137,11 +137,8 @@ async def upload_claim_evidence_image(
                 raise HTTPException(status_code=409, detail="Evidence images can only be added while a claim is under review.")
             if conn.execute("SELECT 1 FROM claim_evidence_images WHERE claim_id=?", (claim_id,)).fetchone():
                 raise HTTPException(status_code=409, detail="This claim already has an evidence image attached.")
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(
-                    status_code=409,
-                    detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
-                )
+            # Do not expose a global duplicate-photo oracle to claimants.
+            # Fingerprints are retained for private office review and matching.
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
