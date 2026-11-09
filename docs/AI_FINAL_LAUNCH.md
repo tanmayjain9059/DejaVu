@@ -38,16 +38,17 @@ Start with this conservative backend configuration:
 ```dotenv
 USE_SEMANTIC_MODEL=true
 SEMANTIC_MODEL=sentence-transformers/all-MiniLM-L6-v2
-SEMANTIC_MODEL_REVISION=launch-v1
+SEMANTIC_MODEL_REVISION=main
 USE_CLIP_MODEL=false
 CLIP_MODEL=openai/clip-vit-base-patch32
-CLIP_MODEL_REVISION=launch-v1
+CLIP_MODEL_REVISION=main
 USE_IMAGE_ENRICHMENT=false
 IMAGE_CAPTION_MODEL=Salesforce/blip-image-captioning-base
+IMAGE_CAPTION_MODEL_REVISION=main
 TOKENIZERS_PARALLELISM=false
 ```
 
-The service downloads model weights on first use. Configure a persistent Render
+The service downloads model weights on first use. The `main` revision is a safe initial default; before a production freeze, replace each revision with the verified immutable Hugging Face commit SHA for that exact model and keep it in the deployment configuration. Configure a persistent Render
 disk/cache at `/model-cache` and set `HF_HOME=/model-cache` so restarts do not
 re-download weights. If the selected Render plan cannot accommodate PyTorch and
 MiniLM memory/latency, keep semantic inference disabled and retain the lexical
