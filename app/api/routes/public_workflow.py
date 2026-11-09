@@ -36,7 +36,7 @@ from app.core.config import (
 )
 from app.core.database import audit, connect_db, now_iso, table_columns
 from app.core.security import hash_password
-from app.core.images import canonicalise_image, image_fingerprint_matches
+from app.core.images import canonicalise_image
 from app.services.notifications import notify_matches_for_lost_report, notify_role, notify_user
 from app.services.reports import read_report, serialise_report
 from app.services.object_storage import delete_upload, read_upload, save_upload
