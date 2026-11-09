@@ -80,6 +80,40 @@ class PublicWorkflowTests(unittest.TestCase):
                     headers={"X-LostLink-Tracking-Secret":token})
         self.assertEqual(denied.status_code,404)
 
+    def test_public_lost_case_returns_ai_ranked_found_candidates(self):
+        found = self.client.post("/api/public/reports", json={
+            "report_type":"found","roll_number":"25B81A66J8",
+            "title":"Black scientific calculator","description":"Black scientific calculator with a cracked protective cover.",
+            "category":"electronics","location_block":"Block A","occurred_at":"2026-11-08T12:00:00",
+        })
+        self.assertEqual(found.status_code,201,found.text)
+        found_ref = found.json()["case"]["reference"]
+        login = self.client.post("/api/login", json={
+            "email":"office@test.invalid","password":"office-password"})
+        self.assertEqual(login.status_code,200,login.text)
+        intake = self.client.post("/api/public/office/"+found_ref+"/intake", json={
+            "confirmed_physical_receipt":True,"identity_verified_in_person":True,
+            "verified_roll_number":"25B81A66J8","storage_location":"Cabinet A / Shelf 2",
+            "tag_id":"LL-CVR-2026-0002","private_detail":"Small blue mark below the display.",
+        })
+        self.assertEqual(intake.status_code,200,intake.text)
+        lost = self.client.post("/api/public/reports", json={
+            "report_type":"lost","roll_number":"25B81A66J9",
+            "title":"Black scientific calculator","description":"Lost a black scientific calculator with a cracked protective cover.",
+            "category":"electronics","location_block":"Block A","occurred_at":"2026-11-08T12:15:00",
+        })
+        self.assertEqual(lost.status_code,201,lost.text)
+        payload = lost.json()
+        tracked = self.client.get("/api/public/track/"+payload["case"]["reference"],
+            params={"roll_number":"25B81A66J9"},
+            headers={"X-LostLink-Tracking-Secret":payload["tracking_secret"]})
+        self.assertEqual(tracked.status_code,200,tracked.text)
+        matches = tracked.json().get("matches", [])
+        self.assertTrue(matches)
+        self.assertEqual(matches[0]["report"]["reference"], found_ref)
+        self.assertTrue(matches[0]["reasons"])
+        self.assertIn("do not prove ownership", tracked.json()["matching_note"])
+
     def test_claim_approval_requires_matching_physical_id_and_verification_checks(self):
         report=self.client.post("/api/public/reports",json={
             "report_type":"found","roll_number":"25B81A66J8",
