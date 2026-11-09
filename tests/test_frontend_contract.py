@@ -98,6 +98,32 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("next_cursor", self.js)
         self.assertIn("has_more", self.js)
 
+    def test_role_switch_button_is_wired(self):
+        self.assertIn("viewSwitchBtn", self.id_set)
+        self.assertIn('$("#viewSwitchBtn").addEventListener("click"', self.js)
+        self.assertIn("profileHeroSwitchText", self.id_set)
+
+    def test_navigation_badges_include_claims_and_notifications(self):
+        self.assertIn("claimNavCount", self.id_set)
+        self.assertIn("notificationNavCount", self.id_set)
+        self.assertIn('$("#claimNavCount")', self.js)
+        self.assertIn('$("#notificationNavCount")', self.js)
+
+    def test_modal_dialogs_have_dismiss_controls(self):
+        dialog_ids = [
+            "closeReportDialog",
+            "decisionConfirmDialog",
+            "additionalEvidenceDialog",
+            "storageUpdateDialog",
+            "handoverDialog",
+            "itemDetailsDialog",
+            "claimDialog",
+            "editProfileDialog",
+        ]
+        for did in dialog_ids:
+            self.assertIn(did, self.id_set, f"Missing modal dialog: {did}")
+            self.assertIn(f'$("#{did}").close()', self.js, f"Dialog {did} missing .close() handler in JS")
+
     def test_live_notification_polling_is_enabled(self):
         self.assertIn("startNotificationPolling();", self.js)
         self.assertIn("}, 10000);", self.js)
