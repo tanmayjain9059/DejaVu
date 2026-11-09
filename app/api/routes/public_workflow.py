@@ -127,6 +127,7 @@ def _public_report(row) -> dict[str, Any]:
     # Public image access is deliberately withheld until the private-storage,
     # per-case signed-access flow is enabled for anonymous tracking tokens.
     item["image_url"] = None
+    item.pop("image_ai_consent", None)
     item.pop("location_room", None)
     # Found-item free text may contain a finder's or owner's personal data.
     # Public browse exposes controlled descriptors only; full notes remain
@@ -635,8 +636,10 @@ def track_one_case(
     with connect_db() as conn:
         report = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
         if report and report["roll_number"] == roll and report["submission_channel"] == "public" and _verify_token(report["tracking_hash"],tracking_secret):
+            case_data = _public_report(report)
+            case_data["image_ai_consent"] = bool(report["image_ai_consent"])
             return {
-                "case": _public_report(report),
+                "case": case_data,
                 "events": _tracking_events(conn,int(report["created_by"]),"report",report["id"]),
                 "case_points": _case_points(conn,int(report["created_by"]),report["id"]),
             }
@@ -823,7 +826,7 @@ def export_public_case_data(
                 "visible_features", "category", "occurred_at", "location_block", "location_floor",
                 "location_room", "location_area", "private_detail", "contact_phone", "contact_email",
                 "item_condition", "handover_at", "handover_recipient", "handover_note", "status",
-                "created_at", "updated_at",
+                "created_at", "updated_at", "image_ai_consent",
             )
             return {"type": "report", "data": {key: report[key] for key in allowed if key in report.keys()}}
         claim = conn.execute("SELECT * FROM claims WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
