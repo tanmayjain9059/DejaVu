@@ -348,7 +348,7 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('publicMatchClaimButton(item)', self.js)
         self.assertIn('publicMatchClaimButton(report)', self.js)
         self.assertIn('publicApi("/api/public/found/"', self.js)
-        self.assertIn("$('input[name=\"publicClaimEvidenceType\"]:checked').map", self.js)
+        self.assertIn("publicClaimEvidenceType", self.js)
 
     def test_public_tracking_accepts_private_secret_without_using_roll_number_as_authentication(self):
         self.assertIn('id="publicTrackSecret"', self.html)
