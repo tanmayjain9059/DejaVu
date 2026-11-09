@@ -379,10 +379,21 @@ let selectedCloseReportId = null;
 let selectedCloseReportType = null;
 
 const CATEGORY_ICONS = {
-  stationery: "▤", clothing: "◈", bags_wallets: "▣", accessories: "◇",
-  electronics: "⌁", identity_documents: "▧", keys_access: "⌘",
-  cash_jewellery: "✧", sports_instruments: "◎", other: "◌"
+  stationery: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+  clothing: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
+  bags_wallets: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></svg>',
+  accessories: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/><path d="M16.51 17.35l-.85 4.65-7.32-7.32"/></svg>',
+  electronics: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>',
+  identity_documents: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="14" x="3" y="5" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h2"/><path d="M15 13h2"/><path d="M7 16a3 3 0 0 1 4 0"/></svg>',
+  keys_access: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
+  cash_jewellery: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>',
+  sports_instruments: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>',
+  other: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>'
 };
+const DEFAULT_CATEGORY_ICON = CATEGORY_ICONS.other;
+const ICON_PIN = '<svg class="inline-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+const ICON_CLOCK = '<svg class="inline-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+const ICON_SEARCH = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
 const STATUS_LABELS = {
   open: "Open", awaiting_intake: "Awaiting office intake", available: "Available at office",
   claim_approved: "Awaiting handover", pending: "Under review", disputed: "Disputed · review required",
@@ -908,7 +919,7 @@ function buildQuery(formValues) {
 
 function itemCard(report, options) {
   const opts = options || {};
-  const icon = CATEGORY_ICONS[report.category] || "◌";
+  const icon = CATEGORY_ICONS[report.category] || DEFAULT_CATEGORY_ICON;
   const visual = report.image_url
     ? '<div class="item-visual"><img src="' + escapeHTML(report.image_url) + '" alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
@@ -936,8 +947,7 @@ function itemCard(report, options) {
     "<h3>" + escapeHTML(report.title) + "</h3>" +
     '<p class="item-description">' + escapeHTML(report.description) + "</p>" +
     characteristicBlock + reasons +
-    '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
-    '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+    '<div class="item-meta"><span>' + ICON_PIN + escapeHTML(report.location || "Location not specified") + "</span>" + '<span>' + ICON_CLOCK + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
@@ -1113,7 +1123,7 @@ async function loadMyReports() {
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
         escapeHTML(type + " · " + report.public_ref) + "</p></div><span class=\"" + statusClass(report.status) + "\">" +
         escapeHTML(statusLabel(report.status)) + "</span></div><p>" + escapeHTML(report.description) + "</p>" + extra +
-        '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>◷ " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+        '<div class="list-card-meta"><span>' + ICON_PIN + escapeHTML(report.location) + "</span><span>" + ICON_CLOCK + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
         (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") +
         linkedClaimNote +
         '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
@@ -1136,7 +1146,7 @@ async function loadMatches(reportId) {
       claim: true, strength: report.match_strength, reasons: report.match_reasons
     })).join("");
     if (!result.matches.length) {
-      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">⌕</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
+      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">' + ICON_SEARCH + '</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
     }
     $("#matchesPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) { showToast(error.message, true); }
@@ -1185,7 +1195,7 @@ async function loadMyClaims() {
         : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
-        escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>⌖ ' +
+        escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>' + ICON_PIN + 
         escapeHTML(claim.report.location) + "</span><span>Reference " + escapeHTML(claim.report.public_ref) + "</span></div>" +
         evidenceChips + evidencePhoto + '<div class="card-actions">' + addEvidence + "</div>" + disputeForm + "</article>";
     }).join("");
@@ -1449,7 +1459,7 @@ function officeHandoverCard(claim) {
 function intakeCard(report) {
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
-    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
+    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>" + ICON_PIN +  escapeHTML(report.location) +
     "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
     '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
@@ -1513,7 +1523,7 @@ function officeClaimCard(claim) {
     evidenceChips + evidencePhoto +
     (claim.appeal_note ? '<div class="claim-appeal-note"><strong>CLAIMANT REVIEW REQUEST</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "") +
     '<div class="internal-detail"><strong>INTERNAL VERIFICATION DETAIL</strong><small>' + escapeHTML(privateDetail) + "</small></div>" +
-    '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>Submitted " + escapeHTML(humanDateTime(claim.created_at)) + "</span></div>" +
+    '<div class="list-card-meta"><span>' + ICON_PIN + escapeHTML(report.location) + "</span><span>Submitted " + escapeHTML(humanDateTime(claim.created_at)) + "</span></div>" +
     (claim.status === "disputed" ? '<p class="field-hint">' + escapeHTML(claim.appeal_note
       ? "This is a claimant-requested review of a previous rejection. Review the appeal note and evidence again."
       : "Resolve all competing active claims before approving any one claim.") + '</p>' : "") +
@@ -1566,6 +1576,9 @@ async function refreshNotificationBadge() {
   } else {
     const claimBadge = $("#claimNavCount");
     if (claimBadge) claimBadge.classList.add("hidden");
+  }
+  if (window.liquidNavbar && typeof window.liquidNavbar.measure === "function") {
+    window.liquidNavbar.measure();
   }
 }
 
@@ -1959,7 +1972,7 @@ async function loadProfile() {
     $("#profileHeroAvatar").className = "profile-hero-avatar " + (isOffice ? "avatar-office" : "avatar-student");
   }
   if ($("#profileHeroSwitchText")) {
-    $("#profileHeroSwitchText").textContent = isOffice ? "Switch to student view" : "Switch to office console";
+    $("#profileHeroSwitchText").textContent = isOffice ? "Switch to student" : "Switch to office";
   }
   
   try {
@@ -2231,9 +2244,14 @@ if ($("#editProfileForm")) {
       if ($("#editProfileError")) $("#editProfileError").textContent = "Please enter a valid display name.";
       return;
     }
+    const newPhone = $("#editProfilePhoneInput") ? $("#editProfilePhoneInput").value.trim() : "";
     if (currentUser) {
       currentUser.display_name = newName;
-      if (usingMockApi && mockStore.session) mockStore.session.display_name = newName;
+      currentUser.phone = newPhone;
+      if (usingMockApi && mockStore.session) {
+        mockStore.session.display_name = newName;
+        mockStore.session.phone = newPhone;
+      }
       if ($("#userName")) $("#userName").textContent = newName;
       if ($("#profileHeroName")) $("#profileHeroName").textContent = newName;
       if ($("#dropdownUserName")) $("#dropdownUserName").textContent = newName;
