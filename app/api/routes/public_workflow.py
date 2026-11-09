@@ -742,8 +742,14 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
             if not linked:
                 raise HTTPException(status_code=404,detail="The linked Lost report was not found for this roll number.")
             lost_report_id = linked["id"]
+        approved_claim = conn.execute(
+            "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
+            (report_id,),
+        ).fetchone()
+        if approved_claim:
+            raise HTTPException(status_code=409, detail="A claim is already approved for collection. No additional claims can be submitted.")
         competing = conn.execute(
-            "SELECT id,claimant_id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+            "SELECT id,claimant_id FROM claims WHERE report_id=? AND status IN ('pending','disputed','needs_more_evidence')",
             (report_id,),
         ).fetchall()
         status = "disputed" if competing else "pending"
@@ -758,7 +764,7 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         )
         if competing:
             conn.execute(
-                "UPDATE claims SET status='disputed',updated_at=? WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')",
+                "UPDATE claims SET status='disputed',updated_at=? WHERE report_id=? AND id<>? AND status IN ('pending','disputed','needs_more_evidence')",
                 (timestamp,report_id,claim_id),
             )
             for previous in competing:
