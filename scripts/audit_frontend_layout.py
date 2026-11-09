@@ -145,11 +145,12 @@ def submit_public_report(page, kind: str) -> None:
     previous_secret = parse_qs(urlparse(previous_tracking_url).fragment).get("secret", [""])[0]
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
-    reference = page.locator("#publicTrackReference").input_value()
-    if not reference.startswith("LL-"):
-        raise AssertionError(f"{kind} report did not return a case reference")
     tracking_url = page.locator("#publicTrackLink").input_value()
-    tracking_secret = parse_qs(urlparse(tracking_url).fragment).get("secret", [""])[0]
+    tracking_parts = urlparse(tracking_url)
+    reference = parse_qs(tracking_parts.query).get("track", [""])[0]
+    tracking_secret = parse_qs(tracking_parts.fragment).get("secret", [""])[0]
+    if not reference.startswith("LL-"):
+        raise AssertionError(f"{kind} report did not return a private tracking reference")
     if len(tracking_secret) < 20 or tracking_secret == previous_secret:
         raise AssertionError("The submitting user did not receive a fresh private tracking link with a case secret")
     if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
