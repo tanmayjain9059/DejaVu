@@ -1335,3 +1335,71 @@ input::placeholder, textarea::placeholder {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Prominent report AI assistant: visible on both Lost and Found forms. */
+.ai-assist-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 18px;
+  align-items: center;
+  padding: 18px 20px;
+  border: 1px solid rgba(91, 112, 145, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(232,242,250,.78));
+  box-shadow: 0 10px 28px rgba(36, 67, 105, .08), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.ai-assist-copy { display: grid; gap: 5px; }
+.ai-assist-kicker { color: var(--water-deep); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.ai-assist-copy strong { font-size: 14px; color: var(--n-fg); }
+.ai-assist-copy small, .ai-disclaimer { color: var(--n-fg-soft); font-size: 11px; line-height: 1.55; }
+.button-ai {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(71, 119, 169, .28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #315f8d, #527fa8);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(49, 95, 141, .2);
+  white-space: nowrap;
+}
+.button-ai:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.button-ai:disabled { opacity: .65; transform: none; }
+.ai-suggestion-result {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: 11px;
+  border-top: 1px solid rgba(91, 112, 145, .16);
+  color: var(--n-fg-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ai-suggestion-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--n-fg); }
+.ai-engine-label {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(67, 111, 151, .1);
+  color: var(--water-deep);
+  font-size: 10px;
+  font-weight: 700;
+}
+.ai-suggestion-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ai-category-option {
+  display: grid;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid rgba(91, 112, 145, .2);
+  border-radius: 11px;
+  background: rgba(255,255,255,.82);
+  color: var(--n-fg);
+  text-align: left;
+}
+.ai-category-option:hover { border-color: var(--water-deep); background: #fff; }
+.ai-category-option span { font-size: 12px; font-weight: 700; }
+.ai-category-option small { color: var(--n-fg-soft); font-size: 10px; }
+.ai-disclaimer { display: block; margin-top: 9px; }
+@media (max-width: 600px) {
+  .ai-assist-card { grid-template-columns: 1fr; }
+  .button-ai { width: 100%; justify-content: center; }
+}
