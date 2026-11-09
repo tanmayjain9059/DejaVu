@@ -1604,7 +1604,8 @@ async function loadActivity() {
     const data = await api("/api/activity/me");
     const total = Number(data.total_points || 0);
     const next = data.next_milestone;
-    const progress = next ? Math.min(100, total / next.threshold * 100) : 100;
+    const rawProgress = next ? total / next.threshold * 100 : 100;
+    const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
     const nextText = next
       ? (data.points_to_next_milestone + " more points to " + next.tier)
       : "All current recognition milestones earned";
