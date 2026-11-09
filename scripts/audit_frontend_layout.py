@@ -145,6 +145,9 @@ def main() -> int:
                     raise AssertionError("Office browser-audit login failed: " + page.locator("#loginError").inner_text())
                 page.locator("#appView").wait_for(state="visible")
                 page.locator("#officeView").wait_for(state="visible")
+                assert page.locator("#officeWorkspaceButton").is_visible()
+                assert page.locator("#studentNav #officeWorkspaceButton").count() == 0
+                assert page.locator("#studentNav [data-view='office']").count() == 0
                 audit(page, f"office dashboard {width}x{height}")
                 for view, view_id in [("notifications", "notificationsView"), ("browse", "browseView"), ("start", "startView"), ("office", "officeView")]:
                     page.locator(f'button[data-view="{view}"]:visible').first.click()
