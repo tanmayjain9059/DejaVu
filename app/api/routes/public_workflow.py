@@ -541,8 +541,8 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
         params.append(category)
     if q and q.strip():
         term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
-        where += " AND (LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR LOWER(COALESCE(location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(brand,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
-        params.extend([term,term,term,term,term])
+        where += " AND (LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
+        params.extend([term,term,term])
     with connect_db() as conn:
         rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
     return {"reports": [_public_report(row) for row in rows]}
@@ -571,12 +571,11 @@ def browse_public_found(category: str | None = Query(default=None, max_length=60
         clauses.append("category=?")
         params.append(category)
     if q and q.strip():
-        term = "%" + q.strip().lower() + "%"
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
         clauses.append(
-            "(LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR "
-            "LOWER(COALESCE(location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(brand,'')) LIKE ? ESCAPE '!')"
+            "(LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
         )
-        params.extend([term,term,term,term])
+        params.extend([term,term,term])
     with connect_db() as conn:
         rows = conn.execute(
             "SELECT * FROM reports WHERE " + " AND ".join(clauses) +
