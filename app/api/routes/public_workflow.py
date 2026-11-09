@@ -725,13 +725,10 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         ).fetchone()
         if duplicate:
             raise HTTPException(status_code=409,detail="You already have an active claim for this item.")
-        active_status_placeholders = ",".join("?" for _ in ACTIVE_CLAIMS)
-        active_count = conn.execute(
-            f"SELECT COUNT(*) AS n FROM claims WHERE claimant_id=? AND status IN ({active_status_placeholders})",
-            (actor_id, *ACTIVE_CLAIMS),
-        ).fetchone()["n"]
-        if int(active_count) >= MAX_OPEN_CLAIMS_PER_STUDENT:
-            raise HTTPException(status_code=429,detail="You have reached the active claim limit.")
+        # Public roll numbers are attribution only, not authenticated identity.
+        # Do not let an unauthenticated visitor exhaust another student's
+        # per-student active-claim quota by submitting that student's roll.
+        # Anonymous claim volume is bounded by the IP-based rate limiter above.
         lost_report_id = None
         if body.lost_report_reference:
             linked = conn.execute(
