@@ -301,11 +301,12 @@ if __name__ == "__main__":
         self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
         self.assertIn('#appView #studentNav .nimbus-item { flex:1 0 auto;', self.css)
 
-    def test_student_sign_in_entry_and_role_gating_are_present(self):
-        self.assertIn('id="publicStudentButton"', self.html)
-        self.assertIn('function openPublicStudentSignIn()', self.js)
-        self.assertIn('loginMode === "student"', self.js)
-        self.assertIn('["student", "office"].includes(profile.user.role)', self.js)
+    def test_public_student_workflow_has_no_student_sign_in(self):
+        self.assertNotIn('id="publicStudentButton"', self.html)
+        self.assertNotIn('function openPublicStudentSignIn()', self.js)
+        self.assertNotIn('loginMode', self.js)
+        self.assertIn('function openPublicOfficeSignIn()', self.js)
+        self.assertIn('role !== "office"', self.js)
 
     def test_start_report_cards_open_the_selected_form_and_secondary_views_remain_reachable(self):
         self.assertIn('if (reportKind) { navigate("report"); setReportMode(reportKind.dataset.reportKind); }', self.js)
