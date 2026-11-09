@@ -212,6 +212,7 @@ async def update_report(
 
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
         is_office = user["role"] == "office"
         if not is_office and int(row["created_by"]) != int(user["id"]):
@@ -563,6 +564,7 @@ async def intake_found_item(
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
         if row["report_type"] != "found" or row["status"] != "awaiting_intake":
             raise HTTPException(status_code=409, detail="Only found-item reports awaiting intake can be accepted.")
@@ -619,6 +621,7 @@ async def update_storage_location(
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         report = read_report(conn, report_id)
         if report["report_type"] != "found" or not report["tag_id"]:
             raise HTTPException(status_code=409, detail="Only physically received and tagged found items can have a storage location.")
