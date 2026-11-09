@@ -3854,3 +3854,26 @@ a:hover { color: var(--ll-primary-hover); }
     min-width: 0;
   }
 }
+
+/* CVR public location hierarchy and found-item handover details. */
+.public-location-group,
+.public-handover-fields {
+  display:grid;
+  gap:12px;
+  min-width:0;
+}
+.public-handover-fields {
+  margin:0;
+  padding:14px;
+  border:1px solid rgba(150,85,47,.22);
+  border-radius:16px;
+  background:rgba(255,253,249,.58);
+}
+.public-handover-fields legend {
+  padding:0 7px;
+  color:#6f4a32;
+  font-size:.86rem;
+  font-weight:750;
+}
+.public-handover-fields .field-hint { margin:0; }
+.public-location-group .two-columns { align-items:start; }
