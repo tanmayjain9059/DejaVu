@@ -306,3 +306,9 @@ if __name__ == "__main__":
         self.assertIn('function openPublicStudentSignIn()', self.js)
         self.assertIn('loginMode === "student"', self.js)
         self.assertIn('["student", "office"].includes(profile.user.role)', self.js)
+
+    def test_start_report_cards_open_the_selected_form_and_secondary_views_remain_reachable(self):
+        self.assertIn('if (reportKind) { navigate("report"); setReportMode(reportKind.dataset.reportKind); }', self.js)
+        self.assertIn('data-go="my-reports"', self.html)
+        self.assertIn('data-go="my-claims"', self.html)
+        self.assertIn('data-go="activity"', self.html)
