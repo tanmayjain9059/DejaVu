@@ -167,12 +167,11 @@
         <section id="publicTrackPage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
-          <p class="public-lede">Use the reference, roll number, and one-time tracking secret shown when you submitted the report. Roll number alone cannot open a case.</p>
+          <p class="public-lede">Enter your case reference and college roll number. LostLink checks private access automatically in the browser where you submitted the report or claim.</p>
           <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicTrackForm" class="form-stack">
             <label><span>Case / claim reference</span><input id="publicTrackReference" required maxlength="24" placeholder="LL-XXXXXXXX or CL-XXXXXXXX"></label>
             <label><span>College roll number</span><input id="publicTrackRoll" required minlength="5" maxlength="20"></label>
-            <label><span>Tracking secret</span><input id="publicTrackSecret" required type="text" autocomplete="off" spellcheck="false"></label>
             <button class="button button-liquid" type="submit">View private status</button>
           </form>
           <div id="publicTrackResult" class="stack-list" aria-live="polite"><div id="publicTrackMatches" class="track-matches"></div></div>
@@ -1043,7 +1042,7 @@
         <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="other"> Other verifiable evidence</label>
       </fieldset>
       <label><span>Private ownership explanation <span class="field-required">At least 20 characters</span></span><textarea id="publicClaimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Describe details that only the owner would know."></textarea></label>
-      <p class="field-hint">Your claim is reviewed by authorised campus staff. Save the tracking secret shown after submission.</p>
+      <p class="field-hint">Your claim is reviewed by authorised campus staff. You can check updates in the browser used to submit this claim.</p>
       <p id="publicClaimError" class="form-error" role="alert"></p>
       <div class="form-actions"><button id="publicClaimSubmit" class="button button-liquid" type="submit">Submit private claim</button><button id="publicClaimCancel" class="button button-quiet" type="button">Cancel</button></div>
     </form>
