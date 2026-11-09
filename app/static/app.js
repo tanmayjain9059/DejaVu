@@ -2561,6 +2561,9 @@ $("#publicTrackForm").addEventListener("submit", async event => {
     if (!isCase && record.status === "needs_more_evidence") {
       actions.push('<button class="button button-liquid button-small" type="button" data-public-add-evidence>Submit requested evidence</button>');
     }
+    if (isCase && item.image_ai_consent) {
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-revoke-ai-consent>Withdraw AI photo consent</button>');
+    }
     actions.push('<button class="button button-quiet button-small" type="button" data-public-export>Download my case data</button>');
     actions.push('<button class="button button-quiet button-small" type="button" data-public-privacy>Request a privacy action</button>');
     resultNode.innerHTML = '<section class="track-summary"><p><strong>Reference ' + escapeHTML(record.reference || reference) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '</p><p>' + escapeHTML(record.title || item.title || "Claim") + '</p>' +
@@ -2576,6 +2579,26 @@ $("#publicTrackResult").addEventListener("click", async event => {
   if (!state) return;
   const credentials = getPublicAccess(state.reference, state.roll);
   if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
+  if (event.target.closest("[data-public-revoke-ai-consent]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before changing photo consent.", true); return; }
+    const button = event.target.closest("[data-public-revoke-ai-consent]");
+    button.disabled = true;
+    try {
+      await publicApi("/api/public/reports/" + encodeURIComponent(state.reference) + "/ai-consent", {
+        method: "POST",
+        headers: {"Content-Type":"application/json", ...getPublicAccess(state.reference, state.roll, access.secret)},
+        body: JSON.stringify({consent:false})
+      });
+      if (state.data && state.data.case) state.data.case.image_ai_consent = false;
+      button.remove();
+      showToast("AI photo consent withdrawn. Stored AI captions and cached image vectors were cleared.", false);
+    } catch(error) {
+      button.disabled = false;
+      showToast(error.message, true);
+    }
+    return;
+  }
   if (event.target.closest("[data-public-export]")) {
     const access = parsePublicTrackingUrl($("#publicTrackLink").value);
     if (!access) { showToast("Open your private tracking link before exporting data.", true); return; }
