@@ -20,7 +20,7 @@ services:
       - key: REQUIRE_REQUEST_ORIGIN
         value: "true"
       - key: ALLOWED_HOSTS
-        value: lostlink-api.onrender.com
+        value: lostlink-q8ft.onrender.com
       - key: UPLOAD_STORAGE_BACKEND
         value: s3
       - key: S3_BUCKET
