@@ -25,8 +25,10 @@ has been migrated to these routes.
 | Method | Endpoint | Purpose |
 |---|---|---|
 | POST | `/api/public/reports` | Submit a lost or found report; requires roll number |
+| POST | `/api/public/cases/{reference}/image` | Upload an optional private report photo using the receipt credential |
 | GET | `/api/public/found` | Browse only found items physically received and released by office |
-| GET | `/api/public/track/{reference}?roll_number=...` | Read one report/claim using its tracking secret header |
+| GET | `/api/public/found/{reference}/image` | View a watermarked photo only after office intake |
+| GET | `/api/public/track/{reference}?roll_number=...` | Read one report/claim and AI match suggestions using the receipt credential |
 | POST | `/api/public/cases/{reference}/close` | Close an open lost report or withdraw a found report before intake |
 | POST | `/api/public/found/{case_id}/claims` | Submit a claim against an available found item |
 | POST | `/api/public/claims/{reference}/evidence` | Add evidence when office requests more evidence |
@@ -46,7 +48,9 @@ are excluded from public browsing until office intake is confirmed.
 
 The response contains a public reference and one-time tracking credential.
 The frontend turns it into a private receipt link and never renders a separate
-tracking-secret input. Do not log the raw credential or store it in analytics.
+tracking-secret input. Optional report photos are validated, normalised,
+fingerprinted for duplicate detection, and stored privately. Do not log the raw
+credential or store it in analytics.
 
 ### Claims
 
@@ -54,6 +58,10 @@ Claims require roll number, evidence text, and evidence-type declarations.
 A found-item reporter cannot claim their own report. A competing active claim
 places all competing claims into `disputed` and the item into `claim_hold`.
 Student-submitted evidence declarations are not treated as proof of identity.
+When a lost report is tracked, the existing LostLink matching engine ranks up to
+five available public found cases using the same text, category, location, time,
+and optional CLIP image signals as the account-linked workflow. Explanations
+are returned with the candidates; scores never approve a claim.
 
 ## Office-only endpoints
 
@@ -90,10 +98,11 @@ conversion of historical records while the new public workflow is introduced.
 
 ## Remaining integration work before production
 
-- Migrate the public home, report forms, found-item browser, claim UI, and
-  receipt/tracking screens to these routes; remove the mock student preview.
-- Add private image upload and evidence-image handling to the public token
-  model, using private Supabase Storage and signed access.
+- Finish migrating remaining public UI and office actions away from legacy
+  account-oriented student screens; remove the mock student preview.
+- Add private claim-evidence image upload and retrieval. Public report photos
+  currently use the existing local upload directory; production needs durable,
+  private object storage and tested access policies.
 - Integrate notifications and activity/reward accounting with roll-attributed
   cases without exposing roll numbers or private records.
 - Add institution-approved roll-number validation if CVR supplies a secure
