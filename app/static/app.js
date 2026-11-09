@@ -1075,7 +1075,7 @@ async function submitReport(event) {
     location_floor: reportField("reportFloor", form).value || null,
     location_room: reportField("reportRoom", form).value.trim() || null,
     location_area: reportField("reportArea", form).value.trim() || null,
-    image_ai_consent: Boolean(reportField("imageAiConsent", form)?.checked)
+    image_ai_consent: Boolean(reportField("reportImageAiConsent", form)?.checked)
   };
   const image = reportField("reportImage", form).files[0];
   if (!body.location_block && !body.location_area) {
@@ -1101,7 +1101,7 @@ async function submitReport(event) {
       fileBody.append("file", image);
       try {
         await api("/api/reports/" + encodeURIComponent(result.report.id) + "/image", { method: "POST", body: fileBody });
-        if (appConfig && appConfig.image_enrichment_enabled) {
+        if (body.image_ai_consent && appConfig && appConfig.image_enrichment_enabled) {
           try {
             const ai = await api("/api/reports/" + encodeURIComponent(result.report.id) + "/enrichment", { method: "POST" });
             const enrichment = ai.enrichment || {};
