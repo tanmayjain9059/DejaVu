@@ -2166,8 +2166,13 @@ async function submitPublicReport(event) {
   errorNode.textContent = "";
   if (!body.location_block && !body.location_area) {
     errorNode.textContent = type === "found"
-      ? "Choose the block or exact area where you found the item."
-      : "Choose a campus block or enter the area where you last had the item.";
+      ? "Choose the building or exact area where you found the item."
+      : "Choose a campus building or enter the area where you last had the item.";
+    return;
+  }
+  if (body.location_block === "Other / Not listed" && !body.location_area) {
+    errorNode.textContent = "Add a short location detail when you choose Other / Not listed.";
+    field("publicArea").focus();
     return;
   }
   if (!button || button.disabled) return;
