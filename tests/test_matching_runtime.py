@@ -18,7 +18,7 @@ class MatchingModelRuntimeTests(unittest.TestCase):
         guard = threading.Lock()
 
         class FakeSentenceTransformer:
-            def __init__(self, model_name, revision=None):
+            def __init__(self, model_name, revision=None, **kwargs):
                 with guard:
                     constructed.append((model_name, revision))
 
@@ -47,7 +47,7 @@ class MatchingModelRuntimeTests(unittest.TestCase):
 
         class FakeClipProcessor:
             @classmethod
-            def from_pretrained(cls, model_name, revision=None):
+            def from_pretrained(cls, model_name, revision=None, **kwargs):
                 return cls()
 
         class FakeClipModelFactory:
