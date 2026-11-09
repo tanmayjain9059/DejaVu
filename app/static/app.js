@@ -564,9 +564,11 @@ function enterApp(user) {
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
   $("#roleChip").className = "role-chip" + (user.role === "office" ? " role-chip-office" : "");
-  $$('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
+  $('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
     button.classList.toggle("hidden", user.role === "office");
   });
+  $("#officeDashboardNav").classList.toggle("hidden", user.role !== "office");
+  $('[data-view="start"]').classList.toggle("hidden", user.role === "office");
   $("#welcomeTitle").textContent = user.role === "office" ? "Manage found items and claims." : "Find what you are looking for.";
   $("#welcomeSubtitle").textContent = user.role === "office"
     ? "Confirm physical intake and review claims before authorising the next step."
@@ -2455,11 +2457,28 @@ $("#returnToDashboardButton").addEventListener("click",() => {
   if (inspectedUser) { const prior = inspectedUser; inspectedUser = null; enterApp(prior); }
 });
 $("#logoutButton").addEventListener("click",async() => {
-  if (supabaseClient) { clearAuthenticatedImages(); await supabaseClient.auth.signOut(); supabaseAccessToken = null; }
-  else { try { await api("/api/logout",{method:"POST"}); } catch (_) {} }
-  inspectedUser = null;
-  $("#returnToDashboardButton").classList.add("hidden");
-  showPublicHome();
+  const button = $("#logoutButton");
+  button.disabled = true;
+  try {
+    if (supabaseClient) {
+      const {error} = await supabaseClient.auth.signOut();
+      if (error) throw error;
+      clearAuthenticatedImages();
+      supabaseAccessToken = null;
+    } else {
+      await api("/api/logout",{method:"POST"});
+    }
+    if (typeof stopNotificationPolling === "function") stopNotificationPolling();
+    inspectedUser = null;
+    currentUser = null;
+    $("#returnToDashboardButton").classList.add("hidden");
+    showPublicHome();
+    showToast("You have been signed out.",false);
+  } catch (error) {
+    showToast(error.message || "Sign out failed. Please try again.",true);
+  } finally {
+    button.disabled = false;
+  }
 });
 $("#studentNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-view]");
