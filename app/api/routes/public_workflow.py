@@ -274,6 +274,14 @@ class PublicReportBody(BaseModel):
     handover_note: str | None = Field(default=None, max_length=800)
 
 
+class PublicPrivacyRequestBody(BaseModel):
+    reference: str = Field(min_length=4, max_length=32)
+    roll_number: str = Field(min_length=5, max_length=20)
+    tracking_secret: str = Field(min_length=24, max_length=128)
+    request_type: Literal["access", "correction", "erasure"]
+    details: str = Field(default="", max_length=2000)
+
+
 class PublicClaimBody(BaseModel):
     roll_number: str = Field(min_length=5, max_length=20)
     contact_phone: str | None = Field(default=None, max_length=20)
@@ -785,3 +793,76 @@ def add_public_claim_evidence(
                     "claim",claim["id"])
     return {"reference":reference,"status":"pending","message":"Additional evidence submitted."}
 
+
+
+@router.get("/privacy-export/{reference}")
+def export_public_case_data(
+    reference: str,
+    roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
+    """Return the data attached to a public case only after its private credentials verify."""
+    roll = _roll(roll_number)
+    with connect_db() as conn:
+        report = conn.execute("SELECT * FROM reports WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
+        if report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], tracking_secret):
+            allowed = (
+                "public_ref", "report_type", "title", "description", "brand", "primary_color",
+                "visible_features", "category", "occurred_at", "location_block", "location_floor",
+                "location_room", "location_area", "private_detail", "contact_phone", "contact_email",
+                "item_condition", "handover_at", "handover_recipient", "handover_note", "status",
+                "created_at", "updated_at",
+            )
+            return {"type": "report", "data": {key: report[key] for key in allowed if key in report.keys()}}
+        claim = conn.execute("SELECT * FROM claims WHERE public_ref=? AND submission_channel='public'", (reference,)).fetchone()
+        if claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret):
+            allowed = (
+                "public_ref", "evidence", "evidence_types", "status", "reviewer_note",
+                "created_at", "updated_at", "claimant_phone",
+            )
+            return {"type": "claim", "data": {key: claim[key] for key in allowed if key in claim.keys()}}
+    raise HTTPException(status_code=404, detail="Private tracking access not found.")
+
+
+@router.post("/privacy-requests", status_code=201)
+def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Request):
+    roll = _roll(body.roll_number)
+    request_id = uuid.uuid4().hex
+    timestamp = now_iso()
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "privacy", 5)
+        report = conn.execute(
+            "SELECT roll_number,tracking_hash,contact_email FROM reports WHERE public_ref=? AND submission_channel='public'",
+            (body.reference,),
+        ).fetchone()
+        claim = None
+        if not report:
+            claim = conn.execute(
+                "SELECT claimant_roll_number,tracking_hash,claimant_phone FROM claims WHERE public_ref=? AND submission_channel='public'",
+                (body.reference,),
+            ).fetchone()
+        verified = bool(
+            (report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], body.tracking_secret))
+            or (claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], body.tracking_secret))
+        )
+        if not verified:
+            raise HTTPException(status_code=404, detail="Private tracking access not found.")
+        requester_email = report["contact_email"] if report else None
+        roll_hash = hashlib.sha256(roll.encode("utf-8")).hexdigest()
+        conn.execute(
+            """INSERT INTO privacy_requests
+               (id,public_reference,requester_email,roll_hash,request_type,details,status,created_at,updated_at)
+               VALUES (?,?,?,?,?,?,'pending',?,?)""",
+            (request_id, body.reference, requester_email, roll_hash, body.request_type,
+             body.details.strip(), timestamp, timestamp),
+        )
+        actor_id = _public_actor_for_roll(conn, roll)
+        audit(conn, actor_id, "public_privacy_request_created", "privacy_request", request_id,
+              {"request_type": body.request_type, "public_reference": body.reference})
+        notify_role(
+            conn, "office", "privacy-request:" + request_id,
+            "Public personal-data request received",
+            "A verified public case holder submitted a " + body.request_type + " request.",
+            "privacy_request", request_id,
+        )
+    return {"id": request_id, "status": "pending", "message": "Your verified request has been sent to authorised office staff."}
