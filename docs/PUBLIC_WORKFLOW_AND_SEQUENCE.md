@@ -48,10 +48,11 @@ The public student workflow has no student dashboard session. A student's cases 
 3. Student enters mandatory CVR roll number and item details: item name, category, description, last-seen date/time and campus location. Brand, colour, visible features and photo are optional.
 4. Client-side validation gives immediate feedback; the server repeats every validation.
 5. Server normalises the roll number, validates field limits, applies abuse controls and stores the report with open status.
-6. Server generates a non-guessable case tracking credential and returns the public reference and one-time tracking code.
-7. Matching service compares the lost report with available found inventory.
-8. Possible matches are displayed as leads. A student can open a found item and submit a claim; similarity never approves ownership.
-9. Student uses the case receipt credential to track status and view permitted case information.
+6. Server generates a non-guessable case tracking credential and returns the public reference plus a private receipt link; the interface does not ask the student to type a separate secret.
+7. An optional photo is uploaded through the same image validation, normalisation and duplicate-detection pipeline used by the existing application.
+8. Matching service compares the lost report with available found inventory using text, category, location, time and optional CLIP image signals.
+9. Possible matches and their explanations are displayed as leads. A student can open a found item and submit a claim; similarity never approves ownership.
+10. Student opens or pastes the private receipt link to track status and view permitted case information.
 
 ### B. Found-item report and physical intake
 
