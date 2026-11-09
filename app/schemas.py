@@ -82,3 +82,7 @@ class CategorySuggestionBody(BaseModel):
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
     visible_features: str | None = Field(default=None, max_length=400)
+
+
+class ImageAiConsentBody(BaseModel):
+    consent: bool
