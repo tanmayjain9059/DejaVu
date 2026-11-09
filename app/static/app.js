@@ -1983,10 +1983,9 @@ $("#publicBrowseResults").addEventListener("click", async event => {
       method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({roll_number:roll,evidence,evidence_types:["owner_specific_detail","distinctive_features"]})
     });
-    $("#publicTrackReference").value = result.claim.reference;
-    $("#publicTrackRoll").value = roll;
-    $("#publicTrackSecret").value = result.tracking_secret;
-    $("#publicTrackResult").textContent = "Save this tracking secret securely. It is shown once.";
+    const trackingUrl = buildPublicTrackingUrl(result.claim.reference, roll, result.tracking_secret);
+    $("#publicTrackLink").value = trackingUrl;
+    $("#publicTrackResult").innerHTML = trackingReceiptMarkup(result.message, trackingUrl);
     showPublicDestination("track");
   } catch(error) { showToast(error.message,true); }
 });
@@ -2005,27 +2004,40 @@ $("#publicReportForm").addEventListener("submit", async event => {
   try {
     const result = await publicApi("/api/public/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     errorNode.textContent = "";
-    $("#publicTrackReference").value = result.case.reference;
-    $("#publicTrackRoll").value = body.roll_number;
-    $("#publicTrackSecret").value = result.tracking_secret;
-    $("#publicTrackResult").textContent = result.message+" Reference: "+result.case.reference;
+    const trackingUrl = buildPublicTrackingUrl(result.case.reference, body.roll_number, result.tracking_secret);
+    $("#publicTrackLink").value = trackingUrl;
+    $("#publicTrackResult").innerHTML = trackingReceiptMarkup(result.message+" Reference: "+result.case.reference, trackingUrl);
     showPublicDestination("track");
-    showToast("Report submitted. Save the tracking secret shown here.",false);
+    showToast("Report submitted. Save the private tracking link from your receipt.",false);
     event.currentTarget.reset();
   } catch(error) { errorNode.textContent = error.message; }
   finally { button.disabled = false; }
 });
+function buildPublicTrackingUrl(reference, roll, token) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("track", reference);
+  url.searchParams.set("roll", roll.trim().toUpperCase());
+  url.hash = "secret=" + encodeURIComponent(token);
+  return url.toString();
+}
+function trackingReceiptMarkup(message, url) {
+  return '<p>'+escapeHTML(message)+'</p><p class="field-hint">Keep this private link. Anyone with the link can view this case status, so do not share it publicly.</p><p><a class="button button-liquid" href="'+escapeHTML(url)+'">Open private tracking link ↗</a></p>';
+}
 $("#publicTrackForm").addEventListener("submit", async event => {
   event.preventDefault();
-  const ref = encodeURIComponent($("#publicTrackReference").value.trim());
-  const roll = $("#publicTrackRoll").value.trim();
-  const secret = $("#publicTrackSecret").value;
   const resultNode = $("#publicTrackResult");
-  resultNode.textContent = "Checking private case access…";
   try {
-    const data = await publicApi("/api/public/track/"+ref+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
+    const link = new URL($("#publicTrackLink").value.trim(), window.location.href);
+    if (link.origin !== window.location.origin) throw new Error("Use the private LostLink tracking link from your receipt.");
+    const reference = link.searchParams.get("track");
+    const roll = link.searchParams.get("roll");
+    const secret = new URLSearchParams(link.hash.slice(1)).get("secret");
+    if (!reference || !roll || !secret) throw new Error("This link is incomplete. Open the original private tracking link from your receipt.");
+    resultNode.textContent = "Checking private case access…";
+    const data = await publicApi("/api/public/track/"+encodeURIComponent(reference)+"?roll_number="+encodeURIComponent(roll),{headers:{"X-LostLink-Tracking-Secret":secret}});
     const record = data.case || data.claim;
-    resultNode.textContent = "Reference "+(record.reference || $("#publicTrackReference").value)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || "");
+    resultNode.textContent = "Reference "+(record.reference || reference)+" · Status: "+statusLabel(record.status || "unknown")+". "+(record.title || "");
   } catch(error) { resultNode.textContent = error.message; }
 });
 let finnLines = {
@@ -2436,6 +2448,13 @@ async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
 }
 
 start();
+
+const receiptParams = new URLSearchParams(window.location.search);
+if (receiptParams.get("track")) {
+  showPublicDestination("track");
+  $("#publicTrackLink").value = window.location.href;
+  $("#publicTrackForm").requestSubmit();
+}
 
 const receiptParams = new URLSearchParams(window.location.search);
 if (receiptParams.get("track")) {
