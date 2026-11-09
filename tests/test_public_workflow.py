@@ -122,6 +122,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "location_room": "CSE Lab",
             "location_area": "Near the lab entrance",
             "private_detail": "A tiny scratch under the battery cover known only to me.",
+            "contact_phone": "+91 98765 43210",
+            "contact_email": "lost.student@cvr.ac.in",
         })
         self.assertEqual(lost_response.status_code, 201, lost_response.text)
         lost_ref = lost_response.json()["case"]["reference"]
@@ -134,6 +136,10 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertNotIn("private_verification_detail", public_lost)
         self.assertEqual(internal_lost["private_verification_detail"], "A tiny scratch under the battery cover known only to me.")
         self.assertEqual(internal_lost["location_room"], "CSE Lab")
+        self.assertEqual(internal_lost["contact_phone"], "+91 98765 43210")
+        self.assertEqual(internal_lost["contact_email"], "lost.student@cvr.ac.in")
+        self.assertNotIn("contact_phone", public_lost)
+        self.assertNotIn("contact_email", public_lost)
 
         found_response = self.client.post("/api/public/reports", json={
             "report_type": "found",
@@ -148,6 +154,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "handover_at": "2026-11-09T14:30",
             "handover_recipient": "Campus office desk",
             "handover_note": "Left with the staff member at the office counter.",
+            "contact_phone": "9876543210",
+            "contact_email": "finder@cvr.ac.in",
         })
         self.assertEqual(found_response.status_code, 201, found_response.text)
         found_ref = found_response.json()["case"]["reference"]
@@ -159,7 +167,26 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertNotIn("handover_note", public_found)
         self.assertEqual(internal_found["handover_recipient"], "Campus office desk")
         self.assertEqual(internal_found["handover_note"], "Left with the staff member at the office counter.")
+        self.assertEqual(internal_found["contact_phone"], "9876543210")
+        self.assertEqual(internal_found["contact_email"], "finder@cvr.ac.in")
+        self.assertNotIn("contact_phone", public_found)
+        self.assertNotIn("contact_email", public_found)
         self.assertEqual(found_row["status"], "awaiting_intake")
+
+    def test_public_report_rejects_invalid_contact_details(self):
+        payload = {
+            "report_type": "lost",
+            "roll_number": "25B81A66J8",
+            "title": "Lost black calculator",
+            "description": "Black scientific calculator with a cracked protective cover.",
+            "category": "electronics",
+            "location_block": "Computer Block",
+            "contact_phone": "123",
+            "contact_email": "not-an-email",
+        }
+        response = self.client.post("/api/public/reports", json=payload)
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertIn("phone number", response.json()["detail"].lower())
 
     def test_unlisted_campus_location_requires_a_free_text_detail(self):
         response = self.client.post("/api/public/reports", json={
