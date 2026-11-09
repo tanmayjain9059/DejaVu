@@ -1,7 +1,7 @@
 """Idempotent contribution rewards and milestone certificate PDFs."""
 from __future__ import annotations
 import secrets, sqlite3, uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from app.core.database import audit, now_iso
 from app.services.notifications import notify_user
@@ -34,7 +34,7 @@ def issue_milestone_certificates(conn: sqlite3.Connection, user_id: int) -> list
         if total < milestone["threshold"]:
             continue
         certificate_id = uuid.uuid4().hex
-        serial = "LL-CERT-" + datetime.now().strftime("%Y") + "-" + secrets.token_hex(4).upper()
+        serial = "LL-CERT-" + datetime.now(timezone.utc).strftime("%Y") + "-" + secrets.token_hex(4).upper()
         timestamp = now_iso()
         cursor = conn.execute(
             """INSERT OR IGNORE INTO certificates
