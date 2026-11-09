@@ -156,7 +156,7 @@ async def decide_privacy_request(
     timestamp = now_iso()
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        lock_row(conn, "privacy_requests", "id", request_id) if ("privacy_requests", "id") in _ROW_LOCK_TARGETS else None
+        lock_row(conn, "privacy_requests", "id", request_id)
         request_row = conn.execute(
             "SELECT * FROM privacy_requests WHERE id=?", (request_id,)
         ).fetchone()
