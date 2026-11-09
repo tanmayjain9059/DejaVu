@@ -222,6 +222,14 @@ async def _rank_public_matches_async(lost_report_id: str) -> list[dict[str, Any]
     return results
 
 
+class PublicCategorySuggestionBody(BaseModel):
+    title: str = Field(default="", max_length=100)
+    description: str = Field(default="", max_length=1200)
+    brand: str | None = Field(default=None, max_length=80)
+    primary_color: str | None = Field(default=None, max_length=60)
+    visible_features: str | None = Field(default=None, max_length=400)
+
+
 class PublicReportBody(BaseModel):
     report_type: Literal["lost", "found"]
     roll_number: str = Field(min_length=5, max_length=20)
@@ -304,6 +312,19 @@ def ensure_public_schema() -> None:
                ON CONFLICT(version) DO NOTHING""",
             (now_iso(),),
         )
+
+
+@router.post("/category-suggestion")
+async def suggest_public_category(body: PublicCategorySuggestionBody, request: Request):
+    """Rate-limited anonymous category helper; suggestions never modify a report."""
+    from starlette.concurrency import run_in_threadpool
+    from app.services.category_classification import suggest_category
+
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "ai_category", 30, window_minutes=60)
+    payload = body.model_dump() if hasattr(body, "model_dump") else body.dict()
+    result = await run_in_threadpool(suggest_category, payload)
+    return {"suggestion": result}
 
 
 @router.post("/reports", status_code=201)
