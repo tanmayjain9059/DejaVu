@@ -18,9 +18,9 @@ class MatchingModelRuntimeTests(unittest.TestCase):
         guard = threading.Lock()
 
         class FakeSentenceTransformer:
-            def __init__(self, model_name):
+            def __init__(self, model_name, revision=None):
                 with guard:
-                    constructed.append(model_name)
+                    constructed.append((model_name, revision))
 
         fake_module = types.ModuleType("sentence_transformers")
         fake_module.SentenceTransformer = FakeSentenceTransformer
@@ -33,6 +33,7 @@ class MatchingModelRuntimeTests(unittest.TestCase):
                 models = list(pool.map(lambda _: engine._load_text_model(), range(24)))
 
         self.assertEqual(len(constructed), 1)
+        self.assertEqual(constructed[0][1], "main")
         self.assertTrue(all(model is models[0] for model in models))
         self.assertEqual(engine.model_status()["text"]["state"], "ready")
 
@@ -46,14 +47,14 @@ class MatchingModelRuntimeTests(unittest.TestCase):
 
         class FakeClipProcessor:
             @classmethod
-            def from_pretrained(cls, model_name):
+            def from_pretrained(cls, model_name, revision=None):
                 return cls()
 
         class FakeClipModelFactory:
             @classmethod
-            def from_pretrained(cls, model_name):
+            def from_pretrained(cls, model_name, revision=None):
                 with guard:
-                    constructed.append(model_name)
+                    constructed.append((model_name, revision))
                 return FakeClipModel()
 
         fake_module = types.ModuleType("transformers")
@@ -68,6 +69,7 @@ class MatchingModelRuntimeTests(unittest.TestCase):
                 pairs = list(pool.map(lambda _: engine._load_clip(), range(24)))
 
         self.assertEqual(len(constructed), 1)
+        self.assertEqual(constructed[0][1], "main")
         self.assertTrue(all(pair[0] is pairs[0][0] for pair in pairs))
         self.assertTrue(all(pair[1] is pairs[0][1] for pair in pairs))
         self.assertEqual(engine.model_status()["image"]["state"], "ready")
