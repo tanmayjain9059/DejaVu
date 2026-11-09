@@ -116,6 +116,7 @@
             <label><span>When did you last see it?</span><input id="publicDate" type="datetime-local"></label>
             <label><span>Private ownership clues · Staff only</span><textarea id="publicPrivateDetail" rows="3" maxlength="1200" placeholder="Hidden marks, unique stickers, scratches or details only you would know. Do not include these in the public description."></textarea><small class="field-hint">Visible only to authorised campus office staff. Never shown in public listings or matching results.</small></label>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImage" type="file" accept="image/jpeg,image/png,image/webp"></label>
+            <small class="field-hint">Photos are stored privately for office review and matching; they are not shown in public Browse. If AI matching is enabled, item photos may be analysed for similarity. Do not upload identity cards or documents.</small>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportError" class="form-error" role="alert"></p>
             <button class="button button-liquid" type="submit">Submit lost report ↗</button>
@@ -161,6 +162,7 @@
               <small class="field-hint">Submitting these details does not confirm office receipt. Staff must verify physical receipt before the item becomes searchable.</small>
             </fieldset>
             <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImageFound" type="file" accept="image/jpeg,image/png,image/webp"></label>
+            <small class="field-hint">Photos are stored privately for office review and matching; they are not shown in public Browse. If AI matching is enabled, item photos may be analysed for similarity. Do not upload identity cards or documents.</small>
             <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
             <p id="publicReportErrorFound" class="form-error" role="alert"></p>
             <button class="button button-liquid" type="submit">Submit found report ↗</button>
@@ -1042,7 +1044,7 @@
     <form id="publicClaimForm" class="form-stack">
       <div class="dialog-heading"><div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Claim this found item</h2></div><button id="publicClaimClose" type="button" class="icon-button" aria-label="Close">×</button></div>
       <div id="publicClaimItemSummary" class="claim-item-summary"></div>
-      <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"></label>
+      <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"><small class="field-hint">This is attribution only, not identity verification. The campus office verifies the claimant before handover.</small></label>
       <label><span>Phone number · Optional</span><input id="publicClaimPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"><small class="field-hint">Shared privately with authorised campus office staff for claim follow-up.</small></label>
       <label><span>Link to your Lost report <span class="field-optional">Optional</span></span><input id="publicClaimLostReference" maxlength="24" placeholder="e.g. LL-XXXXXXX"></label>
       <fieldset class="evidence-type-fieldset"><legend>Supporting evidence <span class="field-required">Choose at least one</span></legend>
