@@ -4079,3 +4079,23 @@ a:hover { color: var(--ll-primary-hover); }
 @media (max-width:680px) {
   #appView .header-right #logoutButton { min-height:32px; padding:0 9px; font-size:.68rem; }
 }
+
+
+/* Keep public report and tracking surfaces inside very narrow phone viewports. */
+@media (max-width: 700px) {
+  .public-destination {
+    width: calc(100% - 4px) !important;
+    max-width: calc(100% - 4px) !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .public-destination .form-card,
+  .public-destination #publicBrowseForm,
+  .public-destination #publicTrackForm,
+  .public-destination .two-columns {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .public-destination .two-columns { grid-template-columns: minmax(0, 1fr) !important; }
+}
