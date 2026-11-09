@@ -984,7 +984,8 @@ async function submitReport(event) {
     location_block: reportField("reportBlock", form).value || null,
     location_floor: reportField("reportFloor", form).value || null,
     location_room: reportField("reportRoom", form).value.trim() || null,
-    location_area: reportField("reportArea", form).value.trim() || null
+    location_area: reportField("reportArea", form).value.trim() || null,
+    image_ai_consent: Boolean(reportField("imageAiConsent", form)?.checked)
   };
   const image = reportField("reportImage", form).files[0];
   if (!body.location_block && !body.location_area) {
@@ -2270,7 +2271,8 @@ async function submitPublicReport(event) {
     item_condition: type === "found" ? field("publicItemCondition").value || null : null,
     handover_at: type === "found" ? field("publicHandoverAt").value || null : null,
     handover_recipient: type === "found" ? field("publicHandoverRecipient").value.trim() || null : null,
-    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null
+    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null,
+    image_ai_consent: Boolean(field("publicImageAiConsent")?.checked)
   };
   const errorNode = field("publicReportError");
   const button = form.querySelector('button[type="submit"]');
