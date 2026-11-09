@@ -3830,3 +3830,8 @@ a:hover { color: var(--ll-primary-hover); }
   #appView #studentNav .nimbus-item { padding-inline:11px; }
   #appView #studentNav .nimbus-label { font-size:.7rem; }
 }
+
+
+.report-secondary-links { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px 18px; margin:0 0 18px; }
+.report-secondary-links .link-btn { min-height:36px; padding:6px 2px; font-size:.88rem; }
+@media (max-width:560px) { .report-secondary-links { justify-content:flex-start; gap:8px 14px; margin-bottom:14px; } .report-secondary-links .link-btn { min-height:44px; } }
