@@ -397,5 +397,17 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn("handoverContext", renderer)
         self.assertIn("escapeHTML(value)", renderer)
 
+    def test_public_claim_fetch_and_phone_flow_reaches_office_review(self):
+        self.assertIn('id="publicClaimPhone"', self.html)
+        self.assertIn('$("#publicClaimPhone").value.trim()', self.js)
+        self.assertIn("contact_phone:contactPhone || null", self.js)
+        self.assertIn('publicApi("/api/public/found/" + encodeURIComponent(reportId))', self.js)
+        start = self.js.index("function officeClaimCard(claim)")
+        end = self.js.index("\\nasync function submitIntake", start)
+        renderer = self.js[start:end]
+        self.assertIn("claim.claimant_phone", renderer)
+        self.assertIn('href="tel:', renderer)
+        self.assertIn("Claimant phone: Not provided", renderer)
+
 if __name__ == "__main__":
     unittest.main()
