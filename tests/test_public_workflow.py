@@ -92,6 +92,72 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "sensitivity_level":1,
         })
 
+    def test_public_config_uses_cvr_campus_inventory_and_keeps_floors_optional(self):
+        response = self.client.get("/api/config")
+        self.assertEqual(response.status_code, 200, response.text)
+        locations = response.json()["locations"]
+        self.assertIn("Main Block", locations["blocks"])
+        self.assertIn("Computer Block", locations["blocks"])
+        self.assertIn("CM Block", locations["blocks"])
+        self.assertIn("Central Ground", locations["blocks"])
+        self.assertIn("CVR Canteen", locations["blocks"])
+        self.assertIn("CSE Building", locations["aliases"]["Computer Block"])
+        self.assertIn("Freshers Block", locations["aliases"]["First Year Block"])
+        self.assertIn("pending_verification", locations)
+        self.assertNotIn("Security Room", locations["blocks"])
+        self.assertIn("Other / Not listed", locations["blocks"])
+
+    def test_public_report_context_fields_persist_and_private_details_stay_private(self):
+        lost_response = self.client.post("/api/public/reports", json={
+            "report_type": "lost",
+            "roll_number": "25B81A66J8",
+            "title": "Lost black calculator",
+            "description": "Black scientific calculator with a cracked protective cover.",
+            "category": "electronics",
+            "location_block": "Computer Block",
+            "location_floor": "First Floor",
+            "location_room": "CSE Lab",
+            "location_area": "Near the lab entrance",
+            "private_detail": "A tiny scratch under the battery cover known only to me.",
+        })
+        self.assertEqual(lost_response.status_code, 201, lost_response.text)
+        lost_ref = lost_response.json()["case"]["reference"]
+        with main.connect_db() as conn:
+            lost_row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (lost_ref,)).fetchone()
+        public_lost = main.serialise_report(lost_row, internal=False)
+        internal_lost = main.serialise_report(lost_row, internal=True)
+        self.assertEqual(public_lost["location_floor"], "First Floor")
+        self.assertIsNone(public_lost["location_room"])
+        self.assertNotIn("private_verification_detail", public_lost)
+        self.assertEqual(internal_lost["private_verification_detail"], "A tiny scratch under the battery cover known only to me.")
+        self.assertEqual(internal_lost["location_room"], "CSE Lab")
+
+        found_response = self.client.post("/api/public/reports", json={
+            "report_type": "found",
+            "roll_number": "25B81A66J8",
+            "title": "Found silver bottle",
+            "description": "Silver bottle with a black lid and visible dent.",
+            "category": "accessories",
+            "location_block": "Library",
+            "location_floor": "Ground Floor",
+            "location_room": "Reading Hall",
+            "item_condition": "partially_damaged",
+            "handover_at": "2026-11-09T14:30",
+            "handover_recipient": "Campus office desk",
+            "handover_note": "Left with the staff member at the office counter.",
+        })
+        self.assertEqual(found_response.status_code, 201, found_response.text)
+        found_ref = found_response.json()["case"]["reference"]
+        with main.connect_db() as conn:
+            found_row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (found_ref,)).fetchone()
+        public_found = main.serialise_report(found_row, internal=False)
+        internal_found = main.serialise_report(found_row, internal=True)
+        self.assertEqual(public_found["item_condition"], "partially_damaged")
+        self.assertNotIn("handover_note", public_found)
+        self.assertEqual(internal_found["handover_recipient"], "Campus office desk")
+        self.assertEqual(internal_found["handover_note"], "Left with the staff member at the office counter.")
+        self.assertEqual(found_row["status"], "awaiting_intake")
+
     def test_public_category_suggestion_is_rate_limited_and_advisory(self):
         payload = {
             "title": "Navy backpack",
@@ -114,7 +180,7 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["database"],"postgresql" if TEST_WITH_POSTGRES else "sqlite")
         self.assertEqual(payload["canonical_tables"],"ready")
         self.assertIn(payload["storage"],{"local","s3"})
-        self.assertGreaterEqual(payload["schema_version"],11)
+        self.assertGreaterEqual(payload["schema_version"],12)
 
     def test_student_login_is_rejected_and_public_reports_need_no_account(self):
         signed_in = self.client.post("/api/login",json={
