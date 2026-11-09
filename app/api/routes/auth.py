@@ -24,9 +24,39 @@ def public_config():
         "certificate_milestones": [{"tier": m["tier"], "threshold": m["threshold"]} for m in CERTIFICATE_MILESTONES],
         "categories": [{"value": key, "label": value} for key, value in CATEGORY_LABELS.items()],
         "locations": {
-            "blocks": ["Block A", "Block B", "Block C", "Library", "Cafeteria", "Other / not sure"],
-            "floors": ["Ground", "1", "2", "3", "Other / not sure"],
-            "note": "Sample directory for the prototype. Replace with the verified campus directory before deployment."
+            "blocks": [
+                "Main Block", "Computer Block", "PG Block", "First Year Block",
+                "Exam Hall", "AC Roof Building 1", "AC Roof Building 2",
+                "AC Roof Building 3", "AC Roof Building 5", "Library",
+                "Student Centre", "Boys' Hostel", "CM Block",
+                "Central Ground", "Cricket Ground", "Basketball Court",
+                "Bus Bay", "CVR Canteen", "CVR Park 1",
+                "Gymnasium", "Medical Centre", "Placement Cell",
+                "Indoor Games Area", "Workshop 1", "Workshop 2",
+                "Other / Not listed"
+            ],
+            "floors": ["Ground Floor", "First Floor", "Second Floor", "Third Floor", "Other / not sure"],
+            "aliases": {
+                "Main Block": ["MB", "Main Building"],
+                "Computer Block": ["CB", "CSE Building", "Computer Sciences Block"],
+                "First Year Block": ["IY", "Freshers Block"],
+                "Exam Hall": ["AC4"],
+                "Library": ["LIB"],
+                "Student Centre": ["SC", "Student Service Block"],
+                "Boys' Hostel": ["BH"],
+                "AC Roof Building 1": ["AC1", "AC Sheet Building 1"],
+                "AC Roof Building 2": ["AC2", "AC Sheet Building 2"],
+                "AC Roof Building 3": ["AC3", "AC Sheet Building 3"],
+                "AC Roof Building 5": ["AC5"]
+            },
+            "pending_verification": [
+                "CM Block", "Exam Hall", "AC Roof Building 1", "AC Roof Building 2",
+                "AC Roof Building 3", "AC Roof Building 5", "Student Centre",
+                "Central Ground", "Cricket Ground", "Basketball Court", "Bus Bay",
+                "CVR Canteen", "CVR Park 1", "Gymnasium", "Medical Centre",
+                "Placement Cell", "Indoor Games Area", "Workshop 1", "Workshop 2"
+            ],
+            "note": "CVR campus inventory supplied for LostLink. Historical and layout-derived entries remain pending current on-campus verification. Floors and rooms are optional; no room directory or floor count is implied."
         },
     }
 
