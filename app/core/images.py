@@ -61,7 +61,9 @@ def image_fingerprint_matches(conn: sqlite3.Connection, image_sha256: str, image
     existing = conn.execute(
         """SELECT image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL
            UNION ALL
-           SELECT image_sha256, image_phash FROM claim_evidence_images"""
+           SELECT image_sha256, image_phash FROM claim_evidence_images
+           UNION ALL
+           SELECT image_sha256, image_phash FROM public_cases WHERE image_path IS NOT NULL"""
     ).fetchall()
     candidate = int(image_phash, 16)
     for row in existing:
