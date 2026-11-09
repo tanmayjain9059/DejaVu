@@ -117,10 +117,12 @@ async def upload_claim_evidence_image(
         raise HTTPException(status_code=413, detail="Evidence images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
+    filename = "claim-" + uuid.uuid4().hex + ".jpg"
     image_key = None
     try:
+        # S3/object-storage writes happen before opening the DB write transaction.
+        image_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
-            # Serialize duplicate checks across simultaneous student and office processes.
             conn.execute("BEGIN IMMEDIATE")
             claim = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
             if not claim or claim["claimant_id"] != user["id"]:
@@ -134,8 +136,6 @@ async def upload_claim_evidence_image(
                     status_code=409,
                     detail="This image duplicates or closely matches an image already in LostLink. Use a different, genuine proof image or explain another owner-only detail in text.",
                 )
-            filename = "claim-" + uuid.uuid4().hex + ".jpg"
-            image_key = save_upload(filename, normalized)
             conn.execute(
                 """INSERT INTO claim_evidence_images
                    (id, claim_id, uploader_id, image_path, image_sha256, image_phash, created_at)
@@ -148,14 +148,14 @@ async def upload_claim_evidence_image(
                         "Claim evidence image submitted", "A claimant attached private image evidence for review.",
                         "claim", claim_id)
     except Exception:
-        # Also catches commit failures from the connection context manager.
         if image_key is not None:
             try:
-                delete_upload(image_key)
+                await run_in_threadpool(delete_upload, image_key)
             except Exception:
                 pass
         raise
     return {"ok": True, "message": "Private evidence image attached."}
+
 
 @router.get("/api/claims/{claim_id}/evidence-image")
 async def get_claim_evidence_image(
