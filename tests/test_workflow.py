@@ -831,6 +831,16 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(accepted.status_code, 200, accepted.text)
         self.assertEqual(accepted.json()["claim"]["status"], "approved_for_collection")
 
+    def test_preprovisioned_student_can_sign_in_and_open_session(self):
+        response = self.client.post("/api/login", json={
+            "email": "finder@example.test", "password": "finder-password"
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["user"]["role"], "student")
+        profile = self.client.get("/api/me")
+        self.assertEqual(profile.status_code, 200, profile.text)
+        self.assertEqual(profile.json()["user"]["role"], "student")
+        self.client.post("/api/logout")
     def test_demo_mode_exposes_only_office_login(self):
         self.set_demo_mode(True)
         main.initialise_db()
