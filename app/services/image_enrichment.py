@@ -46,6 +46,23 @@ def _load_pipeline():
         return _CAPTION_PIPELINE
 
 
+def model_status() -> dict[str, Any]:
+    """Safe diagnostics for the optional caption model."""
+    enabled = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
+    if not enabled:
+        state = "disabled"
+    elif _MODEL_ATTEMPTED and _CAPTION_PIPELINE is not None:
+        state = "ready"
+    elif _MODEL_ATTEMPTED:
+        state = "unavailable"
+    else:
+        state = "not_loaded"
+    return {
+        "enabled": enabled,
+        "state": state,
+        "model": os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base"),
+    }
+
 def _keywords(caption: str, limit: int = 12) -> list[str]:
     words = re.findall(r"[a-z][a-z0-9-]{2,}", caption.casefold())
     result = []
