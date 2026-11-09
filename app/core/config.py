@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 ROOT = Path(__file__).resolve().parents[2]  # app/core/config.py -> repository root
 DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
