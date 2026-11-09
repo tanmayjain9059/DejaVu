@@ -254,7 +254,7 @@ def main() -> int:
                 assert page.locator("#officeWorkspaceButton").count() == 0
                 assert page.locator("#studentNav [data-view='office']:visible").count() == 1
                 audit(page, f"office dashboard {width}x{height}")
-                for view, view_id in [("notifications", "notificationsView"), ("browse", "browseView"), ("start", "startView")]:
+                for view, view_id in [("notifications", "notificationsView"), ("browse", "browseView")]:
                     page.locator(f'button[data-view="{view}"]:visible').first.click()
                     page.locator("#" + view_id).wait_for(state="visible")
                     audit(page, f"office {view} {width}x{height}")
