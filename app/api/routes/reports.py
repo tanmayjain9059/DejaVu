@@ -60,20 +60,20 @@ async def list_reports(
         conditions.append("r.category=?")
         params.append(category)
     if block:
-        conditions.append("LOWER(COALESCE(r.location_block,'')) LIKE ?")
+        conditions.append("LOWER(COALESCE(r.location_block,'')) LIKE ? ESCAPE '!'")
         params.append("%" + block.lower() + "%")
     if room:
-        conditions.append("LOWER(COALESCE(r.location_room,'')) LIKE ?")
+        conditions.append("LOWER(COALESCE(r.location_room,'')) LIKE ? ESCAPE '!'")
         params.append("%" + room.lower() + "%")
     if q:
-        term = "%" + q.strip().lower() + "%"
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
         conditions.append("""(
-            LOWER(r.title) LIKE ? OR LOWER(r.description) LIKE ? OR LOWER(r.public_ref) LIKE ?
-            OR LOWER(COALESCE(r.location_area,'')) LIKE ? OR LOWER(COALESCE(r.brand,'')) LIKE ?
-            OR LOWER(COALESCE(r.primary_color,'')) LIKE ? OR LOWER(COALESCE(r.visible_features,'')) LIKE ?
-            OR LOWER(COALESCE(r.location_block,'')) LIKE ? OR LOWER(COALESCE(r.location_floor,'')) LIKE ?
-            OR LOWER(COALESCE(r.location_room,'')) LIKE ?
-            OR LOWER(COALESCE(r.ai_caption,'')) LIKE ? OR LOWER(COALESCE(r.ai_keywords,'')) LIKE ?
+            LOWER(r.title) LIKE ? ESCAPE '!' OR LOWER(r.description) LIKE ? ESCAPE '!' OR LOWER(r.public_ref) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.brand,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.visible_features,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_block,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.location_floor,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_room,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.ai_caption,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.ai_keywords,'')) LIKE ? ESCAPE '!'
         )""")
         params.extend([term] * 12)
     if date_from:
@@ -575,7 +575,7 @@ async def intake_found_item(
             raise HTTPException(status_code=422, detail="For this risk level, record a private identifying detail or the approved verification method.")
         year = datetime.now().year
         prefix = "LL-CVR-" + str(year) + "-"
-        latest = conn.execute("SELECT tag_id FROM reports WHERE tag_id LIKE ? ORDER BY tag_id DESC LIMIT 1", (prefix + "%",)).fetchone()
+        latest = conn.execute("SELECT tag_id FROM reports WHERE tag_id LIKE ? ESCAPE '!' ORDER BY tag_id DESC LIMIT 1", (prefix + "%",)).fetchone()
         number = int(latest["tag_id"].rsplit("-", 1)[1]) + 1 if latest else 1
         tag_id = prefix + str(number).zfill(6)
         conn.execute(
