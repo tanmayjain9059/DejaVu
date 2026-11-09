@@ -568,6 +568,36 @@ def _migration_add_image_ai_consent(conn) -> None:
         conn.execute("ALTER TABLE reports ADD COLUMN image_ai_consent INTEGER NOT NULL DEFAULT 0")
 
 
+def _migration_add_privacy_requests(conn) -> None:
+    """Create an auditable queue for data access, correction and erasure requests."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS privacy_requests (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            public_reference TEXT,
+            requester_email TEXT,
+            roll_hash TEXT,
+            request_type TEXT NOT NULL CHECK(request_type IN ('access','correction','erasure')),
+            details TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending','in_review','completed','declined')),
+            reviewed_by INTEGER REFERENCES users(id),
+            reviewer_note TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_privacy_requests_status_created "
+        "ON privacy_requests(status, created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_privacy_requests_user_created "
+        "ON privacy_requests(user_id, created_at)"
+    )
+
+
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
@@ -583,6 +613,7 @@ SCHEMA_MIGRATIONS = (
     (13, "private_public_report_contact_fields", _migration_add_public_report_contact_fields),
     (14, "private_public_claimant_phone", _migration_add_public_claimant_phone),
     (15, "explicit_image_ai_consent", _migration_add_image_ai_consent),
+    (16, "privacy_data_subject_request_workflow", _migration_add_privacy_requests),
 )
 
 
