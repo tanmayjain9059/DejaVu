@@ -63,7 +63,7 @@ def _verify_token(stored_hash: str | None, token: str | None) -> bool:
 
 
 def _reference(prefix: str) -> str:
-    return prefix + "-" + secrets.token_hex(4).upper()
+    return prefix + "-" + secrets.token_hex(8).upper()
 
 
 def _public_actor_for_roll(conn, roll_number: str) -> int:
@@ -118,6 +118,15 @@ def _public_report(row) -> dict[str, Any]:
     # per-case signed-access flow is enabled for anonymous tracking tokens.
     item["image_url"] = None
     item.pop("location_room", None)
+    # A public Lost listing must not reveal where or exactly when a student
+    # lost an item. The full location and timestamp remain available to the
+    # owner through the private tracking flow and to authorised office staff.
+    if item.get("report_type") == "lost":
+        item["location"] = "CVR campus"
+        item["location_block"] = None
+        item["location_floor"] = None
+        item["location_area"] = None
+        item["occurred_at"] = None
     item["reference"] = item["public_ref"]
     return item
 
