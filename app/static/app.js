@@ -141,7 +141,8 @@ const pageState = {
   intake: { cursor: null, hasMore: false, loading: false, items: [] },
   inventory: { cursor: null, hasMore: false, loading: false, items: [] },
   officeClaims: { cursor: null, hasMore: false, loading: false, items: [] },
-  handovers: { cursor: null, hasMore: false, loading: false, items: [] }
+  handovers: { cursor: null, hasMore: false, loading: false, items: [] },
+  privacyRequests: { cursor: null, hasMore: false, loading: false, items: [] }
 };
 let inspectedUser = null;
 let notificationPollTimer = null;
@@ -668,6 +669,7 @@ function enterApp(user) {
     button.classList.toggle("hidden", user.role === "office");
   });
   $("#officeDashboardNav").classList.toggle("hidden", user.role !== "office");
+  $("#privacyRequestsNav").classList.toggle("hidden", user.role !== "office");
   $('[data-view="start"]').classList.toggle("hidden", user.role === "office");
   $("#welcomeTitle").textContent = user.role === "office" ? "Manage found items and claims." : "Find what you are looking for.";
   $("#welcomeSubtitle").textContent = user.role === "office"
@@ -710,7 +712,7 @@ function navigate(view) {
   const sections = {
     start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
-    activity: "#activityView", office: "#officeView"
+    activity: "#activityView", office: "#officeView", privacyRequests: "#privacyRequestsView"
   };
   Object.values(sections).forEach((selector) => $(selector).classList.add("hidden"));
   $(sections[view] || sections.browse).classList.remove("hidden");
@@ -720,6 +722,7 @@ function navigate(view) {
   if (view === "my-reports") loadMyReports();
   if (view === "my-claims") loadMyClaims();
   if (view === "office") loadOffice();
+  if (view === "privacyRequests") loadOffice("privacyRequests");
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
   updateFinnForView(view);
@@ -1430,7 +1433,8 @@ async function loadOffice(appendKey = null) {
     intake: { path: "/api/reports?report_type=found&status=awaiting_intake", target: "#intakeQueue", button: "#intakeLoadMore", empty: "#intakeEmpty", key: "reports", render: intakeCard },
     inventory: { path: "/api/reports?report_type=found&status=available,claim_approved", target: "#officeInventory", button: "#inventoryLoadMore", empty: "#officeInventoryEmpty", key: "reports", render: officeInventoryCard },
     officeClaims: { path: "/api/claims?queue=active", target: "#officeClaims", button: "#officeClaimsLoadMore", empty: "#officeClaimsEmpty", key: "claims", render: officeClaimCard },
-    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard }
+    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard },
+    privacyRequests: { path: "/api/office/privacy-requests", target: "#privacyRequestsList", button: null, empty: "#privacyRequestsEmpty", key: "requests", render: privacyRequestCard }
   };
   const keys = appendKey ? [appendKey] : Object.keys(definitions);
   if (appendKey && !definitions[appendKey]) return;
@@ -1474,6 +1478,51 @@ async function loadOffice(appendKey = null) {
     }));
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
+}
+
+function privacyRequestCard(request) {
+  const subject = request.account_email || (request.public_reference ? "Public case " + request.public_reference : "Account " + request.user_id);
+  const type = ({access:"Access / data copy",correction:"Correction",erasure:"Erasure"})[request.request_type] || request.request_type;
+  const status = ({pending:"Awaiting review",in_review:"In review",completed:"Completed",declined:"Declined"})[request.status] || request.status;
+  const terminal = ["completed","declined"].includes(request.status);
+  return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(type) + '</h3><p>' +
+    escapeHTML(subject) + " · " + escapeHTML(humanDateTime(request.created_at)) + '</p></div><span class="status-pill">' +
+    escapeHTML(status) + '</span></div><p>' + escapeHTML(request.details || "No additional details supplied.") + '</p>' +
+    (request.reviewer_note ? '<p class="field-hint"><strong>Last review note:</strong> ' + escapeHTML(request.reviewer_note) + '</p>' : '') +
+    (terminal ? '<p class="field-hint">This request is closed.</p>' : '<div class="card-actions"><button class="button button-primary button-small" type="button" data-privacy-review="' +
+      escapeHTML(request.id) + '" data-privacy-type="' + escapeHTML(request.request_type) + '" data-privacy-subject="' + escapeHTML(subject) +
+      '">Review request</button></div>') + '</article>';
+}
+
+let selectedPrivacyRequestId = null;
+function openPrivacyDecision(requestId, requestType, subject) {
+  selectedPrivacyRequestId = requestId;
+  $("#privacyDecisionSummary").textContent = requestType + " request · " + subject;
+  $("#privacyDecisionAction").value = "in_review";
+  $("#privacyDecisionNote").value = "";
+  $("#privacyDecisionError").textContent = "";
+  $("#privacyDecisionDialog").showModal();
+}
+async function submitPrivacyDecision(event) {
+  event.preventDefault();
+  if (!selectedPrivacyRequestId) return;
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#privacyDecisionError").textContent = "";
+  try {
+    const result = await api("/api/office/privacy-requests/" + encodeURIComponent(selectedPrivacyRequestId) + "/decision", {
+      method: "POST",
+      body: {action: $("#privacyDecisionAction").value, note: $("#privacyDecisionNote").value.trim()}
+    });
+    $("#privacyDecisionDialog").close();
+    selectedPrivacyRequestId = null;
+    showToast(result.message || "Privacy request updated.", false);
+    await loadOffice("privacyRequests");
+  } catch (error) {
+    $("#privacyDecisionError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function officeInventoryCard(report) {
@@ -2710,6 +2759,8 @@ document.addEventListener("click", (event) => {
   }
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
+  const privacyReview = event.target.closest("[data-privacy-review]");
+  if (privacyReview) openPrivacyDecision(privacyReview.dataset.privacyReview, privacyReview.dataset.privacyType, privacyReview.dataset.privacySubject);
   const certificate = event.target.closest("[data-certificate-download]");
   if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
@@ -2722,6 +2773,10 @@ $("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeCla
 $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
+$("#refreshPrivacyRequests").addEventListener("click", () => loadOffice("privacyRequests"));
+$("#privacyDecisionForm").addEventListener("submit", submitPrivacyDecision);
+$("#closePrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
+$("#cancelPrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
 $("#clearFilters").addEventListener("click", resetSearch);
 document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
   form.addEventListener("submit", submitReport);
