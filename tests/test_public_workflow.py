@@ -423,6 +423,27 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(masked.status_code, 200, masked.text)
         self.assertIn(ref, masked.text)
 
+    def test_wrong_privacy_request_tokens_are_throttled_without_owner_lockout(self):
+        created = self.create_public_report().json()
+        payload = {
+            "reference": created["case"]["reference"],
+            "roll_number": "25B81A66J8",
+            "request_type": "access",
+            "details": "Please provide my case data.",
+        }
+        endpoint = "/api/public/privacy-requests"
+        for attempt in range(30):
+            denied = self.client.post(endpoint, json=payload,
+                headers={"X-LostLink-Tracking-Secret": "wrong-secret"})
+            self.assertEqual(denied.status_code, 404,
+                             f"Attempt {attempt}: {denied.text}")
+        blocked = self.client.post(endpoint, json=payload,
+            headers={"X-LostLink-Tracking-Secret": "wrong-secret"})
+        self.assertEqual(blocked.status_code, 429, blocked.text)
+        accepted = self.client.post(endpoint, json=payload,
+            headers={"X-LostLink-Tracking-Secret": created["tracking_secret"]})
+        self.assertEqual(accepted.status_code, 201, accepted.text)
+
     def test_privacy_request_never_accepts_tracking_secret_in_json_body(self):
         created = self.create_public_report().json()
         reference = created["case"]["reference"]

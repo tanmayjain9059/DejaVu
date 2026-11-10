@@ -921,8 +921,8 @@ def create_public_privacy_request(
     roll = _roll(body.roll_number)
     request_id = uuid.uuid4().hex
     timestamp = now_iso()
+    verified = False
     with connect_db() as conn:
-        _enforce_rate_limit(conn, request, "privacy", 5)
         report = conn.execute(
             "SELECT roll_number,tracking_hash,contact_email FROM reports WHERE public_ref=? AND submission_channel='public'",
             (body.reference,),
@@ -937,27 +937,33 @@ def create_public_privacy_request(
             (report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], tracking_secret))
             or (claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret))
         )
-        if not verified:
-            raise HTTPException(status_code=404, detail="Private tracking access not found.")
-        requester_email = report["contact_email"] if report else None
-        roll_hash = hmac.new(SESSION_SECRET.encode("utf-8"), roll.encode("utf-8"), hashlib.sha256).hexdigest()
-        conn.execute(
-            """INSERT INTO privacy_requests
-               (id,public_reference,requester_email,roll_hash,request_type,details,status,created_at,updated_at)
-               VALUES (?,?,?,?,?,?,'pending',?,?)""",
-            (request_id, body.reference, requester_email, roll_hash, body.request_type,
-             body.details.strip(), timestamp, timestamp),
-        )
-        actor_id = _public_actor_for_roll(conn, roll)
-        audit(conn, actor_id, "public_privacy_request_created", "privacy_request", request_id,
-              {"request_type": body.request_type, "public_reference": body.reference})
-        notify_role(
-            conn, "office", "privacy-request:" + request_id,
-            "Public personal-data request received",
-            "A verified public case holder submitted a " + body.request_type + " request.",
-            "privacy_request", request_id,
-        )
+        if verified:
+            # Only authorised requests consume the case's five-request quota.
+            # Invalid credential attempts are recorded separately after this
+            # transaction so a 404 cannot roll back their counter.
+            _enforce_rate_limit(conn, request, "privacy", 5, actor_key="case:" + _hash(body.reference))
+            requester_email = report["contact_email"] if report else None
+            roll_hash = hmac.new(SESSION_SECRET.encode("utf-8"), roll.encode("utf-8"), hashlib.sha256).hexdigest()
+            conn.execute(
+                """INSERT INTO privacy_requests
+                   (id,public_reference,requester_email,roll_hash,request_type,details,status,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,'pending',?,?)""",
+                (request_id, body.reference, requester_email, roll_hash, body.request_type,
+                 body.details.strip(), timestamp, timestamp),
+            )
+            actor_id = _public_actor_for_roll(conn, roll)
+            audit(conn, actor_id, "public_privacy_request_created", "privacy_request", request_id,
+                  {"request_type": body.request_type, "public_reference": body.reference})
+            notify_role(
+                conn, "office", "privacy-request:" + request_id,
+                "Public personal-data request received",
+                "A verified public case holder submitted a " + body.request_type + " request.",
+                "privacy_request", request_id,
+            )
+    if not verified:
+        _deny_invalid_public_tracking(request, body.reference)
     return {"id": request_id, "status": "pending", "message": "Your verified request has been sent to authorised office staff."}
+
 
 @router.post("/reports/{reference}/ai-consent")
 def update_public_ai_consent(
