@@ -1,5 +1,9 @@
 from pathlib import Path
+import os
 import re
+import shutil
+import subprocess
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,3 +44,30 @@ def test_public_workflow_has_no_duplicate_route_decorators_or_functions():
     functions = re.findall(r'^(?:async )?def ([A-Za-z_]\w*)\(', source, flags=re.M)
     assert len(route_keys) == len(set(route_keys)), "public_workflow.py contains duplicate method/path routes"
     assert len(functions) == len(set(functions)), "public_workflow.py contains duplicate helper definitions"
+
+
+def test_cloudflare_worker_asset_build_emits_security_headers(tmp_path):
+    # Both Cloudflare Workers (wrangler.jsonc) and Pages consume dist/_headers.
+    config = (ROOT / "wrangler.jsonc").read_text(encoding="utf-8")
+    assert '"directory": "./dist"' in config
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "app").mkdir()
+    shutil.copy2(ROOT / "scripts/build_vercel_frontend.py",
+                 tmp_path / "scripts/build_vercel_frontend.py")
+    shutil.copytree(ROOT / "app/static", tmp_path / "app/static")
+    env = dict(os.environ, BACKEND_ORIGIN="https://lostlink-q8ft.onrender.com")
+    subprocess.run([sys.executable, str(tmp_path / "scripts/build_vercel_frontend.py")],
+                   cwd=tmp_path, env=env, check=True, capture_output=True, text=True)
+    headers = (tmp_path / "dist/_headers").read_text(encoding="utf-8")
+    for required in (
+        "Strict-Transport-Security: max-age=31536000",
+        "X-Content-Type-Options: nosniff",
+        "X-Frame-Options: DENY",
+        "Referrer-Policy: strict-origin-when-cross-origin",
+        "Content-Security-Policy: default-src 'self'",
+        "script-src 'self'",
+        "connect-src 'self' https://lostlink-q8ft.onrender.com",
+    ):
+        assert required in headers
+    assert "script-src 'self' 'unsafe-inline'" not in headers
+    assert (tmp_path / "dist/index.html").exists()

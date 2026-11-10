@@ -32,6 +32,7 @@ shutil.copy2(STATIC / "deployment-config.js", DIST / "deployment-config.js")
 
 (DIST / "_headers").write_text(
     """/*
+  Strict-Transport-Security: max-age=31536000
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
