@@ -13,6 +13,8 @@ def read_report(conn: sqlite3.Connection, report_id: str) -> sqlite3.Row:
 
 
 def location_label(row: sqlite3.Row, internal: bool = False) -> str:
+    if row["report_type"] == "lost" and not internal:
+        return "CVR campus"
     parts = [row["location_block"], "Floor " + row["location_floor"] if row["location_floor"] else None]
     if internal or row["category"] not in SENSITIVE_CATEGORIES:
         parts.extend([row["location_room"], row["location_area"]])
@@ -34,12 +36,12 @@ def serialise_report(row: sqlite3.Row, internal: bool = False) -> dict[str, Any]
         "visible_features": row["visible_features"],
         "category": row["category"],
         "category_label": CATEGORY_LABELS.get(row["category"], row["category"]),
-        "occurred_at": row["occurred_at"],
+        "occurred_at": row["occurred_at"] if internal or row["report_type"] != "lost" else None,
         "location": location_label(row, internal=internal),
-        "location_block": row["location_block"],
-        "location_floor": row["location_floor"],
+        "location_block": row["location_block"] if internal or row["report_type"] != "lost" else None,
+        "location_floor": row["location_floor"] if internal or row["report_type"] != "lost" else None,
         "location_room": row["location_room"] if internal else None,
-        "location_area": row["location_area"],
+        "location_area": row["location_area"] if internal or row["report_type"] != "lost" else None,
         "item_condition": row["item_condition"] if "item_condition" in row.keys() else None,
         "image_url": None if hidden_image or not row["image_path"] else "/api/reports/" + row["id"] + "/image",
         "status": row["status"],

@@ -131,7 +131,13 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             lost_row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (lost_ref,)).fetchone()
         public_lost = report_service.serialise_report(lost_row, internal=False)
         internal_lost = report_service.serialise_report(lost_row, internal=True)
-        self.assertEqual(public_lost["location_floor"], "First Floor")
+        self.assertIsNone(public_lost["location_floor"])
+        self.assertIsNone(public_lost["location_block"])
+        self.assertIsNone(public_lost["location_area"])
+        self.assertIsNone(public_lost["occurred_at"])
+        self.assertEqual(public_lost["location"], "CVR campus")
+        self.assertEqual(internal_lost["location_floor"], "First Floor")
+        self.assertEqual(internal_lost["location_block"], "Computer Block")
         self.assertIsNone(public_lost["location_room"])
         self.assertNotIn("private_verification_detail", public_lost)
         self.assertEqual(internal_lost["private_verification_detail"], "A tiny scratch under the battery cover known only to me.")
@@ -172,6 +178,31 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertNotIn("contact_phone", public_found)
         self.assertNotIn("contact_email", public_found)
         self.assertEqual(found_row["status"], "awaiting_intake")
+
+    def test_public_search_redacts_lost_block_floor_room_and_time(self):
+        created = self.client.post("/api/public/reports", json={
+            "report_type": "lost", "roll_number": "25B81A66J8",
+            "title": "Lost black calculator",
+            "description": "A black calculator with a distinctive blue sticker.",
+            "category": "electronics", "location_block": "Computer Block",
+            "location_floor": "Third Floor", "location_room": "Lab 309",
+            "location_area": "Near the lab", "occurred_at": "2026-11-09T14:30",
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        response = self.client.get("/api/public/search?report_type=lost")
+        self.assertEqual(response.status_code, 200, response.text)
+        item = response.json()["reports"][0]
+        self.assertEqual(item["location"], "CVR campus")
+        for key in ("location_block", "location_floor", "location_area", "occurred_at"):
+            self.assertIsNone(item[key], key)
+        self.assertNotIn("location_room", item)
+        with main.connect_db() as conn:
+            row = conn.execute("SELECT * FROM reports WHERE public_ref=?",
+                               (created.json()["case"]["reference"],)).fetchone()
+        internal = report_service.serialise_report(row, internal=True)
+        self.assertEqual(internal["location_block"], "Computer Block")
+        self.assertEqual(internal["location_floor"], "Third Floor")
+        self.assertEqual(internal["location_room"], "Lab 309")
 
     def test_public_report_rejects_invalid_contact_details(self):
         payload = {
