@@ -86,3 +86,11 @@ def test_frontend_has_no_production_mock_api_switch():
     assert "usingMockApi" not in source
     assert "mockApi(" not in source
     assert "seedMockStore(" not in source
+
+
+def test_public_tracking_secret_not_serialised_into_new_links_or_storage():
+    source = (ROOT / "app/static/app.js").read_text(encoding="utf-8")
+    assert 'sessionStorage.setItem("lostlink:private-access:' not in source
+    assert 'url.hash = "secret="' not in source
+    assert 'buildPublicTrackingUrl(' not in source
+    assert "data-private-tracking-secret" in source

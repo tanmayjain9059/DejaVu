@@ -38,7 +38,7 @@ All public routes are under `/api/public`. They do not require a session cookie 
 
 Tracking, match and claim-proof requests send the private secret in `X-LostLink-Tracking-Secret` and the associated roll number in `X-LostLink-Roll-Number` where applicable. The backend CORS allow-header list includes these headers. Public fetches use `credentials: "omit"`.
 
-A successful report response contains `case.id`, `case.reference`, `case.status`, `tracking_secret`, and a bounded `matches` list for Lost reports. A successful claim response contains `claim.id`, `claim.reference`, `claim.status`, and `tracking_secret`.
+A successful report response contains `case.id`, `case.reference`, `case.status`, `tracking_secret`, and a bounded `matches` list for Lost reports. A successful claim response contains `claim.id`, `claim.reference`, `claim.status`, and `tracking_secret`. Each raw secret is shown only on its initial receipt. Users must save their reference, roll number and secret and enter them again after reloading; no new secret-bearing link is created.
 
 ## Office workflow integration
 
@@ -57,7 +57,7 @@ For public submissions, office actions must include `identity_verified_in_person
 - Public report and found-item serializers never return roll numbers, Tag IDs, private storage locations, private intake notes or staff-only verification details.
 - Public search must never filter by or expose roll number.
 - Public tracking must check reference + matching roll number + the corresponding tracking-secret digest.
-- Do not put raw tracking secrets in logs, analytics, query strings or error reports. **Existing limitation:** the current static UI uses a private receipt URL fragment plus sessionStorage to restore access; this is not compliant with the stricter no-token-in-URL/browser-storage policy and needs a reviewed redesign before unrestricted public launch.
+- Do not put raw tracking secrets in logs, analytics, URL fragments/query strings, browser storage or error reports. The static UI now shows the one-time secret in the submission receipt, holds it only in page memory, and requires manual re-entry after reload. Previously issued token-bearing links are accepted solely for migration, immediately scrubbed from the visible URL and never generated for new cases.
 - Do not use the roll number alone to read, update, close, claim, or enumerate records.
 - Public reports and claims write to the canonical `reports` and `claims` tables. Do not create a second student-only business workflow.
 - The canonical matching, notifications, audit, rewards, intake, review and handover services are shared with the public workflow.

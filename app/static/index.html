@@ -181,12 +181,14 @@
         <section id="publicTrackPage" class="public-destination hidden">
           <button class="public-back" type="button" data-public-home>← Back to home</button>
           <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
-          <p class="public-lede">Open or paste the private tracking link from your submission receipt. You do not need to enter a separate secret; your roll number alone cannot unlock a case.</p>
+          <p class="public-lede">Enter the case reference, roll number and one-time tracking secret from your receipt. We never put tracking secrets into links or browser storage.</p>
           <div data-finn-slot class="public-finn-slot"></div>
           <form id="publicTrackForm" class="form-stack">
-            <label><span>Private tracking link</span><input id="publicTrackLink" type="url" required autocomplete="url" placeholder="Paste the private link from your receipt"></label>
+            <label><span>Case reference</span><input id="publicTrackReference" required maxlength="40" autocomplete="off" placeholder="LL-… or CL-…"></label>
+            <label><span>College roll number</span><input id="publicTrackRoll" required maxlength="20" autocomplete="off" placeholder="Your college roll number"></label>
+            <label><span>Tracking secret</span><input id="publicTrackSecret" type="password" autocomplete="off" placeholder="Paste the secret saved from your receipt"><small class="field-hint">Required after reloading this page. The secret is not saved in your browser.</small></label>
             <p class="field-hint">Keep this link private. Anyone who has it can view the associated case status.</p>
-            <div class="form-actions"><button class="button button-liquid" type="submit">View private status</button><button id="copyPublicTrackingLink" class="button button-quiet" type="button">Copy private link</button></div>
+            <div class="form-actions"><button class="button button-liquid" type="submit">View private status</button><button id="copyPublicTrackingReference" class="button button-quiet" type="button">Copy reference</button></div>
           </form>
           <div id="publicTrackResult" class="stack-list" aria-live="polite"><div id="publicTrackMatches" class="track-matches"></div></div>
         </section>
@@ -1056,7 +1058,7 @@
       <div id="publicClaimItemSummary" class="claim-item-summary"></div>
       <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"><small class="field-hint">This is attribution only, not identity verification. The campus office verifies the claimant before handover.</small></label>
       <label><span>Phone number · Optional</span><input id="publicClaimPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"><small class="field-hint">Shared privately with authorised campus office staff for claim follow-up.</small></label>
-      <label><span>Your Lost report reference <span class="field-required">Required</span></span><input id="publicClaimLostReference" required maxlength="40" placeholder="Lost report reference"><small class="field-hint">Open your private Lost-report tracking link in this browser first. We verify its private credential without asking you to type or disclose the secret.</small></label>
+      <label><span>Your Lost report reference <span class="field-required">Required</span></span><input id="publicClaimLostReference" required maxlength="40" placeholder="Lost report reference"><small class="field-hint">Open your Lost-report case in Track with its reference, roll number and tracking secret first. The claim reuses that case's verified credential in memory.</small></label>
       <fieldset class="evidence-type-fieldset"><legend>Supporting evidence <span class="field-required">Choose at least one</span></legend>
         <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
         <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="purchase_or_receipt"> Purchase or receipt proof</label>
@@ -1127,7 +1129,7 @@
   <dialog id="publicPrivacyDialog" class="modal-dialog">
     <form id="publicPrivacyForm" class="form-card form-stack">
       <div class="dialog-heading"><div><p class="eyebrow">YOUR DATA</p><h2>Request a privacy action</h2></div><button type="button" class="dialog-close" id="closePublicPrivacy" aria-label="Close">×</button></div>
-      <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share the tracking link with anyone else.</p>
+      <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share your tracking secret with anyone else.</p>
       <label><span>Request type</span><select id="publicPrivacyType" required><option value="access">Access / copy of my data</option><option value="correction">Correct my data</option><option value="erasure">Request erasure</option></select></label>
       <label><span>Details (optional)</span><textarea id="publicPrivacyDetails" rows="4" maxlength="2000" placeholder="Describe the information or correction requested."></textarea></label>
       <div class="form-actions"><button class="button button-liquid" type="submit">Submit request</button><button class="button button-quiet" type="button" id="cancelPublicPrivacy">Cancel</button></div>

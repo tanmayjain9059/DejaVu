@@ -141,18 +141,19 @@ def submit_public_report(page, kind: str) -> None:
             "mimeType": "image/png",
             "buffer": tiny_png_bytes(),
         })
-    previous_tracking_url = page.locator("#publicTrackLink").input_value()
-    previous_secret = parse_qs(urlparse(previous_tracking_url).fragment).get("secret", [""])[0]
+    previous_secret = page.locator("#publicTrackResult [data-private-tracking-secret]").all_inner_texts()
     form.locator('button[type="submit"]').click()
     page.locator("#publicTrackPage").wait_for(state="visible", timeout=15000)
-    tracking_url = page.locator("#publicTrackLink").input_value()
-    tracking_parts = urlparse(tracking_url)
-    reference = parse_qs(tracking_parts.query).get("track", [""])[0]
-    tracking_secret = parse_qs(tracking_parts.fragment).get("secret", [""])[0]
+    reference = page.locator("#publicTrackReference").input_value()
+    tracking_secret = page.locator("#publicTrackResult [data-private-tracking-secret]").inner_text()
     if not reference.startswith("LL-"):
         raise AssertionError(f"{kind} report did not return a private tracking reference")
-    if len(tracking_secret) < 20 or tracking_secret == previous_secret:
-        raise AssertionError("The submitting user did not receive a fresh private tracking link with a case secret")
+    if len(tracking_secret) < 20 or tracking_secret in previous_secret:
+        raise AssertionError("The submitting user did not receive a fresh one-time secret")
+    if tracking_secret in page.url:
+        raise AssertionError("Private tracking secret was included in the browser URL")
+    if page.evaluate("Object.keys(sessionStorage).some(k => k.startsWith('lostlink:private-access:'))"):
+        raise AssertionError("Private tracking credentials were persisted in web storage")
     if not found and "Your photo was saved privately for office review." not in page.locator("#publicTrackResult").inner_text():
         raise AssertionError("Lost report photo picker/upload did not complete successfully")
     if form.locator("#publicTitle" + suffix).input_value():
