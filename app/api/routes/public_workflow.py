@@ -750,6 +750,16 @@ def submit_public_claim(
     evidence_types = sorted(set(body.evidence_types))
     if not evidence_types or set(evidence_types) - ALLOWED_EVIDENCE_TYPES:
         raise HTTPException(status_code=422,detail="Choose valid evidence types.")
+    # Check the claimant's Lost-report credential outside the write transaction.
+    # Otherwise a failed token check rolls back the rate-limit attempt too.
+    with connect_db() as conn:
+        proof = conn.execute(
+            """SELECT tracking_hash FROM reports WHERE public_ref=? AND report_type='lost'
+               AND status='open' AND roll_number=? AND submission_channel='public'""",
+            (body.lost_report_reference, roll),
+        ).fetchone()
+    if not proof or not _verify_token(proof["tracking_hash"], tracking_secret):
+        _deny_invalid_public_tracking(request, body.lost_report_reference)
     token = _issue_token()
     claim_id = uuid.uuid4().hex
     claim_ref = _reference("CL")

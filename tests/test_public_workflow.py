@@ -621,6 +621,32 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(report["status"],"returned")
             self.assertEqual(claim_row["status"],"returned")
 
+    def test_wrong_claim_proof_is_throttled_without_locking_rightful_claimant(self):
+        found = self.create_public_report("found", roll="25B81A66J1").json()
+        lost = self.create_public_report("lost", roll="25B81A66J9").json()
+        self.office_login()
+        accepted = self.intake(found["case"]["id"], roll="25B81A66J1")
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.client.cookies.clear()
+        url = "/api/public/found/" + found["case"]["id"] + "/claims"
+        payload = {
+            "roll_number": "25B81A66J9",
+            "evidence": "The item contains a unique small mark under the battery cover.",
+            "evidence_types": ["distinctive_features"],
+            "lost_report_reference": lost["case"]["reference"],
+        }
+        for attempt in range(30):
+            denied = self.client.post(url, json=payload,
+                headers={"X-LostLink-Tracking-Secret": "wrong-secret"})
+            self.assertEqual(denied.status_code, 404,
+                             f"Attempt {attempt}: {denied.text}")
+        throttled = self.client.post(url, json=payload,
+            headers={"X-LostLink-Tracking-Secret": "wrong-secret"})
+        self.assertEqual(throttled.status_code, 429, throttled.text)
+        accepted_claim = self.client.post(url, json=payload,
+            headers={"X-LostLink-Tracking-Secret": lost["tracking_secret"]})
+        self.assertEqual(accepted_claim.status_code, 201, accepted_claim.text)
+
     def test_one_open_lost_report_cannot_back_two_active_claims(self):
         finder_one = self.create_public_report("found", roll="25B81A66J1").json()
         finder_two = self.create_public_report("found", roll="25B81A66J2").json()
