@@ -64,7 +64,9 @@ def _translate_placeholders(statement: str) -> str:
             continue
 
         if quote:
-            output.append(char)
+            # Psycopg treats percent signs as parameter markers even inside
+            # SQL string literals whenever a parameter sequence is supplied.
+            output.append("%%" if char == "%" else char)
             if char == quote:
                 if index + 1 < len(statement) and statement[index + 1] == quote:
                     output.append(statement[index + 1])
@@ -89,6 +91,10 @@ def _translate_placeholders(statement: str) -> str:
         elif char == "?":
             output.append("%s")
             index += 1
+        elif char == "%":
+            # Preserve a literal percent through psycopg's pyformat parser.
+            output.append("%%")
+            index += 1
         else:
             output.append(char)
             index += 1
@@ -106,7 +112,7 @@ class PostgresCompatConnection:
     def translate(sql: str) -> tuple[str, bool]:
         statement = sql.strip()
         if statement.upper() == "BEGIN IMMEDIATE":
-            return "SELECT pg_advisory_xact_lock(730021)", True
+            return "SELECT 1", True
 
         ignored_insert = re.match(r"^\s*INSERT\s+OR\s+IGNORE\s+INTO\b", statement, re.I)
         replace_insert = re.match(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+claim_verifications\b", statement, re.I)
@@ -184,7 +190,7 @@ def _get_postgres_pool():
         conninfo=_postgres_url(),
         min_size=1,
         max_size=max_size,
-        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10},
+        kwargs={"row_factory": postgres_row_factory, "connect_timeout": 10, "prepare_threshold": None},
         timeout=10,
         open=True,
     )
@@ -220,6 +226,32 @@ def connect_db():
         raise
     finally:
         conn.close()
+
+
+_ROW_LOCK_TARGETS = {
+    ("users", "id"), ("reports", "id"), ("reports", "public_ref"),
+    ("claims", "id"), ("claims", "public_ref"), ("privacy_requests", "id"),
+}
+
+
+def lock_row(conn, table: str, key_column: str, value: Any) -> None:
+    """Lock one workflow entity on PostgreSQL; SQLite BEGIN IMMEDIATE serializes writers."""
+    if (table, key_column) not in _ROW_LOCK_TARGETS:
+        raise ValueError("Unsupported row-lock target.")
+    if isinstance(conn, PostgresCompatConnection):
+        conn.execute(
+            f"SELECT 1 FROM {table} WHERE {key_column}=? FOR UPDATE",
+            (value,),
+        ).fetchone()
+
+
+def lock_advisory_key(conn, namespace: str, key: str) -> None:
+    """Serialize one logical key such as one IP/action rate-limit bucket."""
+    if isinstance(conn, PostgresCompatConnection):
+        conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(?))",
+            (namespace + ":" + key,),
+        )
 
 
 def table_columns(conn, table_name: str) -> set[str]:
@@ -313,8 +345,13 @@ def _migration_move_legacy_additive_columns(conn) -> None:
         "AND (storage_location IS NULL OR TRIM(storage_location)='')",
         ("Location needs confirmation",),
     )
+    # Bound startup work. Remaining legacy images are picked up in batches
+    # on later boots instead of hashing the entire photo library in one boot.
     for image_row in conn.execute(
-        "SELECT id, image_path, image_sha256, image_phash FROM reports WHERE image_path IS NOT NULL"
+        """SELECT id, image_path, image_sha256, image_phash FROM reports
+           WHERE image_path IS NOT NULL
+             AND (image_sha256 IS NULL OR image_phash IS NULL)
+           ORDER BY created_at ASC LIMIT 100"""
     ).fetchall():
         image_path = (UPLOAD_DIR / image_row["image_path"]).resolve()
         if image_path.parent != UPLOAD_DIR.resolve() or not image_path.is_file():
@@ -447,8 +484,134 @@ def _migration_lock_down_supabase_data_api(conn) -> None:
     )
 
 
+def _migration_add_public_rate_limit_retention_index(conn) -> None:
+    """Index short-lived anonymous abuse-prevention records for bounded cleanup."""
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_public_rate_limits_created ON public_rate_limits(created_at)")
+
+
+def _migration_add_public_report_context_fields(conn) -> None:
+    """Persist private ownership clues and found-item custody context separately."""
+    for column, declaration in (
+        ("item_condition", "TEXT"),
+        ("handover_at", "TEXT"),
+        ("handover_recipient", "TEXT"),
+        ("handover_note", "TEXT"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+
+def _migration_add_public_report_contact_fields(conn) -> None:
+    """Store submitter contact details for authorised office staff only."""
+    for column in ("contact_phone", "contact_email"):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} TEXT")
+
+
+def _migration_add_public_claimant_phone(conn) -> None:
+    """Store optional public claimant contact numbers for office review only."""
+    if "claimant_phone" not in table_columns(conn, "claims"):
+        conn.execute("ALTER TABLE claims ADD COLUMN claimant_phone TEXT")
+
+
+def _migration_add_public_roll_attribution(conn) -> None:
+    """Attach anonymous public submissions to canonical reports/claims without student accounts."""
+    for column, declaration in (
+        ("roll_number", "TEXT"),
+        ("tracking_hash", "TEXT"),
+        ("submission_channel", "TEXT NOT NULL DEFAULT 'account'"),
+    ):
+        if column not in table_columns(conn, "reports"):
+            conn.execute(f"ALTER TABLE reports ADD COLUMN {column} {declaration}")
+    for column, declaration in (
+        ("claimant_roll_number", "TEXT"),
+        ("tracking_hash", "TEXT"),
+        ("submission_channel", "TEXT NOT NULL DEFAULT 'account'"),
+        ("public_ref", "TEXT"),
+    ):
+        if column not in table_columns(conn, "claims"):
+            conn.execute(f"ALTER TABLE claims ADD COLUMN {column} {declaration}")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_public_ref ON claims(public_ref) WHERE public_ref IS NOT NULL")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS public_roll_identities (
+            roll_number TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS public_rate_limits (
+            id TEXT PRIMARY KEY,
+            ip_hash TEXT NOT NULL,
+            action TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_public_rate_limits_lookup "
+        "ON public_rate_limits(ip_hash, action, created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reports_public_roll_created "
+        "ON reports(roll_number, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_claims_public_roll_created "
+        "ON claims(claimant_roll_number, created_at DESC)"
+    )
+
+
 # Forward-only, ordered schema migrations. Never edit an applied migration;
 # append a new version and provide a safe, idempotent operation.
+def _migration_add_image_ai_consent(conn) -> None:
+    """Record explicit per-report consent before a model processes an uploaded photo."""
+    if "image_ai_consent" not in table_columns(conn, "reports"):
+        conn.execute("ALTER TABLE reports ADD COLUMN image_ai_consent INTEGER NOT NULL DEFAULT 0")
+
+
+def _migration_add_privacy_requests(conn) -> None:
+    """Create an auditable queue for data access, correction and erasure requests."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS privacy_requests (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            public_reference TEXT,
+            requester_email TEXT,
+            roll_hash TEXT,
+            request_type TEXT NOT NULL CHECK(request_type IN ('access','correction','erasure')),
+            details TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending','in_review','completed','declined')),
+            reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            reviewer_note TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_privacy_requests_status_created "
+        "ON privacy_requests(status, created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_privacy_requests_user_created "
+        "ON privacy_requests(user_id, created_at)"
+    )
+    if AUTH_PROVIDER == "supabase" and DATABASE_URL:
+        conn.execute("ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY")
+        conn.execute("""
+            DO $lostlink$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+                    EXECUTE 'REVOKE ALL ON TABLE privacy_requests FROM anon';
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+                    EXECUTE 'REVOKE ALL ON TABLE privacy_requests FROM authenticated';
+                END IF;
+            END
+            $lostlink$;
+        """)
+
+
 SCHEMA_MIGRATIONS = (
     (2, "active_claim_lookup_indexes", _migration_add_active_claim_indexes),
     (3, "workflow_event_uniqueness_guards", _migration_add_event_uniqueness_guards),
@@ -458,6 +621,13 @@ SCHEMA_MIGRATIONS = (
     (7, "pr3_schema_lineage_reconciliation_and_matching_indexes", _migration_reconcile_pr3_schema),
     (8, "supabase_auth_identity_mapping", _migration_add_supabase_identity),
     (9, "supabase_data_api_privilege_lockdown", _migration_lock_down_supabase_data_api),
+    (10, "unified_public_roll_attribution_and_tracking", _migration_add_public_roll_attribution),
+    (11, "public_rate_limit_retention_index", _migration_add_public_rate_limit_retention_index),
+    (12, "public_report_context_and_handover_fields", _migration_add_public_report_context_fields),
+    (13, "private_public_report_contact_fields", _migration_add_public_report_contact_fields),
+    (14, "private_public_claimant_phone", _migration_add_public_claimant_phone),
+    (15, "explicit_image_ai_consent", _migration_add_image_ai_consent),
+    (16, "privacy_data_subject_request_workflow", _migration_add_privacy_requests),
 )
 
 
@@ -640,6 +810,12 @@ def initialise_db() -> None:
             (1, "legacy_schema_baseline", now_iso()),
         )
         _apply_versioned_schema_migrations(conn)
+        # Continue the bounded legacy-image fingerprint backfill on each boot.
+        # A separate transaction-scoped lock prevents workers hashing the same
+        # batch concurrently on PostgreSQL.
+        if DATABASE_URL:
+            conn.execute("SELECT pg_advisory_xact_lock(730023)")
+        _migration_move_legacy_additive_columns(conn)
         if AUTH_PROVIDER == "supabase":
             # Reapply the idempotent public-schema lockdown on startup so any
             # newly introduced application tables also receive RLS protection.
@@ -647,27 +823,28 @@ def initialise_db() -> None:
         if not DEMO_MODE:
             return
 
+        # Demo student activity is attributed to a non-login internal principal.
+        # Public students never receive passwords or student sessions.
         conn.execute(
             """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
-               VALUES (?, ?, 'student', ?, ?)""",
-            ("student@lostlink.local", "Demo Student", hash_password("student123"), now_iso()),
+               VALUES (?, ?, 'student', 'disabled-no-login', ?)""",
+            ("public-demo-reporter@no-login.lostlink.invalid", "Public demo reporter", now_iso()),
         )
         conn.execute(
             """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
                VALUES (?, ?, 'office', ?, ?)""",
             ("office@lostlink.local", "Campus Office", hash_password("office123"), now_iso()),
         )
-        for email, display_name, password in (
-            ("student2@lostlink.local", "Aarav Mehta", "student2123"),
-            ("student3@lostlink.local", "Riya Sharma", "student3123"),
-            ("student4@lostlink.local", "Kabir Rao", "student4123"),
-        ):
-            conn.execute(
-                """INSERT OR IGNORE INTO users(email, display_name, role, password_hash, created_at)
-                   VALUES (?, ?, 'student', ?, ?)""",
-                (email, display_name, hash_password(password), now_iso()),
-            )
-        student_id = conn.execute("SELECT id FROM users WHERE email=?", ("student@lostlink.local",)).fetchone()["id"]
+        # Disable credentials on legacy demo student rows without deleting their
+        # historical report, claim, notification, or reward foreign-key targets.
+        conn.execute(
+            """UPDATE users SET password_hash='disabled-no-login'
+               WHERE role='student' AND email LIKE '%@lostlink.local'"""
+        )
+        student_id = conn.execute(
+            "SELECT id FROM users WHERE email=?",
+            ("public-demo-reporter@no-login.lostlink.invalid",),
+        ).fetchone()["id"]
         office_id = conn.execute("SELECT id FROM users WHERE email=?", ("office@lostlink.local",)).fetchone()["id"]
         if conn.execute("SELECT COUNT(*) AS n FROM reports").fetchone()["n"] > 0:
             return

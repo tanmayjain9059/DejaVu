@@ -1,7 +1,7 @@
 """Idempotent contribution rewards and milestone certificate PDFs."""
 from __future__ import annotations
 import secrets, sqlite3, uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from app.core.database import audit, now_iso
 from app.services.notifications import notify_user
@@ -34,7 +34,7 @@ def issue_milestone_certificates(conn: sqlite3.Connection, user_id: int) -> list
         if total < milestone["threshold"]:
             continue
         certificate_id = uuid.uuid4().hex
-        serial = "LL-CERT-" + datetime.now().strftime("%Y") + "-" + secrets.token_hex(4).upper()
+        serial = "LL-CERT-" + datetime.now(timezone.utc).strftime("%Y") + "-" + secrets.token_hex(4).upper()
         timestamp = now_iso()
         cursor = conn.execute(
             """INSERT OR IGNORE INTO certificates
@@ -64,7 +64,26 @@ def award_points(
 ) -> bool:
     """Award exactly once for an auditable, office-confirmed event."""
     recipient = conn.execute("SELECT role FROM users WHERE id=?", (user_id,)).fetchone()
-    if not recipient or recipient["role"] != "student" or points <= 0:
+    actor = conn.execute("SELECT role FROM users WHERE id=?", (actor_id,)).fetchone()
+    if not recipient or recipient["role"] != "student" or not actor or actor["role"] != "office":
+        return False
+
+    # Only the two office-confirmed workflow events can create points. Callers
+    # cannot choose arbitrary amounts or fabricate reward event identifiers.
+    if event_key == "verified-intake:" + report_id and points == POINT_RULES["verified_intake"]:
+        verified_event = conn.execute(
+            "SELECT 1 FROM reports WHERE id=? AND report_type='found' AND status='available' AND created_by=?",
+            (report_id, user_id),
+        ).fetchone()
+    elif event_key == "verified-return:" + report_id and points == POINT_RULES["verified_return"]:
+        verified_event = conn.execute(
+            """SELECT 1 FROM handovers h JOIN reports r ON r.id=h.report_id
+               WHERE h.report_id=? AND h.office_user_id=? AND r.created_by=? LIMIT 1""",
+            (report_id, actor_id, user_id),
+        ).fetchone()
+    else:
+        return False
+    if not verified_event:
         return False
     cursor = conn.execute(
         """INSERT OR IGNORE INTO reward_ledger

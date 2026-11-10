@@ -15,11 +15,13 @@ from app.core.images import *
 from app.core.security import *
 from app.core.runtime import *
 from app.schemas import *
-from app.services.object_storage import storage_backend
+from app.services.object_storage import check_storage_ready, storage_backend
 from app.api.routes.auth import router as auth_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.claims import router as claims_router
 from app.api.routes.engagement import router as engagement_router
+from app.api.routes.public_workflow import router as public_workflow_router, ensure_public_schema
+from app.api.routes.privacy import router as privacy_router
 
 if not SESSION_SECRET or SESSION_SECRET in {
     "replace-with-a-long-random-secret-before-running",
@@ -67,7 +69,12 @@ async def lifespan(application: FastAPI):
         close_database_pool()
 
 
-app = FastAPI(title="LostLink", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="LostLink", version="0.1.0", lifespan=lifespan,
+    docs_url=None if AUTH_PROVIDER == "supabase" else "/docs",
+    redoc_url=None if AUTH_PROVIDER == "supabase" else "/redoc",
+    openapi_url=None if AUTH_PROVIDER == "supabase" else "/openapi.json",
+)
 
 
 def _apply_security_headers(response, private_api=False):
@@ -88,7 +95,7 @@ def _apply_security_headers(response, private_api=False):
             "form-action 'self'; img-src 'self' data: blob:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
+            "script-src 'self'; connect-src 'self' https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests",
         )
     return response
 
@@ -108,7 +115,10 @@ async def protect_unsafe_api_requests_and_add_headers(request: Request, call_nex
                 valid_scheme = source_scheme in {"http", "https"}
                 if HTTPS_ONLY and source_scheme != "https":
                     valid_scheme = False
-                if not valid_scheme or not source_host or source_host != request_host:
+                source_origin = (source_url.scheme.lower() + "://" + source_host).rstrip("/")
+                allowed_frontend_origin = source_origin in FRONTEND_ORIGINS
+                same_origin = bool(source_host and source_host == request_host)
+                if not valid_scheme or not (same_origin or allowed_frontend_origin):
                     return _apply_security_headers(JSONResponse(
                         status_code=403,
                         content={"detail": "Cross-origin state-changing requests are not allowed."},
@@ -133,7 +143,7 @@ if FRONTEND_ORIGINS:
         allow_origins=FRONTEND_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-LostLink-Tracking-Secret", "X-LostLink-Roll-Number"],
         max_age=600,
     )
 @app.get("/health/live", include_in_schema=False)
@@ -144,13 +154,65 @@ def health_live():
 
 @app.get("/health/ready", include_in_schema=False)
 def health_ready():
-    """Readiness endpoint that verifies a usable database connection."""
+    """Verify database, canonical schema and object storage without exposing secrets."""
+    readiness_stage = "database_connection"
     try:
         with connect_db() as conn:
             conn.execute("SELECT 1 AS ready").fetchone()
-    except Exception:
-        return JSONResponse(status_code=503, content={"status": "not_ready"})
-    return {"status": "ready"}
+            readiness_stage = "canonical_schema"
+            conn.execute("SELECT id FROM reports LIMIT 0")
+            conn.execute("SELECT id FROM claims LIMIT 0")
+            version = conn.execute(
+                "SELECT COALESCE(MAX(version),1) AS schema_version FROM schema_migrations"
+            ).fetchone()["schema_version"]
+        readiness_stage = "object_storage"
+        storage_status = check_storage_ready()
+    except Exception as exc:
+        # Log only the failing stage and exception class. Never log connection
+        # strings, credentials, request headers, or exception messages.
+        import logging
+        error_code = ""
+        error_detail = ""
+        http_status = ""
+        response = getattr(exc, "response", None)
+        if isinstance(response, dict):
+            error = response.get("Error", {})
+            metadata = response.get("ResponseMetadata", {})
+            if isinstance(error, dict):
+                error_code = str(error.get("Code", ""))[:80]
+                # Provider error text distinguishes invalid credentials, signature
+                # mismatch, missing bucket and denied bucket-level permissions.
+                # Keep it short and strip control characters; never log headers or keys.
+                error_detail = " ".join(str(error.get("Message", "")).split())[:180]
+            if isinstance(metadata, dict):
+                http_status = str(metadata.get("HTTPStatusCode", ""))[:8]
+        logging.getLogger(__name__).error(
+            "Readiness check failed at %s (%s, code=%s, http_status=%s, detail=%s)",
+            readiness_stage,
+            type(exc).__name__,
+            error_code or "unavailable",
+            http_status or "unavailable",
+            error_detail or "unavailable",
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "failed_check": readiness_stage,
+                "fix_hint": {
+                    "database_connection": "Check DATABASE_URL, database availability, network access and credentials.",
+                    "canonical_schema": "Run the latest database migrations and verify the application database role can read reports and claims.",
+                    "object_storage": "Check the private bucket name, endpoint, region, access key, secret key and bucket permissions.",
+                }.get(readiness_stage, "Inspect the server logs for the failing readiness dependency."),
+            },
+        )
+    return {
+        "status": "ready",
+        "database": "postgresql" if DATABASE_URL else "sqlite",
+        "schema_version": int(version),
+        "canonical_tables": "ready",
+        "storage": storage_status,
+    }
 
 
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
@@ -158,4 +220,7 @@ app.include_router(auth_router)
 app.include_router(reports_router)
 app.include_router(claims_router)
 app.include_router(engagement_router)
+app.include_router(public_workflow_router)
+app.include_router(privacy_router)
 initialise_db()
+ensure_public_schema()

@@ -1,383 +1,109 @@
-function pageUrl(path, cursor) {
-  // Support keyset pagination with cursor and next_cursor
-  if (!cursor) return path;
-  const sep = path.includes("?") ? "&" : "?";
-  return path + sep + "cursor=" + encodeURIComponent(cursor) + "&next_cursor=" + encodeURIComponent(cursor) + "&has_more=true";
-}
-
-/* ==========================================================================
-   21st.dev LIQUID GLASS NAVBAR CONTROLLER (WATERLINE BY @gughigug)
-   Hardware-accelerated WebGL water droplet caustics, fluid spring physics & SVG micro-interactions
-   ========================================================================== */
-const PAD = 14;
-const VERT_SHADER = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
-const FRAG_SHADER = "precision highp float;" +
-"uniform vec2 uRes;uniform float uDpr;uniform float uTime;uniform vec4 uPill;" +
-"uniform vec4 uBlob[6];uniform float uSy[6];uniform vec4 uRip[6];uniform vec3 uMouse;uniform float uDark;uniform float uAmb;" +
-"float sdRB(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}" +
-"float sdCap(vec2 p,vec4 B,float sy){p-=B.xy;p.y/=sy;p.x=max(abs(p.x)-B.z,0.);return(length(p)-B.w)*min(1.,sy);}" +
-"float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}" +
-"float dropD(vec2 p){float d=1e4;for(int i=0;i<6;i++){if(uBlob[i].w>.5){d=smin(d,sdCap(p,uBlob[i],uSy[i]),13.);}}return d;}" +
-"float pillD(vec2 p){vec2 h=uPill.zw*.5;return sdRB(p-uPill.xy-h,h,h.y);}" +
-"float lens(float d,float w){float t=clamp(-d/w,0.,1.);return sqrt(1.-(1.-t)*(1.-t));}" +
-"float waves(vec2 p){float w=0.;for(int i=0;i<6;i++){vec4 R=uRip[i];if(R.w>0.){float x=length(p-R.xy)-R.z*240.;w+=R.w*exp(-R.z*1.7)*sin(x*.3)*exp(-x*x/700.);}}vec2 m=p-uMouse.xy;w+=uMouse.z*3.6*exp(-dot(m,m)/1000.);w+=uAmb*(sin(p.x*.05+uTime*1.2)*.45+sin(p.x*.13-uTime*.85+p.y*.2)*.25);return w;}" +
-"float H(vec2 p){float dp=pillD(p);return lens(dp,uPill.w*.36)*2.4+lens(dropD(p),11.)*7.5+waves(p)*smoothstep(0.,7.,-dp);}" +
-"float caus(vec2 p,float t){vec2 q=p;float c=0.;for(int i=0;i<3;i++){q+=vec2(sin(q.y*1.1+t),cos(q.x*1.3-t*.7))*.6;c+=1./(1.+16.*abs(sin(q.x)*sin(q.y)));}return c/3.;}" +
-"void main(){vec2 p=vec2(gl_FragCoord.x,uRes.y*uDpr-gl_FragCoord.y)/uDpr;float dp=pillD(p);float dd=dropD(p);float h0=H(p);vec3 n=normalize(vec3(h0-H(p+vec2(1.,0.)),h0-H(p+vec2(0.,1.)),1.));vec3 V=vec3(0.,0.,1.);float spec=pow(max(dot(reflect(-normalize(vec3(-.45,-.8,.85)),n),V),0.),70.);float spec2=pow(max(dot(reflect(-normalize(vec3(.6,.75,.7)),n),V),0.),22.)*.3;float fres=clamp((1.-n.z)*4.,0.,1.);vec3 irid=.5+.5*cos(6.2831*(vec3(0.,.33,.67)+fres*.85+p.x*.0028+uTime*.035));float pm=smoothstep(1.,-1.,dp);float dm=smoothstep(1.,-1.,dd)*smoothstep(1.,-2.,dp);float sh=smoothstep(9.,-9.,dropD(p-vec2(0.,5.)))*(1.-dm)*pm*(.11+.07*uDark);vec3 c=vec3(0.,.14,.36)*sh;float a=sh;float pa=clamp(pm*(fres*.5+spec*.9+spec2),0.,1.);c=mix(vec3(1.),irid,.5*fres)*pa+c*(1.-pa);a=pa+a*(1.-pa);float th=lens(dd,11.);float cs=caus((p+n.xy*th*18.)*.085,uTime*.9);vec3 tint=mix(vec3(.80,.95,1.),vec3(.55,.82,1.),uDark);float rim=dm*(1.-smoothstep(0.,8.,-dd));float cres=dm*smoothstep(.12,.55,dot(n.xy,normalize(vec2(.55,.85))))*smoothstep(0.,3.,-dd);float body=.5+.5*clamp(-n.y*3.,-1.,1.);float da=dm*(.26+.14*body)*(1.-.35*uDark);vec3 dc=mix(tint,vec3(1.),body*.6);float la=rim*.22;vec3 lc=mix(vec3(0.,.42,.78),vec3(.1,.55,.95),uDark);dc=lc*la+dc*da*(1.-la);da=la+da*(1.-la);la=clamp(cres*.7+smoothstep(.6,1.,cs)*.28*th*dm,0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);la=clamp(dm*(spec*1.2+spec2*.5),0.,1.);dc=vec3(1.)*la+dc*(1.-la);da=la+da*(1.-la);la=dm*smoothstep(-2.,0.,dd)*.4;dc=mix(vec3(1.),irid,.35)*la+dc*(1.-la);da=la+da*(1.-la);c=dc+c*(1.-da);a=da+a*(1.-da);gl_FragColor=vec4(c,a);}";
-
-function initLiquidNavbar() {
-  const nav = document.querySelector("#studentNav");
-  if (!nav) return;
-  const canvas = document.querySelector("#nimbusCanvas");
-  const drop = document.querySelector("#nimbusDrop");
-  const items = Array.from(nav.querySelectorAll(".nimbus-item"));
-  if (!items.length) return;
-
-  let currentIndex = 0;
-
-  const st = {
-    a: { x: 0, v: 0 },
-    b: { x: 0, v: 0 },
-    sy: { s: 1, v: 0 },
-    lead: 0,
-    lagFrom: 0,
-    sats: [],
-    rips: [],
-    t: { x: 0, cy: 0, q: 0, r: 20 },
-    q: 0,
-    mouse: { x: 0, y: 0, s: 0, on: false },
-    moving: false,
-    split: false,
-    ready: false,
-    w: 0,
-    h: 0,
-    visible: true,
-    reduce: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    raf: 0,
-    last: 0,
-    time: 0,
-    glc: null,
-    idleCount: 0
-  };
-
-  function initGL(cv) {
-    try {
-      const gl = cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false, powerPreference: "high-performance" });
-      if (!gl) return null;
-      const compile = (type, src) => {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
-      };
-      const vs = compile(gl.VERTEX_SHADER, VERT_SHADER);
-      const fs = compile(gl.FRAGMENT_SHADER, FRAG_SHADER);
-      if (!vs || !fs) return null;
-      const p = gl.createProgram();
-      gl.attachShader(p, vs);
-      gl.attachShader(p, fs);
-      gl.linkProgram(p);
-      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return null;
-      gl.useProgram(p);
-      const buf = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-      const loc = gl.getAttribLocation(p, "a");
-      gl.enableVertexAttribArray(loc);
-      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      const u = {};
-      ["uRes", "uDpr", "uTime", "uPill", "uBlob", "uSy", "uRip", "uMouse", "uDark", "uAmb"].forEach(n => {
-        u[n] = gl.getUniformLocation(p, n);
-      });
-      return { gl, u };
-    } catch (_) {
-      return null;
-    }
-  }
-
-  st.glc = canvas ? initGL(canvas) : null;
-  if (!st.glc) nav.setAttribute("data-gl", "off");
-  else nav.setAttribute("data-gl", "on");
-
-  if (canvas) {
-    canvas.addEventListener("webglcontextlost", (e) => {
-      e.preventDefault();
-      st.glc = null;
-      nav.setAttribute("data-gl", "off");
-    });
-  }
-
-  function draw() {
-    const s = st;
-    const T = s.t;
-    const sep = Math.abs(s.a.x - s.b.x);
-    const thin = Math.min(sep / (2 * (s.q + T.r) || 1), 1);
-    const r = T.r * (1 - 0.3 * thin);
-    
-    // Always keep CSS drop pill in sync as smooth hardware-accelerated base
-    if (drop) {
-      const left = Math.min(s.a.x, s.b.x) - s.q - r - PAD;
-      const width = sep + 2 * (s.q + r);
-      drop.style.width = Math.round(width) + "px";
-      drop.style.transform = `translate3d(${left.toFixed(2)}px, 0, 0) scaleY(${s.sy.s.toFixed(3)})`;
-    }
-
-    if (s.glc) {
-      const g = s.glc.gl;
-      const u = s.glc.u;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      g.viewport(0, 0, g.drawingBufferWidth, g.drawingBufferHeight);
-      g.uniform2f(u.uRes, s.w + PAD * 2, s.h + PAD * 2);
-      g.uniform1f(u.uDpr, dpr);
-      g.uniform1f(u.uTime, s.time);
-      g.uniform4f(u.uPill, PAD, PAD, s.w, s.h);
-
-      const blobs = new Float32Array(24);
-      const sy = new Float32Array(6);
-      sy.fill(1);
-      const head = s.lead === 0 ? s.a : s.b;
-      const tail = s.lead === 0 ? s.b : s.a;
-      blobs.set([
-        head.x, T.cy, s.q * (1 - 0.25 * thin), T.r * (1 - 0.12 * thin),
-        tail.x, T.cy, s.q * (1 - 0.8 * thin), T.r * (1 - 0.5 * thin)
-      ], 0);
-      sy[0] = sy[1] = s.sy.s;
-      s.sats.slice(0, 4).forEach((d, i) => blobs.set([d.x, d.y, 0, d.r], 8 + i * 4));
-      g.uniform4fv(u.uBlob, blobs);
-      g.uniform1fv(u.uSy, sy);
-
-      const rips = new Float32Array(24);
-      s.rips.slice(-6).forEach((p, i) => rips.set([p.x, p.y, p.age, p.amp], i * 4));
-      g.uniform4fv(u.uRip, rips);
-      g.uniform3f(u.uMouse, s.mouse.x, s.mouse.y, s.mouse.s);
-      g.uniform1f(u.uDark, 0.0);
-      g.uniform1f(u.uAmb, s.reduce ? 0 : 0.85);
-
-      g.clearColor(0, 0, 0, 0);
-      g.clear(g.COLOR_BUFFER_BIT);
-      g.drawArrays(g.TRIANGLES, 0, 3);
-    }
-  }
-
-  function step(dt, now) {
-    const s = st;
-    const T = s.t;
-    s.time += dt;
-    s.q += (T.q - s.q) * Math.min(1, dt * 14);
-    const bodies = [s.a, s.b];
-    let still = true;
-    if (s.reduce) {
-      s.a.x = s.b.x = T.x;
-      s.a.v = s.b.v = 0;
-      s.sy.s = 1;
-      s.sats = [];
-    } else {
-      bodies.forEach((B, i) => {
-        const lead = i === s.lead;
-        // Tuned critically damped Apple spring (stiffness: 260/90, damping: 27/16)
-        const k = lead ? 260 : 90;
-        const c = lead ? 27 : 16;
-        const f = !lead && now < s.lagFrom ? 0.1 : 1;
-        B.v += (k * (T.x - B.x) - c * B.v) * dt * f;
-        B.x += B.v * dt;
-        const lo = PAD + 6 + s.q + T.r - 3;
-        const hi = PAD + s.w - 6 - s.q - T.r + 3;
-        if (B.x < lo || B.x > hi) {
-          s.sy.v -= Math.min(Math.abs(B.v), 900) * 0.0016;
-          B.x = Math.max(lo, Math.min(hi, B.x));
-          B.v *= -0.25;
-        }
-        if (Math.abs(T.x - B.x) > 0.3 || Math.abs(B.v) > 2) still = false;
-      });
-      const L = bodies[s.lead];
-      const syT = 1 - 0.2 * Math.min(Math.abs(L.v) / 1400, 1);
-      s.sy.v += (280 * (syT - s.sy.s) - 14 * s.sy.v) * dt;
-      s.sy.s += s.sy.v * dt;
-      if (Math.abs(s.sy.s - 1) > 0.002 || Math.abs(s.sy.v) > 0.02) still = false;
-
-      const sep = Math.abs(s.a.x - s.b.x);
-      const r = T.r * (1 - 0.3 * Math.min(sep / (2 * (T.q + T.r) || 1), 1));
-      if (!s.split && s.moving && sep - 2 * T.q - 2 * r > -4) {
-        s.split = true;
-        const lo = bodies[1 - s.lead];
-        const hi = bodies[s.lead];
-        [0.32, 0.52, 0.72].forEach((t, j) => {
-          s.sats.push({
-            x: lo.x + (hi.x - lo.x) * t + (Math.random() - 0.5) * 4,
-            y: T.cy + (Math.random() - 0.5) * 8,
-            vx: (lo.v + hi.v) * 0.4,
-            vy: (Math.random() - 0.5) * 40,
-            r: 4.5 + Math.random() * 2.5 - j * 0.5,
-            k: 80 + Math.random() * 80
-          });
-        });
-      }
-      s.sats = s.sats.filter((d) => {
-        d.vx += (d.k * (T.x - d.x) - 10 * d.vx) * dt;
-        d.vy += (90 * (T.cy - d.y) - 8 * d.vy) * dt;
-        d.x += d.vx * dt;
-        d.y += d.vy * dt;
-        d.x = Math.max(PAD + 8 + d.r, Math.min(PAD + s.w - 8 - d.r, d.x));
-        d.y = Math.max(T.cy - T.r + d.r, Math.min(T.cy + T.r - d.r, d.y));
-        if (Math.abs(T.x - d.x) < T.q + T.r * 0.5) d.r -= dt * 26;
-        return d.r > 0.6;
-      });
-      if (s.sats.length) still = false;
-    }
-    if (s.moving && still) {
-      s.moving = false;
-      if (s.split || !s.reduce) s.rips.push({ x: T.x, y: T.cy, age: 0, amp: s.split ? 1.0 : 0.6 });
-    }
-    s.rips.forEach(p => { p.age += dt; });
-    s.rips = s.rips.filter(p => p.age < 2.0);
-    const target = s.mouse.on ? 1 : 0;
-    s.mouse.s += (target - s.mouse.s) * Math.min(1, dt * 8);
-  }
-
-  function loop() {
-    const s = st;
-    if (s.raf) return;
-    s.last = performance.now();
-    s.idleCount = 0;
-    const tick = (now) => {
-      const dt = Math.min((now - s.last) / 1000, 1 / 30);
-      s.last = now;
-      step(dt, now);
-      draw();
-      const busy = s.moving || s.rips.length || s.sats.length || s.mouse.s > 0.01;
-      if (busy) {
-        s.idleCount = 0;
-        s.raf = requestAnimationFrame(tick);
-      } else if (s.idleCount < 30) {
-        s.idleCount++;
-        s.raf = requestAnimationFrame(tick);
-      } else {
-        s.raf = 0;
-      }
-    };
-    s.raf = requestAnimationFrame(tick);
-  }
-
-  function measure() {
-    const el = items[currentIndex];
-    if (!nav || !el || el.offsetParent === null) return;
-    const s = st;
-    s.w = nav.offsetWidth;
-    s.h = nav.offsetHeight;
-    const T = s.t;
-    T.r = el.offsetHeight / 2;
-    T.q = Math.max(0, el.offsetWidth / 2 - T.r);
-    T.cy = PAD + el.offsetTop + el.offsetHeight / 2;
-    const nx = PAD + el.offsetLeft + el.offsetWidth / 2;
-    if (!s.ready) {
-      s.a.x = s.b.x = nx;
-      s.q = T.q;
-      s.ready = true;
-    } else if (Math.abs(nx - T.x) > 0.5) {
-      s.lead = Math.abs(nx - s.a.x) <= Math.abs(nx - s.b.x) ? 0 : 1;
-      s.lagFrom = performance.now() + 60;
-      s.moving = true;
-      s.split = false;
-    }
-    T.x = nx;
-    if (canvas) {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const W = s.w + PAD * 2;
-      const Hh = s.h + PAD * 2;
-      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(Hh * dpr)) {
-        canvas.width = Math.round(W * dpr);
-        canvas.height = Math.round(Hh * dpr);
-        canvas.style.width = W + "px";
-        canvas.style.height = Hh + "px";
-      }
-    }
-    loop();
-  }
-
-  function localCoord(clientX, clientY) {
-    const r = nav.getBoundingClientRect();
-    return { x: clientX - r.left + PAD, y: clientY - r.top + PAD };
-  }
-
-  function ripple(x, y, amp) {
-    if (st.reduce) return;
-    st.rips.push({ x, y, age: 0, amp });
-    loop();
-  }
-
-  nav.addEventListener("pointermove", (e) => {
-    if (e.pointerType !== "mouse") return;
-    const p = localCoord(e.clientX, e.clientY);
-    st.mouse.x = p.x;
-    st.mouse.y = p.y;
-    st.mouse.s = 1;
-    st.mouse.on = true;
-    loop();
-  });
-  nav.addEventListener("pointerleave", () => {
-    st.mouse.on = false;
-    loop();
-  });
-  nav.addEventListener("pointerdown", (e) => {
-    const p = localCoord(e.clientX, e.clientY);
-    ripple(p.x, p.y, 0.8);
-  });
-
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(() => {
-      st.ready = false;
-      measure();
-    });
-    ro.observe(nav);
-  }
-
-  window.liquidNavbar = {
-    setActiveIndex(idx) {
-      if (idx < 0 || idx >= items.length) return;
-      currentIndex = idx;
-      measure();
-      loop();
-      const el = items[idx];
-      if (el) {
-        if (typeof el.scrollIntoView === "function") {
-          el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-        }
-        const icon = el.querySelector(".nv-ico");
-        if (icon) {
-          const fx = icon.getAttribute("data-fx");
-          if (fx) {
-            icon.style.animation = "none";
-            void icon.offsetWidth;
-            icon.style.animation = "";
-          }
-        }
-      }
-    },
-    setActiveByView(view) {
-      const targetIndex = items.findIndex(el => (el.dataset.view === view || el.dataset.go === view));
-      if (targetIndex !== -1) {
-        this.setActiveIndex(targetIndex);
-      }
-    },
-    measure
-  };
-
-  setTimeout(measure, 60);
-}
-
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 let currentUser = null;
+let supabaseClient = null;
+let supabaseAccessToken = null;
+const API_BASE_URL = String(window.LOSTLINK_API_BASE_URL || '').replace(/\/$/, '');
+
+function createSupabaseRestAuthClient(supabaseUrl, anonKey) {
+  let base = String(supabaseUrl || "");
+  while (base.endsWith("/")) base = base.slice(0, -1);
+  const storageKey = "lostlink:supabase-office-session";
+  let session = null;
+  try {
+    const stored = sessionStorage.getItem(storageKey);
+    session = stored ? JSON.parse(stored) : null;
+  } catch (_) { session = null; }
+
+  function persist(next) {
+    session = next || null;
+    try {
+      if (session) sessionStorage.setItem(storageKey, JSON.stringify(session));
+      else sessionStorage.removeItem(storageKey);
+    } catch (_) {}
+  }
+  async function authRequest(path, body, accessToken) {
+    const headers = {"apikey": anonKey, "Content-Type": "application/json"};
+    if (accessToken) headers.Authorization = "Bearer " + accessToken;
+    const response = await fetch(base + path, {
+      method: "POST", headers, body: JSON.stringify(body || {}), credentials: "omit"
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.msg || payload.message || payload.error_description || payload.error || "Supabase authentication failed.");
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  }
+  async function refreshIfNeeded() {
+    if (!session) return null;
+    const expiresAt = Number(session.expires_at || 0);
+    if (!expiresAt || expiresAt * 1000 > Date.now() + 60000) return session;
+    if (!session.refresh_token) { persist(null); return null; }
+    try {
+      const refreshed = await authRequest("/auth/v1/token?grant_type=refresh_token", {
+        refresh_token: session.refresh_token
+      });
+      persist({
+        ...refreshed,
+        expires_at: refreshed.expires_at || Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600)
+      });
+      return session;
+    } catch (_) {
+      persist(null);
+      return null;
+    }
+  }
+  return {
+    auth: {
+      async getSession() {
+        const current = await refreshIfNeeded();
+        return {data: {session: current}, error: null};
+      },
+      async signInWithPassword(credentials) {
+        try {
+          const signedIn = await authRequest("/auth/v1/token?grant_type=password", {
+            email: String(credentials.email || "").trim().toLowerCase(),
+            password: String(credentials.password || "")
+          });
+          persist({
+            ...signedIn,
+            expires_at: signedIn.expires_at || Math.floor(Date.now() / 1000) + Number(signedIn.expires_in || 3600)
+          });
+          return {data: {session, user: session.user || null}, error: null};
+        } catch (error) {
+          return {data: {session: null, user: null}, error};
+        }
+      },
+      async signOut() {
+        try {
+          const current = await refreshIfNeeded();
+          if (current && current.access_token) {
+            await authRequest("/auth/v1/logout", {}, current.access_token);
+          }
+          persist(null);
+          return {error: null};
+        } catch (error) {
+          return {error};
+        }
+      }
+    }
+  };
+}
+
 let appConfig = null;
 let selectedClaimReport = null;
 let selectedLostReportForMatchId = null;
 let lostReportOptionsRequest = 0;
 let reportSubmitting = false;
+let activeReportKind = "lost";
 let claimSubmitting = false;
 let selectedEvidenceClaimId = null;
 let selectedStorageReportId = null;
 let selectedHandoverClaimId = null;
+let selectedHandoverRollNumber = null;
 let selectedDecisionClaimId = null;
 let selectedDecisionAction = null;
 let claimDecisionSubmitting = false;
@@ -385,21 +111,10 @@ let selectedCloseReportId = null;
 let selectedCloseReportType = null;
 
 const CATEGORY_ICONS = {
-  stationery: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
-  clothing: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
-  bags_wallets: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></svg>',
-  accessories: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><polyline points="12 9 12 12 13.5 13.5"/><path d="M16.51 17.35l-.85 4.65-7.32-7.32"/></svg>',
-  electronics: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>',
-  identity_documents: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="14" x="3" y="5" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h2"/><path d="M15 13h2"/><path d="M7 16a3 3 0 0 1 4 0"/></svg>',
-  keys_access: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
-  cash_jewellery: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>',
-  sports_instruments: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>',
-  other: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>'
+  stationery: "▤", clothing: "◈", bags_wallets: "▣", accessories: "◇",
+  electronics: "⌁", identity_documents: "▧", keys_access: "⌘",
+  cash_jewellery: "✧", sports_instruments: "◎", other: "◌"
 };
-const DEFAULT_CATEGORY_ICON = CATEGORY_ICONS.other;
-const ICON_PIN = '<svg class="inline-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
-const ICON_CLOCK = '<svg class="inline-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
-const ICON_SEARCH = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
 const STATUS_LABELS = {
   open: "Open", awaiting_intake: "Awaiting office intake", available: "Available at office",
   claim_approved: "Awaiting handover", pending: "Under review", disputed: "Disputed · review required",
@@ -412,13 +127,24 @@ const escapeHTML = (value) => String(value == null ? "" : value).replace(/[&<>"'
 
 function explainError(data, fallback) {
   if (!data || !data.detail) return fallback || "Something went wrong.";
-  if (Array.isArray(data.detail)) return data.detail.map((x) => x.msg || "Invalid value").join(" ");
+  if (Array.isArray(data.detail)) return data.detail.map((x) => { const field = Array.isArray(x.loc) ? x.loc.filter(part => part !== "body").join(" → ") : ""; return (field ? field + ": " : "") + (x.msg || "Invalid value"); }).join(" ");
   return String(data.detail);
 }
 
 
-let usingMockApi = false;
+const usingMockApi = false;
 let mockNoticeShown = false;
+const PAGE_SIZE = 50;
+const pageState = {
+  browse: { cursor: null, hasMore: false, loading: false },
+  myReports: { cursor: null, hasMore: false, loading: false },
+  myClaims: { cursor: null, hasMore: false, loading: false },
+  intake: { cursor: null, hasMore: false, loading: false, items: [] },
+  inventory: { cursor: null, hasMore: false, loading: false, items: [] },
+  officeClaims: { cursor: null, hasMore: false, loading: false, items: [] },
+  handovers: { cursor: null, hasMore: false, loading: false, items: [] },
+  privacyRequests: { cursor: null, hasMore: false, loading: false, items: [] }
+};
 let inspectedUser = null;
 let notificationPollTimer = null;
 let notificationPollInFlight = false;
@@ -461,8 +187,7 @@ function seedMockStore(){
  mockStore.session=mockCopy(MOCK_USERS.student);
 }
 function enableMockMode(){
- usingMockApi=true;seedMockStore();
- if(!mockNoticeShown){mockNoticeShown=true;window.setTimeout(()=>{if($("#appModeNote"))$("#appModeNote").classList.remove("hidden");showToast("Backend unavailable. Interactive offline preview is active; changes will not persist.",false);},0);}
+  throw new Error("Client-side mock authentication is disabled. Use the configured LostLink API and office-only demo access.");
 }
 function mockNotify(userId,title,message,entityType,entityId,eventKey){
  const key=eventKey||("demo:"+title+":"+entityId+":"+Date.now());
@@ -523,13 +248,19 @@ async function mockApi(url,options){
    for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
    if(parsed.searchParams.get("block")&&!(r.location_block||"").toLowerCase().includes(parsed.searchParams.get("block").toLowerCase()))return false;
    if(parsed.searchParams.get("room")&&!(r.location_room||"").toLowerCase().includes(parsed.searchParams.get("room").toLowerCase()))return false;
-   if(internal&&parsed.searchParams.get("status")&&r.status!==parsed.searchParams.get("status"))return false;
+   if(internal&&parsed.searchParams.get("status")){
+    const statuses=parsed.searchParams.get("status").split(",").map(x=>x.trim()).filter(Boolean);
+    if(!statuses.includes(r.status))return false;
+   }
    if(parsed.searchParams.get("date_from")&&String(r.occurred_at||"")<parsed.searchParams.get("date_from"))return false;
    if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
    if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
    return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,250);
-  return {reports:filtered.map(r=>mockReportView(r,Boolean(internal)))};
+  }).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {reports:page.map(r=>mockReportView(r,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore};
  }
  if(path==="/api/reports/category-suggestion"&&method==="POST"){
   const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
@@ -571,7 +302,21 @@ async function mockApi(url,options){
   if(action==="storage"&&method==="POST"){mockRequireOffice();if(!report.tag_id)throw new Error("Only tagged items in custody can be moved.");report.storage_location=String(body.storage_location||"").trim();report.updated_at=mockTimestamp(0);return {report:mockReportView(report,true),message:"Storage location updated."};}
   if(action==="close"&&method==="POST"){if(!currentUser||currentUser.role!=="student"||report.created_by!==currentUser.id)throw new Error("Report not found.");if(report.report_type==="lost"&&report.status==="open")report.status="closed";else if(report.report_type==="found"&&report.status==="awaiting_intake"&&body.reason==="found_report_withdrawn")report.status="cancelled";else throw new Error("Only an open lost report or found report awaiting office intake can be closed.");report.updated_at=mockTimestamp(0);return {report:mockReportView(report,false),message:"Report closed."};}
  }
- if(path==="/api/claims"&&method==="GET"){const internal=currentUser&&currentUser.role==="office";return {claims:mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id).sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(c=>mockClaimView(c,Boolean(internal)))};}
+ if(path==="/api/claims"&&method==="GET"){
+  const internal=currentUser&&currentUser.role==="office",queue=parsed.searchParams.get("queue")||"all";
+  let filtered=mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id);
+  if(internal&&queue==="disputed")filtered=filtered.filter(c=>c.status==="disputed");
+  if(internal&&queue==="pending")filtered=filtered.filter(c=>c.status==="pending");
+  if(internal&&queue==="active")filtered=filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status));
+  if(internal&&queue==="handover")filtered=filtered.filter(c=>c.status==="approved_for_collection");
+  if(internal&&queue==="other")filtered=filtered.filter(c=>!["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
+  const activeCount=internal?null:filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status)).length;
+  filtered.sort((a,b)=>internal?a.created_at.localeCompare(b.created_at):b.created_at.localeCompare(a.created_at));
+  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
+  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
+  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
+  return {claims:page.map(c=>mockClaimView(c,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore,active_count:activeCount};
+ }
  if(path==="/api/claims"&&method==="POST"){
   if(!currentUser||currentUser.role!=="student")throw new Error("Claims must be submitted from a student account.");
   const report=mockStore.reports.find(r=>r.id===body.report_id);if(!report||report.report_type!=="found"||report.status!=="available")throw new Error("This item is not accepting claims.");
@@ -632,6 +377,77 @@ async function mockApi(url,options){
  throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
 }
 
+function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
+function imageSourceAttribute(path) {
+  if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
+  return 'src="' + escapeHTML(apiAssetUrl(path)) + '"';
+}
+let pendingAuthImages = new WeakSet();
+async function hydrateAuthImage(img) {
+  if (!supabaseClient || pendingAuthImages.has(img) || !img.dataset.authImage) return;
+  pendingAuthImages.add(img);
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data && data.session ? data.session.access_token : null;
+    if (!token) throw new Error("Sign-in required");
+    const response = await fetch(API_BASE_URL + img.dataset.authImage, {headers:{Authorization:"Bearer " + token}});
+    if (!response.ok) throw new Error("Image request failed");
+    const objectUrl = URL.createObjectURL(await response.blob());
+    img.dataset.authImageObjectUrl = objectUrl;
+    img.src = objectUrl;
+  } catch (_) {
+    img.alt = "Image unavailable";
+    img.classList.add("image-unavailable");
+  }
+}
+function observeAuthImages() {
+  const scan = (node) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches("img[data-auth-image]")) hydrateAuthImage(node);
+    if (node.querySelectorAll) node.querySelectorAll("img[data-auth-image]").forEach(hydrateAuthImage);
+  };
+  const release = (node) => {
+    if (node.nodeType !== 1) return;
+    const images = [];
+    if (node.matches("img[data-auth-image-object-url]")) images.push(node);
+    if (node.querySelectorAll) images.push(...node.querySelectorAll("img[data-auth-image-object-url]"));
+    images.forEach((img) => { URL.revokeObjectURL(img.dataset.authImageObjectUrl); delete img.dataset.authImageObjectUrl; });
+  };
+  const observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
+    mutation.addedNodes.forEach(scan);
+    mutation.removedNodes.forEach(release);
+  }));
+  observer.observe(document.body, {childList:true,subtree:true});
+  scan(document.body);
+}
+
+async function downloadAuthenticatedFile(path, filename) {
+  if (!supabaseClient) { window.location.href = apiAssetUrl(path); return; }
+  const { data } = await supabaseClient.auth.getSession();
+  const token = data && data.session ? data.session.access_token : null;
+  if (!token) throw new Error("Please sign in again to download this file.");
+  const response = await fetch(API_BASE_URL + path, {headers:{Authorization:"Bearer " + token}});
+  if (!response.ok) throw new Error("Download failed (" + response.status + ").");
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+}
+function clearAuthenticatedImages() {
+  document.querySelectorAll("img[data-auth-image]").forEach((img) => {
+    if (img.dataset.authImageObjectUrl) URL.revokeObjectURL(img.dataset.authImageObjectUrl);
+    img.removeAttribute("src");
+    img.removeAttribute("data-auth-image");
+    delete img.dataset.authImageObjectUrl;
+  });
+  pendingAuthImages = new WeakSet();
+}
+
+
 async function api(url, options) {
   const opts = Object.assign({ method: "GET", headers: {} }, options || {});
   if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== "string") {
@@ -641,9 +457,29 @@ async function api(url, options) {
     opts.headers["Content-Type"] = "application/json";
   }
   if (usingMockApi) return mockApi(url, opts);
+  if (supabaseClient) {
+    const { data } = await supabaseClient.auth.getSession();
+    supabaseAccessToken = data && data.session ? data.session.access_token : null;
+    if (supabaseAccessToken) opts.headers.Authorization = "Bearer " + supabaseAccessToken;
+  }
   let response;
-  try { response = await fetch(url, opts); }
-  catch (_) { enableMockMode(); return mockApi(url, opts); }
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  try {
+    response = await fetch(API_BASE_URL + url, opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
+    throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(explainError(data, "Request failed (" + response.status + ")."));
   return data;
@@ -693,24 +529,95 @@ function categoryLabel(value) {
   return found ? found.label : (value || "Item");
 }
 
+function applyDateInputBounds() {
+  const minDate = "2012-01-01";
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  const maxDateTime = localNow.toISOString().slice(0, 16);
+  const maxDate = maxDateTime.slice(0, 10);
+  ["#publicDate", "#publicDateFound", "#publicHandoverAtFound", "#reportDate", "#reportDateFound"].forEach((selector) => {
+    const input = $(selector);
+    if (!input) return;
+    input.min = minDate + "T00:00";
+    input.max = maxDateTime;
+  });
+  ["#filterDateFrom", "#filterDateTo"].forEach((selector) => {
+    const input = $(selector);
+    if (!input) return;
+    input.min = minDate;
+    input.max = maxDate;
+  });
+}
+
 async function loadConfig() {
   appConfig = await api("/api/config");
-  const categoryOptions = appConfig.categories.map((category) =>
+
+  // Public reporting and browsing must not depend on the staff-authentication
+  // provider. Populate every public and office selector as soon as public
+  // configuration is available, before attempting to initialise Supabase.
+  const categories = Array.isArray(appConfig.categories) ? appConfig.categories : [];
+  const categoryOptions = categories.map((category) =>
     '<option value="' + escapeHTML(category.value) + '">' + escapeHTML(category.label) + "</option>"
   ).join("");
-  $("#reportCategory").innerHTML = '<option value="">Choose a category</option>' + categoryOptions;
+  ["#reportCategory", "#reportCategoryFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a category</option>' + categoryOptions; });
   $("#filterCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
-  const blocks = appConfig.locations.blocks || [];
-  const blockOptions = blocks.map((block) =>
-    '<option value="' + escapeHTML(block) + '">' + escapeHTML(block) + "</option>"
-  ).join("");
-  $("#reportBlock").innerHTML = '<option value="">Choose a block or area</option>' + blockOptions;
+  ["#publicCategory", "#publicCategoryFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a category</option>' + categoryOptions; });
+  $("#publicBrowseCategory").innerHTML = '<option value="">All categories</option>' + categoryOptions;
+
+  const locations = appConfig.locations || {};
+  const blocks = Array.isArray(locations.blocks) ? locations.blocks : [];
+  const aliases = locations.aliases && typeof locations.aliases === "object" ? locations.aliases : {};
+  const formatLocationOption = (block) => {
+    const aliasText = Array.isArray(aliases[block]) && aliases[block].length ? " · " + aliases[block].join(" / ") : "";
+    return '<option value="' + escapeHTML(block) + '">' + escapeHTML(block + aliasText) + "</option>";
+  };
+  const blockOptions = blocks.map(formatLocationOption).join("");
+  const locationGroups = locations.groups && typeof locations.groups === "object" ? locations.groups : {};
+  const groupedPublicOptions = Object.entries(locationGroups).map(([label, entries]) =>
+    '<optgroup label="' + escapeHTML(label) + '">' +
+    (Array.isArray(entries) ? entries : []).map(formatLocationOption).join("") +
+    "</optgroup>"
+  ).join("") + '<option value="Other / Not listed">Other / Not listed</option>';
+  ["#reportBlock", "#reportBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a block or area</option>' + blockOptions; });
   $("#filterBlock").innerHTML = '<option value="">All locations</option>' + blockOptions;
-  $("#reportFloor").innerHTML = '<option value="">Not sure</option>' + (appConfig.locations.floors || [])
-    .map((floor) => '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>").join("");
-  // demoAccess removed with loginView
+  ["#publicBlock", "#publicBlockFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Choose a building or outdoor area</option>' + groupedPublicOptions; });
+  const floorOptions = (Array.isArray(locations.floors) ? locations.floors : []).map((floor) =>
+    '<option value="' + escapeHTML(floor) + '">' + escapeHTML(floor) + "</option>"
+  ).join("");
+  ["#reportFloor", "#reportFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + floorOptions; });
+  ["#publicFloor", "#publicFloorFound"].forEach((selector) => { const node = $(selector); if (node) node.innerHTML = '<option value="">Not sure</option>' + floorOptions; });
+
+  if (appConfig.demo_mode) {
+    $("#demoAccess").classList.remove("hidden");
+    $("#officeAccessModeNote").classList.add("hidden");
+  }
+
+  // Supabase is required only for authorised office sign-in. If its browser
+  // SDK/configuration is unavailable, keep public Lost/Found/Browse/Track usable.
+  if (appConfig.auth_mode === "supabase") {
+    $("#demoAccess").classList.add("hidden");
+    const modeNote = $("#officeAccessModeNote");
+    try {
+      if (!appConfig.supabase_url || !appConfig.supabase_anon_key) {
+        throw new Error("Supabase Auth configuration is missing.");
+      }
+      // Use Supabase's documented Auth REST endpoints directly. This removes
+      // the third-party browser SDK/CDN from the trusted script supply chain.
+      supabaseClient = createSupabaseRestAuthClient(appConfig.supabase_url, appConfig.supabase_anon_key);
+      modeNote.textContent = "Live campus deployment: sign in with your verified college account. Office access is limited to the authorised staff email allowlist.";
+      modeNote.classList.remove("hidden");
+    } catch (error) {
+      supabaseClient = null;
+      modeNote.textContent = "Office sign-in is unavailable: " + error.message;
+      modeNote.classList.remove("hidden");
+    }
+  } else {
+    $("#officeAccessModeNote").classList.add("hidden");
+  }
+
   const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-  $("#reportDate").value = localNow.toISOString().slice(0, 16);
+  ["#reportDate", "#reportDateFound"].forEach((selector) => { const node = $(selector); if (node) node.value = localNow.toISOString().slice(0, 16); });
+  applyDateInputBounds();
 }
 
 function stopNotificationPolling() {
@@ -722,18 +629,15 @@ function stopNotificationPolling() {
 
 function startNotificationPolling() {
   stopNotificationPolling();
-  refreshNotificationBadge();
   notificationPollTimer = window.setInterval(async () => {
     if (!currentUser || document.hidden || notificationPollInFlight) return;
     notificationPollInFlight = true;
     try {
       if (!$("#notificationsView").classList.contains("hidden")) {
         await loadNotifications(true);
+      } else {
+        await refreshNotificationBadge();
       }
-      if (!$("#myClaimsView").classList.contains("hidden")) {
-        await loadMyClaims();
-      }
-      await refreshNotificationBadge();
     } catch (_) {
       // Polling is best-effort; transient network errors should not interrupt the UI.
     } finally {
@@ -743,163 +647,226 @@ function startNotificationPolling() {
 }
 
 function showLogin() {
-  // Login page removed completely: reset session directly to default student view
-  enableMockMode();
-  enterApp(mockCopy(MOCK_USERS.student));
+  showPublicHome();
 }
 
 function enterApp(user) {
+  if (!user || user.role !== "office") {
+    showPublicHome();
+    throw new Error("This account does not have a valid LostLink role.");
+  }
   currentUser = user;
   if (usingMockApi) mockStore.session = mockCopy(user);
-  const switchButton = $("#viewSwitchBtn");
-  if (switchButton) {
-    if ($("#profileHeroSwitchText")) {
-      $("#profileHeroSwitchText").textContent = user.role === "office" ? "Switch to student" : "Switch to office";
-    }
-    switchButton.classList.toggle("hidden", !usingMockApi && !(appConfig && appConfig.demo_mode));
-  }
   if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
-    $("#userName").textContent = user.display_name;
-  if ($("#dropdownUserName")) $("#dropdownUserName").textContent = user.display_name || "User";
-  if ($("#dropdownUserEmail")) $("#dropdownUserEmail").textContent = user.email || "";
-  if ($("#dropdownAvatar")) {
-    $("#dropdownAvatar").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
-    $("#dropdownAvatar").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student") + " avatar-large";
-  }
+  $("#loginView").classList.add("hidden");
+  $("#appView").classList.remove("hidden");
+  placeFinnIn("#appView [data-finn-slot]");
+  $("#userName").textContent = user.display_name;
   $("#userInitial").textContent = (user.display_name || "U").trim().charAt(0).toUpperCase();
   $("#userInitial").className = "avatar " + (user.role === "office" ? "avatar-office" : "avatar-student");
   $("#roleChip").textContent = user.role === "office" ? "Office staff" : "Student";
-  $("#roleChip").className = "profile-role-chip" + (user.role === "office" ? " role-chip-office" : "");
-  $("#officeNavButton").classList.toggle("hidden", user.role !== "office");
-  $("#activityNavButton").classList.toggle("hidden", user.role === "office");
+  $("#roleChip").className = "role-chip" + (user.role === "office" ? " role-chip-office" : "");
   $$('[data-view="report"], [data-view="my-reports"], [data-view="my-claims"]').forEach((button) => {
     button.classList.toggle("hidden", user.role === "office");
   });
+  $("#officeDashboardNav").classList.toggle("hidden", user.role !== "office");
+  $("#privacyRequestsNav").classList.toggle("hidden", user.role !== "office");
+  $('[data-view="start"]').classList.toggle("hidden", user.role === "office");
   $("#welcomeTitle").textContent = user.role === "office" ? "Manage found items and claims." : "Find what you are looking for.";
   $("#welcomeSubtitle").textContent = user.role === "office"
     ? "Confirm physical intake and review claims before authorising the next step."
     : "Search office-held items, compare possible matches and submit a private claim.";
   $("#studentNav").classList.remove("hidden");
-  navigate(user.role === "office" ? "office" : "start"); if (window.liquidNavbar) window.liquidNavbar.measure();
+  navigate(user.role === "office" ? "office" : "start");
   startNotificationPolling();
 }
 
+function setFinnMessage(message, awake = true) {
+  const dock = $("#finnDock");
+  const note = $("#mascotMessage");
+  if (!dock || !note) return;
+  note.textContent = message;
+  dock.classList.add("has-tip");
+  if (awake) {
+    dock.classList.remove("is-awake");
+    void dock.offsetWidth;
+    dock.classList.add("is-awake");
+  }
+}
+function updateFinnForView(view) {
+  const messages = {
+    browse: "Let's look through the found-item desk. Try a category or a few details.",
+    report: "Tell me what happened. Clear visible details help me find better matches.",
+    "my-reports": "I’m checking your case notes. Open a report to see its possible matches.",
+    "my-claims": "I’ll keep an eye on your claim. The campus team handles the ownership checks.",
+    notifications: "New clues land here. I’ll point out match updates and claim decisions.",
+    activity: "Every verified return helps the campus community. Nice work!",
+    office: "Welcome to the campus desk. Verify the item and claimant before handover."
+  };
+  setFinnMessage(messages[view] || "Psst… got a campus mystery? I’m on the case.", false);
+}
 function navigate(view) {
   if (!currentUser) return;
   if (view !== "my-reports") selectedLostReportForMatchId = null;
-  if (view === "office" && currentUser.role !== "office") view = "start";
-  if (currentUser.role === "office" && ["my-reports", "my-claims", "activity"].includes(view)) view = "office";
+  if (view === "office" && currentUser.role !== "office") view = "browse";
+  if (currentUser.role === "office" && ["report", "my-reports", "my-claims", "activity"].includes(view)) view = "office";
   const sections = {
     start: "#startView", browse: "#browseView", report: "#reportView", "my-reports": "#myReportsView",
     "my-claims": "#myClaimsView", notifications: "#notificationsView",
-    activity: "#activityView", office: "#officeView", profile: "#profileView"
+    activity: "#activityView", office: "#officeView", privacyRequests: "#privacyRequestsView"
   };
-  Object.values(sections).forEach((selector) => {
-    const el = $(selector);
-    if (el) el.classList.add("hidden");
-  });
-  const target = $(sections[view] || sections.start);
-  if (target) target.classList.remove("hidden");
-  $$("#studentNav [data-view], #studentNav [data-go], #profileTabBtn").forEach((button) => {
-    const bView = button.dataset.view || button.dataset.go;
-    const active = bView === view;
-    button.classList.toggle("active", active);
-    if (active) button.setAttribute("aria-current", "page");
-    else button.removeAttribute("aria-current");
-  });
-  if (window.liquidNavbar) {
-    window.liquidNavbar.setActiveByView(view);
-  }
+  Object.values(sections).forEach((selector) => $(selector).classList.add("hidden"));
+  $(sections[view] || sections.browse).classList.remove("hidden");
+  $$("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
   $("#notice").classList.add("hidden");
   if (view === "browse") loadBrowse();
   if (view === "my-reports") loadMyReports();
   if (view === "my-claims") loadMyClaims();
   if (view === "office") loadOffice();
+  if (view === "privacyRequests") loadOffice("privacyRequests");
   if (view === "notifications") loadNotifications();
   if (view === "activity") loadActivity();
-  if (view === "profile") loadProfile();
+  updateFinnForView(view);
   refreshNotificationBadge();
 }
 
+function activeReportForm() { return document.querySelector("#" + (activeReportKind === "found" ? "foundReportForm" : "lostReportForm")); }
+function reportField(id, form = activeReportForm()) { if (!form) return null; return form.querySelector("#" + id + (form.id === "foundReportForm" ? "Found" : "")); }
 function setReportMode(type) {
   if (!["lost", "found"].includes(type)) return;
-  const wasOpen = !$("#reportForm").classList.contains("hidden");
-  if (wasOpen && $("#reportType").value && $("#reportType").value !== type) {
-    $("#reportForm").reset();
-    $("#reportError").textContent = "";
-    $("#imageLabel").textContent = "Choose a photo";
+  const chooser = $("#reportTypeChooser");
+  const form = document.querySelector(type === "found" ? "#foundReportForm" : "#lostReportForm");
+  const previousForm = activeReportForm();
+  const previousKind = activeReportKind;
+  activeReportKind = type;
+  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((item) => { if (item !== form) item.classList.add("hidden"); });
+  if (!form || !chooser) {
+    console.error("LostLink report form markup is unavailable.");
+    showToast("The report form could not be loaded. Refresh the page and try again.", true);
+    return;
+  }
+  const wasOpen = previousForm && !previousForm.classList.contains("hidden");
+  if (wasOpen && previousKind !== type) {
+    previousForm.reset();
     showToast("Switched report type. The previous draft was cleared to avoid mixing Lost and Found details.", false);
   }
-  $("#reportType").value = type;
-  $("#reportTypeChooser").classList.add("hidden");
-  $("#reportForm").classList.remove("hidden");
+  reportField("reportType", form).value = type;
+  chooser.classList.add("hidden");
+  form.classList.remove("hidden");
+  const lost = type === "lost";
+  const categoryButton = form.querySelector(lost ? "#suggestCategoryButton" : "#suggestCategoryButtonFound");
+  const categoryStatus = reportField("categorySuggestion", form);
+  if (categoryButton) categoryButton.textContent = lost ? "Suggest category with AI" : "Suggest found-item category with AI";
+  if (categoryStatus) categoryStatus.textContent = lost
+    ? "AI can suggest a category from the details you remember. You choose the final category."
+    : "AI can classify the item you discovered from its observable details. Review the suggestion before selecting it.";
+  const guidanceTitle = $(".side-guidance h3");
+  const guidanceCopy = $(".side-guidance > p");
+  const guidanceRules = $(".side-guidance .guidance-rule");
+  if (guidanceTitle) guidanceTitle.textContent = lost ? "Help us retrace your steps." : "Help us return this item safely.";
+  if (guidanceCopy) guidanceCopy.textContent = lost
+    ? "Think about the last place you used or saw the item. Accurate time and location estimates help narrow possible matches."
+    : "Record the exact discovery spot and describe only what is safe to share. The item becomes searchable only after office staff confirm physical intake.";
+  const ruleContent = lost ? [
+    ["Rebuild the timeline", "Tell us when you last remember having it; an honest estimate is better than a guess."],
+    ["Keep proof private", "Save one or two distinctive ownership clues for the private claim review."],
+    ["Narrow the search", "Add the block, floor, room or nearby place where you last had it."]
+  ] : [
+    ["Describe what you saw", "Record the item's visible condition without publishing names, IDs or private contents."],
+    ["Pinpoint discovery", "Use the place where you found it, not where you later hand it in."],
+    ["Complete the handover", "Take the item to the campus office. Staff confirm receipt and assign its LostLink Tag ID."]
+  ];
+  guidanceRules.forEach((rule, index) => {
+    const entry = ruleContent[index];
+    if (!entry) return;
+    const strong = rule.querySelector("strong");
+    const small = rule.querySelector("small");
+    if (strong) strong.textContent = entry[0];
+    if (small) small.textContent = entry[1];
+  });
   $$("[data-report-kind]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.reportKind === type);
     button.setAttribute("aria-pressed", button.dataset.reportKind === type ? "true" : "false");
   });
-  if (type === "lost") {
+  if (lost) {
     $("#reportModeTitle").textContent = "Report a lost item";
-    $("#reportModeDescription").textContent = "Tell us what went missing. Your report stays in your account and can be compared with items registered by the office.";
-    $("#reportFormStepTitle").textContent = "What went missing?";
-    $("#reportFormStepHint").textContent = "Describe the item and its last known context.";
-    $("#reportDateLabel").textContent = "When did you last see it?";
-    $("#reportDateHelp").textContent = "An approximate time helps matching. Leave it blank if you are unsure.";
-    $("#reportLocationHeading").textContent = "Where did you last see it?";
-    $("#reportLocationHelp").textContent = "Choose the nearest block or nearby place.";
-    $("#reportTitle").placeholder = "e.g. Black backpack I lost";
-    $("#reportSubmitLabel").textContent = "Submit lost report";
+    $("#reportModeDescription").textContent = "Help us retrace where you last had it. Add the details that could help another student recognise it.";
+    reportField("reportFormStepTitle", form).textContent = "What went missing?";
+    reportField("reportFormStepHint", form).textContent = "Describe the item and the last moment you remember having it.";
+    reportField("reportItemNameLabel", form).textContent = "What item did you lose?";
+    reportField("reportDescriptionLabel", form).textContent = "Describe the item you lost";
+    reportField("reportDescription", form).placeholder = "What does it look like? Include its type, size, material, condition and any visible details that could help you recognise it.";
+    reportField("reportDescriptionHelp", form).textContent = "Keep one or two unique ownership clues private. You can share those later in a claim so the office can verify they match.";
+    reportField("reportFeaturesLabel", form).textContent = "Visible details you remember";
+    reportField("reportFeatures", form).placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
+    reportField("reportDateLabel", form).textContent = "When did you last see it?";
+    reportField("reportDateHelp", form).textContent = "Enter the last time you remember having the item, not when you noticed it was missing. An estimate is fine.";
+    reportField("reportLocationHeading", form).textContent = "Where did you last have it?";
+    reportField("reportLocationHelp", form).textContent = "Choose the last place you remember seeing or using the item.";
+    reportField("reportBlockLabel", form).textContent = "Last seen block / building";
+    reportField("reportAreaLabel", form).textContent = "Last seen nearby place";
+    reportField("reportArea", form).placeholder = "e.g. Library reading room, canteen counter, bus bay";
+    reportField("reportTitle", form).placeholder = "e.g. Black backpack I lost";
+    reportField("reportSubmitLabel", form).textContent = "Submit lost report";
   } else {
     $("#reportModeTitle").textContent = "Report a found item";
-    $("#reportModeDescription").textContent = "Record what you found and where. The item only becomes searchable after office staff confirm physical receipt and tagging.";
-    $("#reportFormStepTitle").textContent = "What did you find?";
-    $("#reportFormStepHint").textContent = "Describe the item without exposing private owner details.";
-    $("#reportDateLabel").textContent = "When did you find it?";
-    $("#reportDateHelp").textContent = "Use the approximate time you found the item. Office intake time is recorded separately.";
-    $("#reportLocationHeading").textContent = "Where did you find it?";
-    $("#reportLocationHelp").textContent = "Use the place where you found the item, not its eventual office storage location.";
-    $("#reportTitle").placeholder = "e.g. Silver water bottle I found";
-    $("#reportSubmitLabel").textContent = "Submit found report";
+    $("#reportModeDescription").textContent = "Help return an item to its owner. Tell us what you found and exactly where it was discovered.";
+    reportField("reportFormStepTitle", form).textContent = "What did you find?";
+    reportField("reportFormStepHint", form).textContent = "Record the item's visible condition and discovery location.";
+    reportField("reportItemNameLabel", form).textContent = "What item did you find?";
+    reportField("reportDescriptionLabel", form).textContent = "Describe the item you found";
+    reportField("reportDescription", form).placeholder = "Describe the item as you found it: type, size, material, condition and visible identifying details. Do not guess who owns it.";
+    reportField("reportDescriptionHelp", form).textContent = "Share only safe, observable details. Do not include names, student IDs, serial numbers, contents or hidden identifying marks.";
+    reportField("reportFeaturesLabel", form).textContent = "Visible condition and features";
+    reportField("reportFeatures", form).placeholder = "Scratches, stickers, damage, colour, brand, contents visible from outside…";
+    reportField("reportDateLabel", form).textContent = "When did you find it?";
+    reportField("reportDateHelp", form).textContent = "Enter when you discovered the item. If you are unsure, use your best estimate; office intake time is recorded separately.";
+    reportField("reportLocationHeading", form).textContent = "Where did you find it?";
+    reportField("reportLocationHelp", form).textContent = "Choose the actual discovery place, not where you later hand it in or where staff store it.";
+    reportField("reportBlockLabel", form).textContent = "Found at block / building";
+    reportField("reportAreaLabel", form).textContent = "Found near / specific spot";
+    reportField("reportArea", form).placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
+    reportField("reportTitle", form).placeholder = "e.g. Silver water bottle I found";
+    reportField("reportSubmitLabel", form).textContent = "Submit found report";
   }
-  if (!$("#reportDate").value) {
+  if (!reportField("reportDate", form).value) {
     const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-    $("#reportDate").value = localNow.toISOString().slice(0, 16);
+    reportField("reportDate", form).value = localNow.toISOString().slice(0, 16);
   }
+  applyDateInputBounds();
 }
 
+
 function resetReportMode() {
-  $("#reportForm").reset();
-  $("#reportForm").classList.add("hidden");
-  if ($("#reportTypeChooser")) $("#reportTypeChooser").classList.remove("hidden");
-  $("#reportType").value = "";
-  $("#reportError").textContent = "";
-  $("#imageLabel").textContent = "Choose a photo";
-  $("#reportModeTitle").textContent = "Choose your report type";
-  $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
-  $("#reportFormStepTitle").textContent = "Report details";
-  $("#reportFormStepHint").textContent = "Add the item and context.";
-  $$("[data-report-kind]").forEach((button) => {
-    button.classList.remove("selected");
-    button.setAttribute("aria-pressed", "false");
+  document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
+    form.reset();
+    form.classList.add("hidden");
   });
-  navigate("start");
-  return;
-}
-function _old_resetReportMode() {
-  $("#reportForm").reset();
-  $("#reportForm").classList.add("hidden");
-  $("#reportTypeChooser").classList.remove("hidden");
-  $("#reportType").value = "";
-  $("#reportError").textContent = "";
-  $("#imageLabel").textContent = "Choose a photo";
-  $("#reportModeTitle").textContent = "Choose your report type";
-  $("#reportModeDescription").textContent = "Lost and Found have separate guided paths so each report starts with the right context.";
-  $("#reportFormStepTitle").textContent = "Report details";
-  $("#reportFormStepHint").textContent = "Add the item and context.";
+  activeReportKind = "lost";
+  const setText = (selector, value) => {
+    const node = $(selector);
+    if (node) node.textContent = value;
+  };
+  const lostType = $("#reportType");
+  const foundType = $("#reportTypeFound");
+  if (lostType) lostType.value = "lost";
+  if (foundType) foundType.value = "found";
+  const chooser = $("#reportTypeChooser");
+  if (chooser) chooser.classList.remove("hidden");
+  setText("#reportError", "");
+  setText("#reportErrorFound", "");
+  setText("#imageLabel", "Choose a photo");
+  setText("#imageLabelFound", "Choose a photo");
+  setText("#categorySuggestion", "AI suggestion is optional. You choose the final category.");
+  setText("#categorySuggestionFound", "AI suggestion is optional. You choose the final category.");
+  setText("#reportModeTitle", "Choose your report type");
+  setText("#reportModeDescription", "Lost and Found have separate guided paths so each report starts with the right context.");
   $$("[data-report-kind]").forEach((button) => {
     button.classList.remove("selected");
     button.setAttribute("aria-pressed", "false");
   });
 }
+
 
 function evidenceTypeLabel(value) {
   const labels = {
@@ -923,14 +890,42 @@ function buildQuery(formValues) {
   return params.toString();
 }
 
+function pageUrl(path, cursor) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("page_size", String(PAGE_SIZE));
+  if (cursor) url.searchParams.set("cursor", cursor);
+  else url.searchParams.delete("cursor");
+  return url.pathname + url.search;
+}
+
+function updatePageButton(buttonId, state) {
+  const button = $(buttonId);
+  if (!button) return;
+  button.classList.toggle("hidden", !state.hasMore && !state.loading);
+  button.disabled = Boolean(state.loading);
+  button.textContent = state.loading ? "Loading…" : "Load more";
+}
+
+async function fetchAllPages(path) {
+  const results = [];
+  let cursor = null;
+  do {
+    const page = await api(pageUrl(path, cursor));
+    results.push(...(page.reports || []));
+    cursor = page.next_cursor || null;
+    if (!page.has_more) break;
+  } while (cursor);
+  return results;
+}
+
 function itemCard(report, options) {
   const opts = options || {};
-  const icon = CATEGORY_ICONS[report.category] || DEFAULT_CATEGORY_ICON;
+  const icon = CATEGORY_ICONS[report.category] || "◌";
   const visual = report.image_url
-    ? '<div class="item-visual"><img src="' + escapeHTML(report.image_url) + '" alt="Item photograph" loading="lazy"></div>'
+    ? '<div class="item-visual"><img ' + imageSourceAttribute(report.image_url) + ' alt="Item photograph" loading="lazy"></div>'
     : '<div class="item-visual"><span class="visual-glyph" aria-hidden="true">' + icon + "</span></div>";
-  const claimButton = opts.claim
-    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '">Submit claim ↗</button>'
+  const claimButton = opts.claim && report.report_type === "found" && report.status === "available"
+    ? '<button class="button button-primary button-small" type="button" data-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || "") + '">Submit private claim ↗</button>'
     : "";
   const detailsButton = '<button class="button button-quiet button-small" type="button" data-view-details="' + escapeHTML(report.id) + '">View details</button>';
   const characteristics = [
@@ -953,12 +948,18 @@ function itemCard(report, options) {
     "<h3>" + escapeHTML(report.title) + "</h3>" +
     '<p class="item-description">' + escapeHTML(report.description) + "</p>" +
     characteristicBlock + reasons +
-    '<div class="item-meta"><span>' + ICON_PIN + escapeHTML(report.location || "Location not specified") + "</span>" + '<span>' + ICON_CLOCK + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+    '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
+    '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
-async function loadBrowse() {
+async function loadBrowse(append = false) {
   if (!currentUser) return;
+  const state = pageState.browse;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#browseLoadMore", state);
   const query = buildQuery({
     q: $("#filterQuery").value,
     category: $("#filterCategory").value,
@@ -967,14 +968,30 @@ async function loadBrowse() {
     date_from: $("#filterDateFrom") ? $("#filterDateFrom").value : "",
     date_to: $("#filterDateTo") ? $("#filterDateTo").value : ""
   });
+  if (append && state.query !== query) {
+    append = false;
+    state.cursor = null;
+    $("#browseResults").innerHTML = "";
+    lastKnownReports = [];
+  }
+  state.query = query;
   try {
-    const data = await api("/api/reports" + (query ? "?" + query : ""));
-    lastKnownReports = data.reports;
-    $("#browseResults").innerHTML = data.reports.map((report) => itemCard(report, { claim: currentUser.role === "student" })).join("");
-    $("#browseCount").textContent = data.reports.length + (data.reports.length === 1 ? " item" : " items");
-    $("#browseEmpty").classList.toggle("hidden", data.reports.length > 0);
+    const path = "/api/reports" + (query ? "?" + query : "");
+    const data = await api(pageUrl(path, append ? state.cursor : null));
+    const reports = data.reports || [];
+    lastKnownReports = append ? lastKnownReports.concat(reports) : reports;
+    const html = reports.map((report) => itemCard(report, { claim: true })).join("");
+    if (append) $("#browseResults").insertAdjacentHTML("beforeend", html);
+    else $("#browseResults").innerHTML = html;
+    $("#browseCount").textContent = lastKnownReports.length + (lastKnownReports.length === 1 ? " item loaded" : " items loaded");
+    $("#browseEmpty").classList.toggle("hidden", lastKnownReports.length > 0);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) {
     showToast(error.message, true);
+  } finally {
+    state.loading = false;
+    updatePageButton("#browseLoadMore", state);
   }
 }
 
@@ -988,73 +1005,93 @@ function resetSearch() {
   loadBrowse();
 }
 
-async function suggestReportCategory() {
-  const button = $("#suggestCategoryButton");
-  const output = $("#categorySuggestion");
+async function suggestReportCategory(event) {
+  const form = event?.currentTarget?.closest("form") || activeReportForm();
+  if (!form) return;
+  const button = form.querySelector(form.id === "foundReportForm" ? "#suggestCategoryButtonFound" : "#suggestCategoryButton");
+  const output = reportField("categorySuggestion", form);
   const payload = {
-    title: $("#reportTitle").value.trim(),
-    description: $("#reportDescription").value.trim(),
-    brand: $("#reportBrand").value.trim() || null,
-    primary_color: $("#reportColor").value.trim() || null,
-    visible_features: $("#reportFeatures").value.trim() || null
+    title: reportField("reportTitle", form).value.trim(),
+    description: reportField("reportDescription", form).value.trim(),
+    brand: reportField("reportBrand", form).value.trim() || null,
+    primary_color: reportField("reportColor", form).value.trim() || null,
+    visible_features: reportField("reportFeatures", form).value.trim() || null
   };
-  if ((payload.title + " " + payload.description).trim().length < 4) {
-    output.textContent = "Add an item name and a short description before requesting a suggestion.";
+  if (payload.title.length < 4 || payload.description.length < 10) {
+    output.textContent = "Enter an item name (at least 4 characters) and a description (at least 10 characters) before requesting a suggestion.";
+    (payload.title.length < 4 ? reportField("reportTitle", form) : reportField("reportDescription", form)).focus();
     return;
   }
   button.disabled = true;
-  output.textContent = "Analysing the item details…";
+  button.innerHTML = '<span aria-hidden="true">◌</span> Analysing…';
+  output.textContent = "Reviewing the item details…";
   try {
     const result = await api("/api/reports/category-suggestion", { method: "POST", body: payload });
     const suggestion = result.suggestion || {};
     if (suggestion.status !== "suggested" || !suggestion.category) {
-      output.textContent = "The classifier is unsure. Please choose the category yourself.";
+      output.textContent = "No reliable category suggestion was found. Please choose the category manually.";
       return;
     }
-    const alternatives = (suggestion.alternatives || []).slice(0, 3)
-      .map((item) => escapeHTML(item.label)).join(" · ");
-    output.innerHTML = "Suggested: <strong>" + escapeHTML(suggestion.label) + "</strong>" +
-      (alternatives ? "<br>Other possibilities: " + alternatives : "") +
-      ' <button class="button button-quiet button-small" type="button" data-use-category="' +
-      escapeHTML(suggestion.category) + '">Use suggestion</button>';
+    const alternatives = (suggestion.alternatives || []).slice(0, 3);
+    output.innerHTML = '<span class="ai-suggestion-title">Suggested: <strong>' +
+      escapeHTML(suggestion.label || categoryLabel(suggestion.category)) + '</strong></span>' +
+      '<span class="ai-suggestion-actions">' +
+      alternatives.map((item) => '<button class="ai-alternative-button" type="button" data-use-category="' +
+        escapeHTML(item.category) + '">' + escapeHTML(item.label || categoryLabel(item.category)) +
+        (item.category === suggestion.category ? ' · Apply' : ' · Use instead') + '</button>').join("") +
+      '</span><span class="ai-suggestion-note">AI suggestions are advisory. Select one to apply it; no field is changed automatically.</span>';
   } catch (error) {
-    output.textContent = "Category suggestion unavailable. Choose a category manually.";
+    output.textContent = "AI suggestion unavailable: " + (error.message || "choose a category manually.");
   } finally {
     button.disabled = false;
+    button.innerHTML = '<span aria-hidden="true">✦</span> Suggest with AI';
   }
 }
 
 async function submitReport(event) {
   event.preventDefault();
-  $("#reportError").textContent = "";
-  const reportType = $("#reportType").value;
+  const form = event.currentTarget;
+  activeReportKind = form.id === "foundReportForm" ? "found" : "lost";
+  const errorNode = reportField("reportError", form);
+  if (!form || !errorNode) {
+    showToast("The report form is unavailable. Refresh the page and try again.", true);
+    return;
+  }
+  errorNode.textContent = "";
+  const reportType = reportField("reportType", form).value;
   if (!reportType) {
-    $("#reportError").textContent = "Choose whether you lost or found the item first.";
+    errorNode.textContent = "Choose whether you lost or found the item first.";
     return;
   }
   const body = {
     report_type: reportType,
-    title: $("#reportTitle").value.trim(),
-    category: $("#reportCategory").value,
-    description: $("#reportDescription").value.trim(),
-    brand: $("#reportBrand").value.trim() || null,
-    primary_color: $("#reportColor").value.trim() || null,
-    visible_features: $("#reportFeatures").value.trim() || null,
-    occurred_at: $("#reportDate").value || null,
-    location_block: $("#reportBlock").value || null,
-    location_floor: $("#reportFloor").value || null,
-    location_room: $("#reportRoom").value.trim() || null,
-    location_area: $("#reportArea").value.trim() || null
+    title: reportField("reportTitle", form).value.trim(),
+    category: reportField("reportCategory", form).value,
+    description: reportField("reportDescription", form).value.trim(),
+    brand: reportField("reportBrand", form).value.trim() || null,
+    primary_color: reportField("reportColor", form).value.trim() || null,
+    visible_features: reportField("reportFeatures", form).value.trim() || null,
+    occurred_at: reportField("reportDate", form).value || null,
+    location_block: reportField("reportBlock", form).value || null,
+    location_floor: reportField("reportFloor", form).value || null,
+    location_room: reportField("reportRoom", form).value.trim() || null,
+    location_area: reportField("reportArea", form).value.trim() || null,
+    image_ai_consent: Boolean(reportField("reportImageAiConsent", form)?.checked)
   };
-  const image = $("#reportImage").files[0];
+  const image = reportField("reportImage", form).files[0];
   if (!body.location_block && !body.location_area) {
-    $("#reportError").textContent = "Choose a campus block/building or enter a nearby area.";
-    $("#reportArea").focus();
+    errorNode.textContent = "Choose a campus block/building or enter a nearby area.";
+    reportField("reportArea", form).focus();
     return;
   }
   if (reportSubmitting) return;
   reportSubmitting = true;
-  const submitButton = $('#reportForm button[type="submit"]');
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!submitButton) {
+    reportSubmitting = false;
+    errorNode.textContent = "The report submit button is missing. Refresh the page and try again.";
+    return;
+  }
   submitButton.disabled = true;
   try {
     const result = await api("/api/reports", { method: "POST", body });
@@ -1065,7 +1102,7 @@ async function submitReport(event) {
       fileBody.append("file", image);
       try {
         await api("/api/reports/" + encodeURIComponent(result.report.id) + "/image", { method: "POST", body: fileBody });
-        if (appConfig && appConfig.image_enrichment_enabled) {
+        if (body.image_ai_consent && appConfig && appConfig.image_enrichment_enabled) {
           try {
             const ai = await api("/api/reports/" + encodeURIComponent(result.report.id) + "/enrichment", { method: "POST" });
             const enrichment = ai.enrichment || {};
@@ -1088,54 +1125,60 @@ async function submitReport(event) {
     navigate("my-reports");
     showToast(successMessage, photoFailed);
   } catch (error) {
-    $("#reportError").textContent = error.message;
+    errorNode.textContent = error.message;
   } finally {
     reportSubmitting = false;
     submitButton.disabled = false;
   }
 }
 
-async function loadMyReports() {
+
+async function loadMyReports(append = false) {
   if (!currentUser || currentUser.role !== "student") return;
+  const state = pageState.myReports;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#myReportsLoadMore", state);
   $("#matchesPanel").classList.add("hidden");
   try {
-    const data = await api("/api/reports?mine=true");
-    $("#myReportsList").innerHTML = data.reports.map((report) => {
+    const data = await api(pageUrl("/api/reports?mine=true", append ? state.cursor : null));
+    const reports = data.reports || [];
+    lastKnownReports = lastKnownReports.concat(reports);
+    const html = reports.map((report) => {
       const matchButton = report.report_type === "lost" && report.status === "open"
-        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>'
-        : "";
+        ? '<button class="button button-primary button-small" type="button" data-matches="' + escapeHTML(report.id) + '">Find possible matches</button>' : "";
       const canClose = (report.report_type === "lost" && report.status === "open" && !report.has_active_linked_claim) ||
         (report.report_type === "found" && report.status === "awaiting_intake");
       const closeButton = canClose
         ? '<button class="button button-quiet button-small" type="button" data-close-report="' + escapeHTML(report.id) +
           '" data-close-type="' + escapeHTML(report.report_type) + '">' +
-          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>'
-        : "";
+          (report.report_type === "found" ? "Withdraw report" : "Close report") + '</button>' : "";
       const linkedClaimNote = report.report_type === "lost" && report.status === "open" && report.has_active_linked_claim
-        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>'
-        : "";
+        ? '<p class="field-hint">This lost report is linked to a claim under review. Resolve the claim before closing the report.</p>' : "";
       const type = report.report_type === "lost" ? "Lost report" : "Found report";
       const imageNote = report.report_type === "found" && report.status === "awaiting_intake"
-        ? "The office must confirm physical receipt before the item can appear in search."
-        : "";
-      const characteristics = [
-        report.brand ? "Brand: " + report.brand : "",
-        report.primary_color ? "Colour: " + report.primary_color : "",
-        report.visible_features || ""
-      ].filter(Boolean);
+        ? "The office must confirm physical receipt before the item can appear in search." : "";
+      const characteristics = [report.brand ? "Brand: " + report.brand : "", report.primary_color ? "Colour: " + report.primary_color : "", report.visible_features || ""].filter(Boolean);
       const extra = characteristics.length
-        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>'
-        : "";
+        ? '<div class="characteristic-list">' + characteristics.map((value) => '<span class="characteristic-chip">' + escapeHTML(value) + '</span>').join("") + '</div>' : "";
       return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
         escapeHTML(type + " · " + report.public_ref) + "</p></div><span class=\"" + statusClass(report.status) + "\">" +
         escapeHTML(statusLabel(report.status)) + "</span></div><p>" + escapeHTML(report.description) + "</p>" + extra +
-        '<div class="list-card-meta"><span>' + ICON_PIN + escapeHTML(report.location) + "</span><span>" + ICON_CLOCK + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
-        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") +
-        linkedClaimNote +
+        '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>◷ " + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+        (imageNote ? '<p class="field-hint">' + escapeHTML(imageNote) + "</p>" : "") + linkedClaimNote +
         '<div class="card-actions">' + matchButton + closeButton + "</div></article>";
     }).join("");
-    $("#myReportsEmpty").classList.toggle("hidden", data.reports.length > 0);
+    if (append) $("#myReportsList").insertAdjacentHTML("beforeend", html);
+    else $("#myReportsList").innerHTML = html;
+    $("#myReportsEmpty").classList.toggle("hidden", reports.length === 0 && !append);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) { showToast(error.message, true); }
+  finally {
+    state.loading = false;
+    updatePageButton("#myReportsLoadMore", state);
+  }
 }
 
 async function loadMatches(reportId) {
@@ -1152,20 +1195,26 @@ async function loadMatches(reportId) {
       claim: true, strength: report.match_strength, reasons: report.match_reasons
     })).join("");
     if (!result.matches.length) {
-      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">' + ICON_SEARCH + '</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
+      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">⌕</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
     }
     $("#matchesPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) { showToast(error.message, true); }
 }
 
-async function loadMyClaims() {
+async function loadMyClaims(append = false) {
   if (!currentUser || currentUser.role !== "student") return;
+  const state = pageState.myClaims;
+  if (state.loading) return;
+  if (!append) state.cursor = null;
+  state.loading = true;
+  updatePageButton("#myClaimsLoadMore", state);
   try {
-    const data = await api("/api/claims");
-    const activeCount = data.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
-    $("#claimNavCount").textContent = String(activeCount);
-    $("#claimNavCount").classList.toggle("hidden", activeCount === 0);
-    $("#myClaimsList").innerHTML = data.claims.map((claim) => {
+    const data = await api(pageUrl("/api/claims", append ? state.cursor : null));
+    const claims = data.claims || [];
+    const activeCount = Number.isFinite(Number(data.active_count))
+      ? Number(data.active_count)
+      : claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status)).length;
+    const html = claims.map((claim) => {
       let guidance = "Your claim is awaiting review by authorised office staff.";
       if (claim.status === "disputed") guidance = claim.appeal_note
         ? "You requested a review of the earlier decision. The office must review the dispute before the claim can proceed."
@@ -1177,36 +1226,34 @@ async function loadMyClaims() {
         ? "This claim was not approved. You can request one review by explaining what evidence may have been overlooked."
         : "This claim was not approved after review. No further review request is available in this prototype; contact the campus office if needed.";
       const addEvidence = claim.status === "needs_more_evidence"
-        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>'
-        : "";
+        ? '<button class="button button-primary button-small" type="button" data-add-evidence="' + escapeHTML(claim.id) + '">Add evidence</button>' : "";
       const disputeForm = claim.status === "rejected" && Number(claim.appeal_count || 0) < 1
-        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>'
-        : "";
-      const appealNote = claim.appeal_note
-        ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>'
-        : "";
+        ? '<div class="claim-dispute-form"><label>Why should this decision be reviewed?<textarea data-dispute-reason="' + escapeHTML(claim.id) + '" rows="3" minlength="20" maxlength="1000" placeholder="Explain which evidence or detail should be reconsidered (at least 20 characters)."></textarea></label><button class="button button-quiet button-small" type="button" data-dispute-claim="' + escapeHTML(claim.id) + '">Request review</button></div>' : "";
+      const appealNote = claim.appeal_note ? '<div class="claim-appeal-note"><strong>Your review request</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "";
       const linkedLost = claim.linked_lost_report
-        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' +
-          escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
-          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' +
-          escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>'
-        : "";
+        ? '<div class="linked-report-line"><strong>Linked lost report</strong><span>' + escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
+          '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' + escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>' : "";
       const evidenceTypes = Array.isArray(claim.evidence_types) ? claim.evidence_types : [];
       const evidenceChips = evidenceTypes.length
-        ? '<div class="evidence-type-list"><strong>Proof types</strong>' +
-          evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
-        : "";
+        ? '<div class="evidence-type-list"><strong>Proof types</strong>' + evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>' : "";
       const evidencePhoto = claim.evidence_image_available
-        ? '<figure class="evidence-image-preview"><img src="/api/claims/' + escapeHTML(claim.id) + '/evidence-image" alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>'
-        : "";
+        ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute('/api/claims/' + claim.id + '/evidence-image') + ' alt="Your private evidence preview" draggable="false"><figcaption>Private, watermarked preview</figcaption></figure>' : "";
       return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '"><div class="list-card-head"><div><h3>' + escapeHTML(claim.report.title) + '</h3><p>' +
         escapeHTML(claim.report.public_ref + " · Submitted " + humanDate(claim.created_at)) + "</p></div><span class=\"" + statusClass(claim.status) + "\">" +
-        escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>' + ICON_PIN + 
+        escapeHTML(statusLabel(claim.status)) + "</span></div><p>" + escapeHTML(guidance) + '</p>' + appealNote + linkedLost + '<div class="list-card-meta"><span>⌖ ' +
         escapeHTML(claim.report.location) + "</span><span>Reference " + escapeHTML(claim.report.public_ref) + "</span></div>" +
         evidenceChips + evidencePhoto + '<div class="card-actions">' + addEvidence + "</div>" + disputeForm + "</article>";
     }).join("");
-    $("#myClaimsEmpty").classList.toggle("hidden", data.claims.length > 0);
+    if (append) $("#myClaimsList").insertAdjacentHTML("beforeend", html);
+    else $("#myClaimsList").innerHTML = html;
+    $("#myClaimsEmpty").classList.toggle("hidden", claims.length === 0 && !append);
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.has_more && state.cursor);
   } catch (error) { showToast(error.message, true); }
+  finally {
+    state.loading = false;
+    updatePageButton("#myClaimsLoadMore", state);
+  }
 }
 
 async function openItemDetails(reportId) {
@@ -1229,7 +1276,7 @@ async function openItemDetails(reportId) {
     ["Record updated", humanDateTime(report.updated_at)]
   ].filter((fact) => fact[1]);
   const photo = report.image_url
-    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" src="' + escapeHTML(report.image_url) + '" alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
+    ? '<div class="item-detail-photo-wrap"><img class="item-detail-photo" ' + imageSourceAttribute(report.image_url) + ' alt="Watermarked item preview" draggable="false"><small>Watermarked preview · public item details only</small></div>'
     : "";
   const matchDetails = report.match_reasons && report.match_reasons.length
     ? '<section class="match-detail-block"><h3>Why it was suggested</h3><p class="muted">These are comparison signals, not proof of ownership.</p><ul class="reason-list">' +
@@ -1239,7 +1286,7 @@ async function openItemDetails(reportId) {
   $("#itemDetailsContent").innerHTML = photo + '<p class="item-detail-description">' + escapeHTML(report.description || "") + '</p><dl class="item-detail-grid">' +
     facts.map(([key, value]) => '<div><dt>' + escapeHTML(key) + '</dt><dd>' + escapeHTML(value) + '</dd></div>').join("") +
     '</dl>' + matchDetails + '<p class="field-hint">Keep hidden marks, serial numbers and access codes private. Ownership is verified separately by office staff.</p>';
-  const canClaim = currentUser && currentUser.role === "student" && report.report_type === "found" && report.status === "available";
+  const canClaim = report.report_type === "found" && report.status === "available";
   $("#itemDetailsClaimButton").classList.toggle("hidden", !canClaim);
   $("#itemDetailsDialog").showModal();
 }
@@ -1262,28 +1309,11 @@ function findReportById(id) {
 }
 
 async function loadClaimReport(reportId) {
-  try {
-    const data = await api("/api/reports?q=" + encodeURIComponent(reportId));
-    const report = data.reports.find((item) => item.id === reportId);
-    if (!report) throw new Error("That item is no longer available to claim. Refresh the list.");
-    selectedClaimReport = report;
-    showClaimDialog(report);
-  } catch (error) { showToast(error.message, true); }
+  return openPublicClaimById(reportId);
 }
 
 function showClaimDialog(report) {
-  $("#claimError").textContent = "";
-  $("#claimItemSummary").innerHTML = "<strong>" + escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
-    "</strong><small>" + escapeHTML(categoryLabel(report.category)) + " · " + escapeHTML(report.location) + "</small>";
-  $("#claimEvidence").value = "";
-  $$('input[name="claimEvidenceType"]').forEach((input) => { input.checked = false; });
-  $("#claimEvidenceImage").value = "";
-  $("#claimEvidenceImageLabel").textContent = "Attach one supporting photo (optional)";
-  const preferredLostReportId = selectedLostReportForMatchId;
-  selectedLostReportForMatchId = null;
-  $("#claimSubmitButton").disabled = true;
-  $("#claimDialog").showModal();
-  loadClaimLostReports(preferredLostReportId);
+  openPublicClaimDialog(report);
 }
 
 async function loadClaimLostReports(preferredReportId) {
@@ -1292,9 +1322,9 @@ async function loadClaimLostReports(preferredReportId) {
   select.disabled = true;
   select.innerHTML = '<option value="">Loading your open lost reports…</option>';
   try {
-    const data = await api("/api/reports?mine=true&report_type=lost");
+    const allReports = await fetchAllPages("/api/reports?mine=true&report_type=lost");
     if (requestId !== lostReportOptionsRequest) return;
-    const openReports = data.reports.filter((item) => item.report_type === "lost" && item.status === "open");
+    const openReports = allReports.filter((item) => item.report_type === "lost" && item.status === "open");
     select.innerHTML = '<option value="">No linked lost report</option>' + openReports.map((item) =>
       '<option value="' + escapeHTML(item.id) + '">' + escapeHTML(item.title + " · " + item.public_ref + " · " + humanDate(item.occurred_at)) + '</option>'
     ).join("");
@@ -1398,37 +1428,102 @@ async function submitAdditionalEvidence(event) {
   }
 }
 
-async function loadOffice() {
+async function loadOffice(appendKey = null) {
   if (!currentUser || currentUser.role !== "office") return;
+  const definitions = {
+    intake: { path: "/api/reports?report_type=found&status=awaiting_intake", target: "#intakeQueue", button: "#intakeLoadMore", empty: "#intakeEmpty", key: "reports", render: intakeCard },
+    inventory: { path: "/api/reports?report_type=found&status=available,claim_approved", target: "#officeInventory", button: "#inventoryLoadMore", empty: "#officeInventoryEmpty", key: "reports", render: officeInventoryCard },
+    officeClaims: { path: "/api/claims?queue=active", target: "#officeClaims", button: "#officeClaimsLoadMore", empty: "#officeClaimsEmpty", key: "claims", render: officeClaimCard },
+    handovers: { path: "/api/claims?queue=handover", target: "#handoverQueue", button: "#handoverLoadMore", empty: "#handoverEmpty", key: "claims", render: officeHandoverCard },
+    privacyRequests: { path: "/api/office/privacy-requests", target: "#privacyRequestsList", button: null, empty: "#privacyRequestsEmpty", key: "requests", render: privacyRequestCard }
+  };
+  const keys = appendKey ? [appendKey] : Object.keys(definitions);
+  if (appendKey && !definitions[appendKey]) return;
   try {
-    const [summary, queueData, claimData, inventoryData] = await Promise.all([
-      api("/api/office/summary"),
-      api("/api/reports?report_type=found&status=awaiting_intake"),
-      api("/api/claims"),
-      api("/api/reports?report_type=found")
-    ]);
-    $("#officeStats").innerHTML = [
-      ["Awaiting intake", summary.awaiting_intake],
-      ["Items available", summary.available_items],
-      ["Active claims", summary.active_claims],
-      ["Disputed claims", summary.disputed_claims],
-      ["Ready for handover", summary.approved_handover || 0],
-      ["Items returned", summary.returned_items || 0]
-    ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
-    const queue = queueData.reports.filter((report) => report.status === "awaiting_intake");
-    $("#intakeQueue").innerHTML = queue.map((report) => intakeCard(report)).join("");
-    $("#intakeEmpty").classList.toggle("hidden", queue.length > 0);
-    const inventory = inventoryData.reports.filter((report) => ["available", "claim_approved"].includes(report.status) && report.tag_id);
-    $("#officeInventory").innerHTML = inventory.map((report) => officeInventoryCard(report)).join("");
-    $("#officeInventoryEmpty").classList.toggle("hidden", inventory.length > 0);
-    const active = claimData.claims.filter((claim) => ["pending", "disputed", "needs_more_evidence"].includes(claim.status));
-    $("#officeClaims").innerHTML = active.map((claim) => officeClaimCard(claim)).join("");
-    $("#officeClaimsEmpty").classList.toggle("hidden", active.length > 0);
-    const handovers = claimData.claims.filter((claim) => claim.status === "approved_for_collection");
-    $("#handoverQueue").innerHTML = handovers.map((claim) => officeHandoverCard(claim)).join("");
-    $("#handoverEmpty").classList.toggle("hidden", handovers.length > 0);
+    if (!appendKey) {
+      const summary = await api("/api/office/summary");
+      $("#officeStats").innerHTML = [
+        ["Awaiting intake", summary.awaiting_intake],
+        ["Items available", summary.available_items],
+        ["Active claims", summary.active_claims],
+        ["Disputed claims", summary.disputed_claims],
+        ["Ready for handover", summary.approved_handover || 0],
+        ["Items returned", summary.returned_items || 0]
+      ].map((stat) => '<div class="stat-card"><span>' + escapeHTML(stat[0]) + '</span><strong>' + escapeHTML(stat[1]) + "</strong></div>").join("");
+      keys.forEach((key) => {
+        pageState[key].cursor = null;
+        pageState[key].items = [];
+        pageState[key].hasMore = false;
+      });
+    }
+    await Promise.all(keys.map(async (key) => {
+      const definition = definitions[key];
+      const state = pageState[key];
+      if (state.loading) return;
+      state.loading = true;
+      updatePageButton(definition.button, state);
+      try {
+        const data = await api(pageUrl(definition.path, appendKey ? state.cursor : null));
+        const items = data[definition.key] || [];
+        state.items = appendKey ? state.items.concat(items) : items;
+        const html = items.map(definition.render).join("");
+        if (appendKey) $(definition.target).insertAdjacentHTML("beforeend", html);
+        else $(definition.target).innerHTML = html;
+        $(definition.empty).classList.toggle("hidden", state.items.length > 0);
+        state.cursor = data.next_cursor || null;
+        state.hasMore = Boolean(data.has_more && state.cursor);
+      } finally {
+        state.loading = false;
+        updatePageButton(definition.button, state);
+      }
+    }));
     refreshNotificationBadge();
   } catch (error) { showToast(error.message, true); }
+}
+
+function privacyRequestCard(request) {
+  const subject = request.account_email || (request.public_reference ? "Public case " + request.public_reference : "Account " + request.user_id);
+  const type = ({access:"Access / data copy",correction:"Correction",erasure:"Erasure"})[request.request_type] || request.request_type;
+  const status = ({pending:"Awaiting review",in_review:"In review",completed:"Completed",declined:"Declined"})[request.status] || request.status;
+  const terminal = ["completed","declined"].includes(request.status);
+  return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(type) + '</h3><p>' +
+    escapeHTML(subject) + " · " + escapeHTML(humanDateTime(request.created_at)) + '</p></div><span class="status-pill">' +
+    escapeHTML(status) + '</span></div><p>' + escapeHTML(request.details || "No additional details supplied.") + '</p>' +
+    (request.reviewer_note ? '<p class="field-hint"><strong>Last review note:</strong> ' + escapeHTML(request.reviewer_note) + '</p>' : '') +
+    (terminal ? '<p class="field-hint">This request is closed.</p>' : '<div class="card-actions"><button class="button button-primary button-small" type="button" data-privacy-review="' +
+      escapeHTML(request.id) + '" data-privacy-type="' + escapeHTML(request.request_type) + '" data-privacy-subject="' + escapeHTML(subject) +
+      '">Review request</button></div>') + '</article>';
+}
+
+let selectedPrivacyRequestId = null;
+function openPrivacyDecision(requestId, requestType, subject) {
+  selectedPrivacyRequestId = requestId;
+  $("#privacyDecisionSummary").textContent = requestType + " request · " + subject;
+  $("#privacyDecisionAction").value = "in_review";
+  $("#privacyDecisionNote").value = "";
+  $("#privacyDecisionError").textContent = "";
+  $("#privacyDecisionDialog").showModal();
+}
+async function submitPrivacyDecision(event) {
+  event.preventDefault();
+  if (!selectedPrivacyRequestId) return;
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#privacyDecisionError").textContent = "";
+  try {
+    const result = await api("/api/office/privacy-requests/" + encodeURIComponent(selectedPrivacyRequestId) + "/decision", {
+      method: "POST",
+      body: {action: $("#privacyDecisionAction").value, note: $("#privacyDecisionNote").value.trim()}
+    });
+    $("#privacyDecisionDialog").close();
+    selectedPrivacyRequestId = null;
+    showToast(result.message || "Privacy request updated.", false);
+    await loadOffice("privacyRequests");
+  } catch (error) {
+    $("#privacyDecisionError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function officeInventoryCard(report) {
@@ -1445,6 +1540,7 @@ function officeInventoryCard(report) {
 
 function officeHandoverCard(claim) {
   const report = claim.report;
+  const claimantRoll = claim.claimant_roll_number || "";
   const linkedLostMeta = claim.linked_lost_report
     ? '<div class="linked-report-line office-linked-report"><strong>Linked lost report</strong><span>' +
       escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
@@ -1453,21 +1549,38 @@ function officeHandoverCard(claim) {
     : "";
   return '<article class="list-card"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title + " · " + report.public_ref) + '</h3><p>Claimant: ' +
-    escapeHTML(claim.claimant_name) + " · " + escapeHTML(claim.claimant_email) +
+    escapeHTML(claim.claimant_name) + (claimantRoll ? " · Roll no. " + escapeHTML(claimantRoll) : " · " + escapeHTML(claim.claimant_email)) +
     "</p></div><span class=\"" + statusClass(claim.status) + "\">Verified claim</span></div>" +
     '<div class="internal-meta"><span>Physical tag: ' + escapeHTML(report.tag_id || "Not assigned") +
     "</span><span>Verification level: " + escapeHTML(report.verification_level ? "L" + report.verification_level : "Not assigned") +
     "</span><span>Stored at: " + escapeHTML(report.storage_location || "Location needs confirmation") + "</span></div>" + linkedLostMeta + "<p>Before release, compare the physical item with the tag and verify the claimant under campus policy.</p>" +
     '<div class="card-actions"><button class="button button-primary button-small" type="button" data-handover="' +
-    escapeHTML(claim.id) + '" data-tag="' + escapeHTML(report.tag_id || "") + '">Confirm physical handover</button></div></article>';
+    escapeHTML(claim.id) + '" data-tag="' + escapeHTML(report.tag_id || "") + '" data-roll="' + escapeHTML(claimantRoll) + '">Confirm physical handover</button></div></article>';
 }
 
 function intakeCard(report) {
+  const publicIdentity = report.submission_channel === "public"
+    ? '<div class="internal-meta"><strong>Public submission · Roll number: ' + escapeHTML(report.roll_number || "Not supplied") + '</strong>' +
+      (report.contact_phone ? '<p>Phone: <a href="tel:' + escapeHTML(report.contact_phone) + '">' + escapeHTML(report.contact_phone) + '</a></p>' : '') +
+      (report.contact_email ? '<p>Email: <a href="mailto:' + escapeHTML(report.contact_email) + '">' + escapeHTML(report.contact_email) + '</a></p>' : '') +
+      '</div>' +
+      '<label class="wide">Verified roll number<input name="verified_roll_number" required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the physical college ID"></label>' +
+      '<label class="checkbox-line wide"><input type="checkbox" name="identity_verified_in_person" required> I physically checked the reporter’s college ID and confirmed the roll number.</label>'
+    : "";
+  const submittedHandover = [
+    report.item_condition ? "Reported item condition: " + report.item_condition.replaceAll("_", " ") : "",
+    report.handover_at ? "Reported handover time: " + humanDateTime(report.handover_at) : "",
+    report.handover_recipient ? "Reported recipient: " + report.handover_recipient : "",
+    report.handover_note ? "Handover note: " + report.handover_note : ""
+  ].filter(Boolean);
+  const handoverContext = submittedHandover.length
+    ? '<div class="internal-meta">' + submittedHandover.map(value => '<p>' + escapeHTML(value) + '</p>').join("") + '</div>'
+    : "";
   return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(report.title) + '</h3><p>' +
     escapeHTML(report.public_ref + " · Reported " + humanDate(report.created_at)) + "</p></div><span class=\"" + statusClass(report.status) + "\">Awaiting intake</span></div>" +
-    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>" + ICON_PIN +  escapeHTML(report.location) +
-    "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" +
-    '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' +
+    "<p>" + escapeHTML(report.description) + "</p><div class=\"list-card-meta\"><span>⌖ " + escapeHTML(report.location) +
+    "</span><span>" + escapeHTML(categoryLabel(report.category)) + "</span></div>" + handoverContext +
+    '<form class="intake-form" data-intake-form="' + escapeHTML(report.id) + '">' + publicIdentity +
     '<label class="wide">Campus storage location<input name="storage_location" required minlength="4" maxlength="160" placeholder="Lost & Found room · cabinet A · shelf 01"></label>' +
     '<label class="wide">Private identifying detail / approved verification method<textarea name="private_detail" maxlength="1200" placeholder="Not shown to students. For restricted items, describe the authorised verification method without copying unnecessary sensitive data."></textarea></label>' +
     '<label>Estimated value band<select name="value_band"><option value="unknown">Unknown</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>' +
@@ -1497,6 +1610,17 @@ function officeClaimCard(claim) {
     '<div class="verification-check-grid">' + checks.map(([value, label]) =>
       '<label class="verify-check"><input type="checkbox" data-verification-check="true" value="' + escapeHTML(value) + '"><span>' + escapeHTML(label) + '</span></label>'
     ).join("") + '</div></div>';
+  const claimantPhone = claim.claimant_phone
+    ? '<div class="internal-meta">Claimant phone: <a href="tel:' + escapeHTML(claim.claimant_phone) + '">' + escapeHTML(claim.claimant_phone) + '</a></div>'
+    : '<div class="internal-meta">Claimant phone: Not provided</div>';
+  const reporterPhone = report.contact_phone
+    ? '<div class="internal-meta">Found reporter phone: <a href="tel:' + escapeHTML(report.contact_phone) + '">' + escapeHTML(report.contact_phone) + '</a></div>'
+    : "";
+  const publicIdentity = claim.submission_channel === "public"
+    ? '<div class="internal-meta"><strong>Public claim · Roll number: ' + escapeHTML(claim.claimant_roll_number || "Not supplied") + '</strong></div>' +
+      '<label class="wide">Verified roll number<input type="text" data-verified-roll required minlength="5" maxlength="20" autocomplete="off" placeholder="Read the roll number from the claimant’s college ID"></label>' +
+      '<label class="checkbox-line wide"><input type="checkbox" data-identity-verified> I physically checked the claimant’s college ID and confirmed the roll number.</label>'
+    : "";
   const actions = '<div class="decision-note"><input type="text" maxlength="800" data-note-for="' + escapeHTML(claim.id) +
     '" placeholder="Internal review note (optional)"></div><div class="card-actions">' +
     '<button class="button button-primary button-small" type="button" data-decision="approve" data-claim-id="' + escapeHTML(claim.id) + '">Verify claim</button>' +
@@ -1507,33 +1631,37 @@ function officeClaimCard(claim) {
     ? '<div class="linked-report-line office-linked-report"><strong>Linked lost report</strong><span>' +
       escapeHTML(claim.linked_lost_report.title + " · " + claim.linked_lost_report.public_ref) +
       '</span><span class="' + statusClass(claim.linked_lost_report.status) + '">' +
-      escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>'
+      escapeHTML(statusLabel(claim.linked_lost_report.status)) + '</span></div>' +
+      (claim.linked_lost_report.private_verification_detail
+        ? '<div class="internal-detail"><strong>OWNER-ONLY DETAILS · LOST REPORT</strong><small>' +
+          escapeHTML(claim.linked_lost_report.private_verification_detail) + '</small></div>'
+        : "")
     : "";
   const evidenceTypes = Array.isArray(claim.evidence_types) ? claim.evidence_types : [];
   const evidenceChips = evidenceTypes.length
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + escapeHTML(claim.id) + "/evidence-image";
+  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
   const evidencePhoto = claim.evidence_image_available
-    ? '<figure class="evidence-image-preview"><img src="' + evidenceImageSource + '" alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
+    ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
-  return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '"><div class="list-card-head"><div><h3>' +
+  return '<article class="list-card" data-claim-card="' + escapeHTML(claim.id) + '" data-verification-level="' + levelNumber + '" data-minimum-checks="' + minimumChecks + '" data-public-claim="' + (claim.submission_channel === "public" ? "true" : "false") + '" data-expected-roll="' + escapeHTML(claim.claimant_roll_number || "") + '"><div class="list-card-head"><div><h3>' +
     escapeHTML(report.title) + " · " + escapeHTML(report.public_ref) +
-    '</h3><p>Claimant: ' + escapeHTML(claim.claimant_name) + " · " + escapeHTML(claim.claimant_email) + "</p></div><span class=\"" + statusClass(claim.status) +
+    '</h3><p>Claimant: ' + escapeHTML(claim.claimant_name) + (claim.claimant_roll_number ? " · Roll no. " + escapeHTML(claim.claimant_roll_number) : " · " + escapeHTML(claim.claimant_email)) + "</p></div><span class=\"" + statusClass(claim.status) +
     "\">" + escapeHTML(statusLabel(claim.status)) + "</span></div>" +
     '<div class="internal-meta"><span>Physical tag: ' + escapeHTML(report.tag_id || "Not assigned") + "</span><span>Verification: " + escapeHTML(level) +
     "</span><span>Value band: " + escapeHTML(report.value_band || "unknown") + "</span><span>Sensitivity: " + escapeHTML(report.sensitivity_level) + "</span></div>" +
-    linkedLost +
+    claimantPhone + reporterPhone + linkedLost +
     '<div class="claim-evidence"><strong>CLAIMANT EVIDENCE · PRIVATE</strong><p>' + escapeHTML(claim.evidence) + "</p></div>" +
     evidenceChips + evidencePhoto +
     (claim.appeal_note ? '<div class="claim-appeal-note"><strong>CLAIMANT REVIEW REQUEST</strong><p>' + escapeHTML(claim.appeal_note) + '</p></div>' : "") +
     '<div class="internal-detail"><strong>INTERNAL VERIFICATION DETAIL</strong><small>' + escapeHTML(privateDetail) + "</small></div>" +
-    '<div class="list-card-meta"><span>' + ICON_PIN + escapeHTML(report.location) + "</span><span>Submitted " + escapeHTML(humanDateTime(claim.created_at)) + "</span></div>" +
+    '<div class="list-card-meta"><span>⌖ ' + escapeHTML(report.location) + "</span><span>Submitted " + escapeHTML(humanDateTime(claim.created_at)) + "</span></div>" +
     (claim.status === "disputed" ? '<p class="field-hint">' + escapeHTML(claim.appeal_note
       ? "This is a claimant-requested review of a previous rejection. Review the appeal note and evidence again."
       : "Resolve all competing active claims before approving any one claim.") + '</p>' : "") +
-    checklist + actions + "</article>";
+    publicIdentity + checklist + actions + "</article>";
 }
 
 async function submitIntake(event) {
@@ -1543,6 +1671,8 @@ async function submitIntake(event) {
   const values = new FormData(form);
   const body = {
     confirmed_physical_receipt: values.get("confirmed_physical_receipt") === "on",
+    identity_verified_in_person: values.get("identity_verified_in_person") === "on",
+    verified_roll_number: String(values.get("verified_roll_number") || "").trim() || null,
     storage_location: String(values.get("storage_location") || "").trim(),
     private_detail: String(values.get("private_detail") || "").trim() || null,
     value_band: values.get("value_band"),
@@ -1562,30 +1692,9 @@ async function refreshNotificationBadge() {
   try {
     const data = await api("/api/notifications");
     const badge = $("#notificationNavCount");
-    if (badge) {
-      badge.textContent = String(data.unread_count || 0);
-      badge.classList.toggle("hidden", !data.unread_count);
-    }
+    badge.textContent = String(data.unread_count || 0);
+    badge.classList.toggle("hidden", !data.unread_count);
   } catch (_) {}
-  if (currentUser.role === "student") {
-    try {
-      const claimData = await api("/api/claims");
-      const activeCount = (claimData.claims || []).filter((claim) =>
-        ["pending", "disputed", "needs_more_evidence"].includes(claim.status)
-      ).length;
-      const claimBadge = $("#claimNavCount");
-      if (claimBadge) {
-        claimBadge.textContent = String(activeCount);
-        claimBadge.classList.toggle("hidden", activeCount === 0);
-      }
-    } catch (_) {}
-  } else {
-    const claimBadge = $("#claimNavCount");
-    if (claimBadge) claimBadge.classList.add("hidden");
-  }
-  if (window.liquidNavbar && typeof window.liquidNavbar.measure === "function") {
-    window.liquidNavbar.measure();
-  }
 }
 
 async function loadNotifications(silent = false) {
@@ -1632,80 +1741,25 @@ async function loadActivity() {
     const data = await api("/api/activity/me");
     const total = Number(data.total_points || 0);
     const next = data.next_milestone;
-    const progress = next ? Math.min(100, Math.round((total / next.threshold) * 100)) : 100;
+    const rawProgress = next ? total / next.threshold * 100 : 100;
+    const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
     const nextText = next
       ? (data.points_to_next_milestone + " more points to " + next.tier)
       : "All current recognition milestones earned";
     $("#activityOverview").innerHTML =
-      '<div class="activity-points-card">' +
-        '<div class="points-header">' +
-          '<span class="eyebrow">VERIFIED ACTIVITY</span>' +
-          '<div class="points-badge-icon" aria-hidden="true">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-          '</div>' +
-        '</div>' +
-        '<div class="points-hero">' +
-          '<span class="points-num">' + escapeHTML(total) + '</span>' +
-          '<span class="points-unit">total verified points</span>' +
-        '</div>' +
-        '<div class="points-footer">' +
-          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
-          '<span>Points are awarded for contributions verified by the campus office.</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="milestone-card">' +
-        '<div class="milestone-header">' +
-          '<div>' +
-            '<span class="eyebrow">NEXT MILESTONE</span>' +
-            '<h3 class="milestone-title">' + escapeHTML(next ? next.tier : "Recognition complete") + '</h3>' +
-          '</div>' +
-          '<span class="count-pill milestone-target">' + escapeHTML(next ? (next.threshold + " pts") : "Complete") + '</span>' +
-        '</div>' +
-        '<div class="milestone-progress-block">' +
-          '<div class="progress-track" role="progressbar" aria-valuenow="' + progress + '" aria-valuemin="0" aria-valuemax="100">' +
-            '<div class="progress-fill" style="width:' + progress + '%"></div>' +
-          '</div>' +
-          '<div class="progress-info">' +
-            '<span class="muted">' + escapeHTML(nextText) + '</span>' +
-            '<span class="progress-percent">' + progress + '%</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="point-rules">' +
-          '<div class="rule-chip">' +
-            '<span class="rule-badge">+' + escapeHTML(data.rules.verified_intake) + '</span>' +
-            '<span class="rule-text">verified office intake</span>' +
-          '</div>' +
-          '<div class="rule-chip">' +
-            '<span class="rule-badge">+' + escapeHTML(data.rules.verified_return) + '</span>' +
-            '<span class="rule-text">verified return</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+      '<div class="activity-points-card"><div><p class="eyebrow">VERIFIED ACTIVITY</p><strong>' + escapeHTML(total) +
+      '</strong><span>total points</span></div><div class="points-symbol">✦</div><p class="muted">Points are awarded for contributions verified by the campus office.</p></div>' +
+      '<div class="milestone-card"><div class="milestone-heading"><div><p class="eyebrow">NEXT MILESTONE</p><h3>' +
+      escapeHTML(next ? next.tier : "Recognition complete") + '</h3></div><span class="count-pill">' +
+      escapeHTML(next ? (next.threshold + " pts") : "Complete") + "</span></div><div class=\"progress-track\"><span style=\"width:" +
+      progress + '%"></span></div><p class="muted">' + escapeHTML(nextText) + '</p><div class="point-rules"><span>+' +
+      escapeHTML(data.rules.verified_intake) + ' <small>verified office intake</small></span><span>+' +
+      escapeHTML(data.rules.verified_return) + ' <small>verified return</small></span></div></div>';
     const leaderboard = await api("/api/leaderboard");
     $("#leaderboardParticipantCount").textContent = leaderboard.participant_count + (leaderboard.participant_count === 1 ? " contributor" : " contributors");
     $("#leaderboardSummary").innerHTML = leaderboard.my_rank
-      ? '<div class="leaderboard-self-card leaderboard-self">' +
-          '<div class="rank-badge-box">' +
-            '<span class="rank-hash">#</span><span class="rank-number">' + escapeHTML(leaderboard.my_rank) + '</span>' +
-          '</div>' +
-          '<div class="rank-copy">' +
-            '<span class="rank-label">Your Current Standing</span>' +
-            '<h4>Campus Contributor Rank #' + escapeHTML(leaderboard.my_rank) + '</h4>' +
-            '<p class="muted">You have accumulated <strong>' + escapeHTML(leaderboard.my_total_points) + '</strong> verified points so far.</p>' +
-          '</div>' +
-          '<div class="rank-tag-pill">' + escapeHTML(leaderboard.my_total_points) + ' pts</div>' +
-        '</div>'
-      : '<div class="leaderboard-self-card leaderboard-self unranked">' +
-          '<div class="rank-badge-box unranked-box">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>' +
-          '</div>' +
-          '<div class="rank-copy">' +
-            '<span class="rank-label">Campus Standing</span>' +
-            '<h4>Unranked Contributor</h4>' +
-            '<p class="muted">Earn points when campus staff verify your intake or return, and claim your place on the leaderboard.</p>' +
-          '</div>' +
-          '<div class="rank-tag-pill unranked-pill">0 pts</div>' +
-        '</div>';
+      ? '<div class="leaderboard-self"><span>Your current rank</span><strong>#' + escapeHTML(leaderboard.my_rank) + '</strong><small>' + escapeHTML(leaderboard.my_total_points) + ' verified points</small></div>'
+      : '<div class="leaderboard-self"><span>Your current rank</span><strong>—</strong><small>Earn points when the office verifies a contribution.</small></div>';
     $("#leaderboardList").innerHTML = leaderboard.leaders.map((leader) =>
       '<div class="leaderboard-row ' + (leader.is_me ? "leaderboard-row-self" : "") + '"><span class="leaderboard-rank">#' +
       escapeHTML(leader.rank) + '</span><span class="leaderboard-name">' + escapeHTML(leader.display_name) + '</span><span class="leaderboard-detail">' +
@@ -1713,18 +1767,14 @@ async function loadActivity() {
     ).join("");
     $("#leaderboardEmpty").classList.toggle("hidden", leaderboard.leaders.length > 0);
     $("#certificateList").innerHTML = data.certificates.map((certificate) =>
-      '<article class="certificate-card"><div class="certificate-emblem">' +
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>' +
-      '</div><div class="certificate-copy"><span class="item-ref">' +
+      '<article class="certificate-card"><div class="certificate-emblem">✧</div><div class="certificate-copy"><span class="item-ref">' +
       escapeHTML(certificate.serial) + "</span><h3>" + escapeHTML(certificate.tier) + '</h3><p class="muted">' +
       escapeHTML(certificate.points_at_issue + " points at issue · " + humanDate(certificate.issued_at)) + '</p></div><button class="button button-primary button-small" type="button" data-certificate-download="' +
-      escapeHTML(certificate.id) + '"><span>Download PDF</span> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></article>'
+      escapeHTML(certificate.id) + '">Download PDF ↗</button></article>'
     ).join("");
     $("#certificateEmpty").classList.toggle("hidden", data.certificates.length > 0);
     $("#activityLedger").innerHTML = data.ledger.map((entry) =>
-      '<article class="ledger-row"><div class="ledger-icon">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
-      '</div><div class="ledger-copy"><strong>' +
+      '<article class="ledger-row"><div class="ledger-icon">＋</div><div class="ledger-copy"><strong>' +
       escapeHTML(entry.reason) + '</strong><small>' + escapeHTML(humanDateTime(entry.created_at)) +
       (entry.report_id ? " · Verified report recorded" : "") + '</small></div><span class="ledger-points">+' +
       escapeHTML(entry.points) + " pts</span></article>"
@@ -1824,10 +1874,13 @@ async function submitClaimDispute(claimId) {
   } catch (error) { showToast(error.message, true); }
 }
 
-function openHandoverDialog(claimId, itemTitle) {
+function openHandoverDialog(claimId, itemTitle, rollNumber = "") {
   selectedHandoverClaimId = claimId;
+  selectedHandoverRollNumber = rollNumber || null;
   $("#handoverSummary").textContent = "Before releasing " + itemTitle + ", read the physical label and compare it with the Tag ID in the office record.";
   $("#handoverTag").value = "";
+  $("#handoverVerifiedRoll").value = "";
+  $("#handoverRollVerificationGroup").classList.toggle("hidden", !selectedHandoverRollNumber);
   $("#handoverIdentityChecked").checked = false;
   $("#handoverPhysicalChecked").checked = false;
   $("#handoverNote").value = "";
@@ -1850,6 +1903,11 @@ async function submitHandover(event) {
     $("#handoverError").textContent = "Confirm both the identity check and actual physical handover.";
     return;
   }
+  if (selectedHandoverRollNumber && $("#handoverVerifiedRoll").value.trim().toUpperCase() !== selectedHandoverRollNumber.toUpperCase()) {
+    $("#handoverError").textContent = "The verified college roll number must match the public claim record.";
+    $("#handoverVerifiedRoll").focus();
+    return;
+  }
   $("#handoverError").textContent = "";
   $("#confirmHandoverButton").disabled = true;
   try {
@@ -1859,11 +1917,13 @@ async function submitHandover(event) {
         tag_id: tagId,
         confirmed_physical_handover: $("#handoverPhysicalChecked").checked,
         claimant_identity_checked: $("#handoverIdentityChecked").checked,
+        verified_roll_number: $("#handoverVerifiedRoll").value.trim() || null,
         note: $("#handoverNote").value.trim() || null
       }
     });
     $("#handoverDialog").close();
     selectedHandoverClaimId = null;
+    selectedHandoverRollNumber = null;
     showToast(result.message, false);
     await loadOffice();
   } catch (error) {
@@ -1883,6 +1943,10 @@ function openDecisionConfirmation(claimId, action) {
     let reason = "";
     if (checked.length < minimum) reason = "Select at least " + minimum + " distinct verification checks before verifying this claim.";
     else if (!checked.includes("claimant_identity")) reason = "Confirm the claimant's identity before verifying this claim.";
+    else if (card && card.dataset.publicClaim === "true" &&
+      (!card.querySelector("[data-identity-verified]")?.checked ||
+       card.querySelector("[data-verified-roll]")?.value.trim().toUpperCase() !== (card.dataset.expectedRoll || "").toUpperCase()))
+      reason = "Physically verify the claimant's college ID and enter the matching roll number before approving this public claim.";
     else if (level >= 4 && !checked.includes("authorised_record")) reason = "Restricted items require the authorised-record / custodian check.";
     if (reason) {
       let message = card && card.querySelector(".field-error-note");
@@ -1948,7 +2012,11 @@ async function submitDecision(event) {
   try {
     const result = await api("/api/claims/" + encodeURIComponent(claimId) + "/decision", {
       method: "POST",
-      body: { action, note: note || null, verification_checks: verificationChecks }
+      body: {
+        action, note: note || null, verification_checks: verificationChecks,
+        identity_verified_in_person: Boolean(card && card.querySelector("[data-identity-verified]")?.checked),
+        verified_roll_number: card && card.querySelector("[data-verified-roll]")?.value.trim() || null
+      }
     });
     $("#decisionConfirmDialog").close();
     selectedDecisionClaimId = null;
@@ -1963,114 +2031,787 @@ async function submitDecision(event) {
   }
 }
 
-async function loadProfile() {
-  if (!currentUser) return;
-  const isOffice = currentUser.role === "office";
-  
-  if ($("#profileHeroName")) $("#profileHeroName").textContent = currentUser.display_name || "User";
-  if ($("#profileHeroEmail")) $("#profileHeroEmail").textContent = currentUser.email || "";
-  if ($("#profileHeroRole")) {
-    $("#profileHeroRole").textContent = isOffice ? "Office staff" : "Student";
-    $("#profileHeroRole").className = "role-chip" + (isOffice ? " role-chip-office" : "");
+function placeFinnIn(selector) {
+  const dock = $("#finnDock");
+  const slot = selector ? $(selector) : null;
+  if (dock && slot) slot.appendChild(dock);
+  else if (dock) document.body.appendChild(dock);
+}
+
+function setPublicNavActive(destination) {
+  const nav = $("#publicNav");
+  if (!nav) return;
+  nav.querySelectorAll("[data-public-destination]").forEach(button => {
+    const active = button.dataset.publicDestination === destination;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+}
+
+function showPublicHome() {
+  setPublicNavActive("home");
+  stopNotificationPolling();
+  setFinnMessage("Welcome back to campus, detective. What are we looking for today?", false);
+  currentUser = null;
+  $("#loginView").classList.remove("hidden");
+  $("#loginView").classList.remove("office-access-open");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.remove("hidden");
+  placeFinnIn("#publicHomeContent [data-finn-slot]");
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function showPublicDestination(type) {
+  setPublicNavActive(type);
+  setFinnMessage(type === "browse" ? "Let’s search both open Lost reports and items the office has received." : type === "track" ? "Enter your case reference and roll number. I’ll check for private access saved by this browser." : type === "found" ? "Tell us what you found. The office will record it before it appears in search." : "Let’s make a clear Lost report so we can find useful matches.", false);
+  $("#loginView").classList.remove("hidden");
+  $("#appView").classList.add("hidden");
+  $("#officeLoginPanel").classList.add("hidden");
+  $("#publicHomeContent").classList.add("hidden");
+  const destination = type === "browse" ? "publicBrowsePage" : type === "track" ? "publicTrackPage" : type === "found" ? "publicFoundPage" : "publicLostPage";
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.toggle("hidden",id !== destination));
+  placeFinnIn("#"+destination+" [data-finn-slot]");
+  if (type === "browse") {
+    $("#publicBrowseEmpty").textContent = "Loading campus reports…";
+    $("#publicBrowseEmpty").classList.remove("hidden");
+    loadPublicFound();
   }
-  if ($("#profileHeroAvatar")) {
-    $("#profileHeroAvatar").textContent = (currentUser.display_name || "U").trim().charAt(0).toUpperCase();
-    $("#profileHeroAvatar").className = "profile-hero-avatar " + (isOffice ? "avatar-office" : "avatar-student");
-  }
-  if ($("#profileHeroSwitchText")) {
-    $("#profileHeroSwitchText").textContent = isOffice ? "Switch to student" : "Switch to office";
-  }
-  
-  try {
-    if (!isOffice) {
-      const act = await api("/api/activity/me");
-      if ($("#profilePointsVal")) $("#profilePointsVal").textContent = act.total_points || 0;
-      if ($("#profileMilestoneTier")) {
-        $("#profileMilestoneTier").textContent = act.next_milestone ? act.next_milestone.tier + " tier" : "Recognition complete";
-      }
+  if (type === "lost" || type === "found") {
+    const reportPage = $("#" + destination);
+    const hiddenType = reportPage.querySelector("input[type=hidden]");
+    if (hiddenType) hiddenType.value = type;
+    const title = reportPage.querySelector(".public-title");
+    const eyebrow = reportPage.querySelector(".eyebrow");
+    const lede = reportPage.querySelector(".public-lede");
+    const submit = reportPage.querySelector("form button[type=submit]");
+    if (type === "found") {
+      eyebrow.textContent = "PUBLIC REPORT · FOUND";
+      title.innerHTML = 'You found it.<br><span>Let’s reunite it.</span>';
+      lede.textContent = "Tell us what you found. The campus office will verify your college ID when you hand in the item.";
+      submit.textContent = "Submit found report ↗";
+      reportPage.querySelector("#publicDescriptionFound").placeholder = "Describe the item as you found it: type, size, material, condition and visible details. Do not guess who owns it.";
+      reportPage.querySelector("#publicFeaturesFound").placeholder = "Visible exterior details only. Keep contents, serial numbers and hidden identifying marks private.";
+      reportPage.querySelector("#publicAreaFound").placeholder = "e.g. Outside Lab 3, under a library desk, near the stairs";
     } else {
-      if ($("#profilePointsVal")) $("#profilePointsVal").textContent = "Staff";
-      if ($("#profileMilestoneTier")) $("#profileMilestoneTier").textContent = "Full administrative access";
+      eyebrow.textContent = "PUBLIC REPORT · LOST";
+      title.innerHTML = 'Let’s find<br><span>what’s missing.</span>';
+      lede.textContent = "Submit a report using your college roll number. No student account or password is needed.";
+      submit.textContent = "Submit lost report ↗";
+      reportPage.querySelector("#publicDescription").placeholder = "Describe the item you lost and the details that could help you recognise it. Keep unique ownership clues private.";
+      reportPage.querySelector("#publicFeatures").placeholder = "Colour patterns, stickers, scratches, logos, case or accessories…";
+      reportPage.querySelector("#publicArea").placeholder = "e.g. Library reading room, canteen counter, bus bay";
     }
-  } catch (_) {}
-  
-  try {
-    const rep = await api("/api/reports?mine=true");
-    if ($("#profileReportsCount")) $("#profileReportsCount").textContent = rep.reports ? rep.reports.length : 0;
-  } catch (_) {}
-
-  try {
-    const clm = await api("/api/claims");
-    if ($("#profileClaimsCount")) $("#profileClaimsCount").textContent = clm.claims ? clm.claims.length : 0;
-  } catch (_) {}
-
-  try {
-    const ntf = await api("/api/notifications");
-    if ($("#profileAlertsCount")) $("#profileAlertsCount").textContent = ntf.unread_count || 0;
-  } catch (_) {}
-}
-
-async function start() { try { initLiquidNavbar(); } catch(e) { console.error(e); }
-  try { await loadConfig(); } catch (_) { enableMockMode(); await loadConfig(); }
-  try { const data = await api("/api/me"); enterApp(data.user); return; } catch (_) {}
-  if (!usingMockApi && appConfig && appConfig.demo_mode) {
-    try { const demo=await api("/api/login",{method:"POST",body:{email:"student@lostlink.local",password:"student123"}}); enterApp(demo.user); showToast("Opened the student demo dashboard.",false); return; } catch (_) {}
   }
-  enableMockMode(); enterApp(mockCopy(MOCK_USERS.student));
+  if (type === "browse") loadPublicFound();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
-
-$("#logoutButton").addEventListener("click", async () => {
-  try { await api("/api/logout", { method: "POST" }); } catch (_) {}
-  showToast("Session reset to demo account.", false);
-  showLogin();
+async function publicApi(path, options) {
+  const opts = Object.assign({method:"GET",credentials:"omit",headers:{}},options || {});
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+  if (opts.signal && typeof AbortSignal.any === "function") {
+    opts.signal = AbortSignal.any([opts.signal, controller.signal]);
+  } else {
+    opts.signal = controller.signal;
+  }
+  let response;
+  try {
+    response = await fetch(API_BASE_URL + path,opts);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("The LostLink server took too long to respond. It may be waking from a cold start; please retry.");
+    }
+    throw new Error("LostLink API is unreachable. Check the backend deployment and API origin.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(explainError(data,"Request failed ("+response.status+")."));
+  return data;
+}
+async function loadPublicFound() {
+  const q = $("#publicBrowseQuery").value.trim();
+  const category = $("#publicBrowseCategory").value;
+  const params = new URLSearchParams();
+  if (q) params.set("q",q);
+  if (category) params.set("category",category);
+  try {
+    const data = await publicApi("/api/public/search"+(params.size ? "?"+params.toString() : ""));
+    const reports = Array.isArray(data.reports) ? data.reports : [];
+    $("#publicBrowseResults").innerHTML = reports.map(item => {
+      const isFound = String(item.report_type || "").toLowerCase() === "found";
+      const canClaim = isFound && String(item.status || "").toLowerCase() === "available";
+      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'" data-public-ref="'+escapeHTML(item.public_ref || item.reference || '')+'">Claim this item <span aria-hidden="true">→</span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
+    }).join("");
+    $("#publicBrowseEmpty").textContent = reports.length ? "No claimable Found items yet. Found items appear here after the campus office receives and lists them." : "No public reports match that search yet.";
+    $("#publicBrowseEmpty").classList.toggle("hidden", reports.length > 0);
+  } catch(error) {
+    $("#publicBrowseResults").innerHTML = "";
+    $("#publicBrowseEmpty").classList.remove("hidden");
+    $("#publicBrowseEmpty").textContent = error.message;
+  }
+}
+function openPublicOfficeSignIn() {
+  setPublicNavActive("office");
+  setFinnMessage("Welcome to the campus desk. This sign-in is for authorised office staff.", false);
+  $("#loginView").classList.add("office-access-open");
+  $("#loginPanelKicker").textContent = "OFFICE STAFF ACCESS";
+  $("#loginPanelTitle").textContent = "Office staff sign in";
+  $("#loginPanelCopy").textContent = "Authorised campus staff only. Office access is restricted to approved staff email addresses.";
+  $("#loginError").textContent = "";
+  $("#loginForm").reset();
+  $("#publicHomeContent").classList.add("hidden");
+  ["publicLostPage","publicFoundPage","publicBrowsePage","publicTrackPage"].forEach(id => $("#"+id).classList.add("hidden"));
+  placeFinnIn("#officeLoginPanel [data-finn-slot]");
+  $("#officeLoginPanel").classList.remove("hidden");
+  $("#loginEmail").focus();
+}
+// One document-level handler owns all public navigation actions. This avoids
+// losing click behaviour when a public panel or navigation item is replaced.
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-public-destination]");
+  if (!button) return;
+  event.preventDefault();
+  const destination = button.dataset.publicDestination;
+  if (destination === "home") showPublicHome();
+  else if (destination === "office") openPublicOfficeSignIn();
+  else showPublicDestination(destination);
 });
-$("#viewSwitchBtn").addEventListener("click", async () => {
-  if (!currentUser) return;
-  const isOffice = currentUser.role === "office";
-  const targetRole = isOffice ? "student" : "office";
-  const targetEmail = isOffice ? "student@lostlink.local" : "office@lostlink.local";
-  const targetPassword = isOffice ? "student123" : "office123";
-
-  if (usingMockApi) {
-    enterApp(mockCopy(isOffice ? MOCK_USERS.student : MOCK_USERS.office));
-    showToast("Switched to " + targetRole + " demo view.", false);
+$("#publicBrowseButton").addEventListener("click",() => showPublicDestination("browse"));
+$("#publicTrackButton").addEventListener("click",() => showPublicDestination("track"));
+$("#publicOfficeButton").addEventListener("click",openPublicOfficeSignIn);
+$("#closeOfficeAccess").addEventListener("click",showPublicHome);
+// Delegate public actions from the document so they continue working if
+// public panels are re-rendered or their buttons are replaced.
+document.addEventListener("click", event => {
+  const reportButton = event.target.closest("[data-public-report]");
+  if (reportButton) {
+    event.preventDefault();
+    showPublicDestination(reportButton.dataset.publicReport);
+    (reportButton.dataset.publicReport === "found" ? $("#publicFoundPage .public-title") : $("#publicLostPage .public-title")).scrollIntoView({behavior:"smooth",block:"start"});
     return;
   }
-
+  const homeButton = event.target.closest("[data-public-home]");
+  if (homeButton) {
+    event.preventDefault();
+    showPublicHome();
+  }
+});
+$("#publicBrowseForm").addEventListener("submit",event => {event.preventDefault();loadPublicFound();});
+const publicAccessMemory = new Map();
+function buildPublicTrackingUrl(reference, roll, secret) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("track", reference);
+  url.searchParams.set("roll", String(roll).trim().toUpperCase());
+  url.hash = "secret=" + encodeURIComponent(secret);
+  return url.toString();
+}
+function parsePublicTrackingUrl(value) {
   try {
-    await api("/api/logout", { method: "POST" });
-  } catch (_) {}
-
+    const url = new URL(String(value || "").trim(), window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    const reference = url.searchParams.get("track");
+    const roll = url.searchParams.get("roll");
+    const secret = new URLSearchParams(url.hash.replace(/^#/, "")).get("secret");
+    if (!reference || !roll || !secret || secret.length < 20) return null;
+    return {reference, roll: roll.trim().toUpperCase(), secret};
+  } catch (_) { return null; }
+}
+function privateTrackingReceiptMarkup(message, trackingUrl) {
+  return '<p>' + escapeHTML(message) + '</p><p><a class="button button-liquid button-small" href="' +
+    escapeHTML(trackingUrl) + '">Open private tracking link ↗</a></p>' +
+    '<p class="field-hint">Keep this link private. Anyone who has it can view this case status.</p>';
+}
+function storePublicAccess(reference, roll, secret) {
+  if (!reference || !roll || !secret) return;
+  const access = {roll: String(roll).trim().toUpperCase(), secret: String(secret)};
+  publicAccessMemory.set(reference, access);
+  try { sessionStorage.setItem("lostlink:private-access:" + reference, JSON.stringify(access)); } catch (_) {}
+  const linkField = $("#publicTrackLink");
+  if (linkField) linkField.value = buildPublicTrackingUrl(reference, access.roll, access.secret);
+}
+function getPublicAccess(reference, roll, suppliedSecret) {
+  const normalizedRoll = String(roll || "").trim().toUpperCase();
+  let secret = String(suppliedSecret || "").trim();
+  if (!secret) {
+    let access = publicAccessMemory.get(reference) || null;
+    if (!access) {
+      try { const raw = sessionStorage.getItem("lostlink:private-access:" + reference); access = raw ? JSON.parse(raw) : null; }
+      catch (_) { access = null; }
+    }
+    if (access && access.roll === normalizedRoll) secret = String(access.secret || "");
+  }
+  if (!normalizedRoll || !secret) return null;
+  return {"X-LostLink-Roll-Number": normalizedRoll, "X-LostLink-Tracking-Secret": secret};
+}
+function publicMatchClaimButton(report) {
+  if (!report || report.report_type !== "found" || report.status !== "available") return "";
+  return '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || report.reference || "") + '">Claim this item <span aria-hidden="true">→</span></button></div>';
+}
+function openPublicClaimDialog(report) {
+  if (!report || !report.id || report.report_type !== "found" || report.status !== "available") {
+    showToast("This Found item is no longer available for claims. Refresh the list.", true); return;
+  }
+  selectedPublicFoundId = report.id;
+  $("#publicClaimItemSummary").innerHTML = "<strong>" + escapeHTML(report.title || "Found item") + " · " + escapeHTML(report.public_ref || "") + "</strong><small>" + escapeHTML(categoryLabel(report.category)) + " · " + escapeHTML(report.location_area || report.location || "Campus") + "</small>";
+  $("#publicClaimError").textContent = "";
+  $("#publicClaimForm").reset();
+  const dialog = $("#publicClaimDialog");
+  if (!dialog.open) dialog.showModal();
+}
+async function openPublicClaimById(reportId, publicRef) {
   try {
-    const result = await api("/api/login", {
+    if (!reportId) throw new Error("This Found item link is incomplete. Refresh Browse and try again.");
+    const data = await publicApi("/api/public/found/" + encodeURIComponent(reportId));
+    const report = data.report;
+    if (!report || report.id !== reportId || report.report_type !== "found" || report.status !== "available") {
+      throw new Error("This Found item is no longer available for claims. Refresh Browse.");
+    }
+    openPublicClaimDialog(report);
+  } catch (error) { showToast(error.message, true); }
+}
+
+let selectedPublicFoundId = null;
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-public-claim]");
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  event.stopPropagation();
+  void openPublicClaimById(button.dataset.publicClaim, button.dataset.publicRef);
+});
+$("#publicClaimClose").addEventListener("click", () => $("#publicClaimDialog").close());
+$("#publicClaimCancel").addEventListener("click", () => $("#publicClaimDialog").close());
+$("#publicClaimForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!selectedPublicFoundId || claimSubmitting) return;
+  const roll = $("#publicClaimRoll").value.trim().toUpperCase();
+  const contactPhone = $("#publicClaimPhone").value.trim();
+  const evidence = $("#publicClaimEvidence").value.trim();
+  const evidenceTypes = $$('input[name="publicClaimEvidenceType"]:checked').map(input => input.value);
+  const errorNode = $("#publicClaimError");
+  errorNode.textContent = "";
+  if (evidence.length < 20) { errorNode.textContent = "Please provide at least 20 characters explaining how you can verify ownership."; return; }
+  if (!evidenceTypes.length) { errorNode.textContent = "Select at least one type of supporting evidence."; return; }
+  const button = $("#publicClaimSubmit");
+  claimSubmitting = true;
+  button.disabled = true;
+  try {
+    const lostReportReference = $("#publicClaimLostReference").value.trim();
+    const result = await publicApi("/api/public/found/" + encodeURIComponent(selectedPublicFoundId) + "/claims", {
       method: "POST",
-      body: { email: targetEmail, password: targetPassword }
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({roll_number:roll,contact_phone:contactPhone || null,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
     });
-    enterApp(result.user);
-    showToast("Switched to " + (result.user.role === "office" ? "office" : "student") + " view.", false);
+    storePublicAccess(result.claim.reference, roll, result.tracking_secret);
+    const claimTrackingUrl = $("#publicTrackLink").value;
+    $("#publicTrackResult").innerHTML = privateTrackingReceiptMarkup(
+      "Claim submitted. Your private tracking link is ready.", claimTrackingUrl
+    );
+    $("#publicClaimDialog").close();
+    selectedPublicFoundId = null;
+    showPublicDestination("track");
+  } catch(error) { errorNode.textContent = error.message; }
+  finally { claimSubmitting = false; button.disabled = false; }
+});
+async function requestPublicCategorySuggestion(button) {
+  const form = button.closest("form");
+  if (!form) return;
+  const found = form.id === "publicFoundReportForm";
+  const suffix = found ? "Found" : "";
+  const field = (id) => form.querySelector("#" + id + suffix);
+  const output = form.querySelector(found ? "#publicCategorySuggestionFound" : "#publicCategorySuggestion");
+  const payload = {
+    title: field("publicTitle").value.trim(),
+    description: field("publicDescription").value.trim(),
+    brand: field("publicBrand").value.trim() || null,
+    primary_color: field("publicColor").value.trim() || null,
+    visible_features: field("publicFeatures").value.trim() || null
+  };
+  if (payload.title.length < 4 || payload.description.length < 10) {
+    output.textContent = "Enter an item name (at least 4 characters) and description (at least 10 characters) first.";
+    (payload.title.length < 4 ? field("publicTitle") : field("publicDescription")).focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Analysing…";
+  output.textContent = "Checking item details…";
+  try {
+    const result = await publicApi("/api/public/category-suggestion", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
+    });
+    const suggestion = result.suggestion || {};
+    if (suggestion.status !== "suggested" || !suggestion.category) {
+      output.textContent = "No confident category suggestion. Please choose one manually.";
+      return;
+    }
+    const alternatives = (suggestion.alternatives || []).slice(0, 3);
+    output.replaceChildren();
+    const heading = document.createElement("span");
+    heading.textContent = "Suggested: " + (suggestion.label || categoryLabel(suggestion.category));
+    output.append(heading);
+    const actions = document.createElement("span");
+    actions.className = "public-ai-alternatives";
+    alternatives.forEach(item => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "ai-alternative-button";
+      option.textContent = item.label || categoryLabel(item.category);
+      option.addEventListener("click", () => {
+        form.querySelector(found ? "#publicCategoryFound" : "#publicCategory").value = item.category;
+        output.textContent = (item.label || categoryLabel(item.category)) + " selected. Review it before submitting.";
+      });
+      actions.append(option);
+    });
+    output.append(actions);
+    const note = document.createElement("span");
+    note.textContent = "AI suggestions are advisory; select a category to apply it.";
+    output.append(note);
   } catch (error) {
-    enableMockMode();
-    enterApp(mockCopy(isOffice ? MOCK_USERS.student : MOCK_USERS.office));
-    showToast("Switched to " + targetRole + " demo view.", false);
+    output.textContent = error.message || "AI suggestion is unavailable. Choose a category manually.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "✦ Suggest with AI";
+  }
+}
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-public-ai-category]");
+  if (button) void requestPublicCategorySuggestion(button);
+});
+
+function publicReportField(form, id) {
+  return form.querySelector("#" + id + (form.id === "publicFoundReportForm" ? "Found" : ""));
+}
+async function submitPublicReport(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const field = (id) => publicReportField(form, id);
+  const type = field("publicReportType").value;
+  const body = {
+    report_type: type,
+    roll_number: field("publicRollNumber").value.trim(),
+    contact_phone: field("publicContactPhone").value.trim() || null,
+    contact_email: field("publicContactEmail").value.trim().toLowerCase() || null,
+    title: field("publicTitle").value.trim(),
+    category: field("publicCategory").value,
+    description: field("publicDescription").value.trim(),
+    brand: field("publicBrand").value.trim() || null,
+    primary_color: field("publicColor").value.trim() || null,
+    visible_features: field("publicFeatures").value.trim() || null,
+    location_block: field("publicBlock").value || null,
+    location_floor: field("publicFloor").value || null,
+    location_room: field("publicRoom").value.trim() || null,
+    location_area: field("publicArea").value.trim() || null,
+    occurred_at: field("publicDate").value || null,
+    private_detail: type === "lost" ? field("publicPrivateDetail").value.trim() || null : null,
+    item_condition: type === "found" ? field("publicItemCondition").value || null : null,
+    handover_at: type === "found" ? field("publicHandoverAt").value || null : null,
+    handover_recipient: type === "found" ? field("publicHandoverRecipient").value.trim() || null : null,
+    handover_note: type === "found" ? field("publicHandoverNote").value.trim() || null : null,
+    image_ai_consent: Boolean(field("publicImageAiConsent")?.checked)
+  };
+  const errorNode = field("publicReportError");
+  const button = form.querySelector('button[type="submit"]');
+  errorNode.textContent = "";
+  if (!body.location_block && !body.location_area) {
+    errorNode.textContent = type === "found"
+      ? "Choose the building or exact area where you found the item."
+      : "Choose a campus building or enter the area where you last had the item.";
+    return;
+  }
+  if (body.location_block === "Other / Not listed" && !body.location_area) {
+    errorNode.textContent = "Add a short location detail when you choose Other / Not listed.";
+    field("publicArea").focus();
+    return;
+  }
+  if (!button || button.disabled) return;
+  button.disabled = true;
+  try {
+    const result = await publicApi("/api/public/reports", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+    storePublicAccess(result.case.reference, body.roll_number, result.tracking_secret);
+    const reportTrackingUrl = $("#publicTrackLink").value;
+    let photoStatus = "";
+    const photo = field("publicImage").files && field("publicImage").files[0];
+    if (photo) {
+      const photoBody = new FormData();
+      photoBody.append("file", photo);
+      try {
+        await publicApi("/api/public/reports/" + encodeURIComponent(result.case.reference) + "/image", {
+          method: "POST",
+          headers: getPublicAccess(result.case.reference, body.roll_number),
+          body: photoBody
+        });
+        photoStatus = " Your photo was saved privately for office review.";
+      } catch (photoError) {
+        photoStatus = " The report was saved, but its photo could not be uploaded: " + photoError.message;
+      }
+    }
+    const matchCards = (result.matches || []).map(match => {
+      const item = match.report;
+      return '<article class="list-card"><div class="list-card-head"><div><h3>' + escapeHTML(item.title) + '</h3><p>' +
+        escapeHTML(item.public_ref || item.reference) + ' · ' + escapeHTML(categoryLabel(item.category)) +
+        '</p></div><span class="status-pill">' + escapeHTML(match.strength || "Possible match") + '</span></div><p>' +
+        escapeHTML(item.description) + '</p><p class="field-hint">' + escapeHTML((match.reasons || []).join(" · ")) + '</p>' + publicMatchClaimButton(item) + '</article>';
+    }).join("");
+    $("#publicTrackResult").innerHTML = privateTrackingReceiptMarkup(
+      "Report submitted. Reference: " + result.case.reference + ".", reportTrackingUrl
+    ) + (matchCards ? '<h3>Possible matches</h3>' + matchCards : '<p class="field-hint">No possible matches are available yet. You can check again later.</p>') +
+      (photoStatus ? '<p class="field-hint">' + escapeHTML(photoStatus) + '</p>' : '');
+    form.reset();
+    showPublicDestination("track");
+    setFinnMessage("Case opened! Your private access is saved in this browser.", true);
+    showToast("Report submitted successfully.", false);
+  } catch (error) {
+    errorNode.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+document.querySelectorAll("#publicReportForm, #publicFoundReportForm").forEach((form) => {
+  form.addEventListener("submit", submitPublicReport);
+});
+let lastPublicTracking = null;
+async function refreshPublicMatches(reference, credentials, target) {
+  try {
+    const data = await publicApi("/api/public/reports/" + encodeURIComponent(reference) + "/matches", {headers:credentials});
+    const matches = data.matches || [];
+    target.innerHTML = '<h3>Possible matches</h3>' + (matches.length ? matches.map(match => {
+      const report = match.report || {};
+      const reasons = Array.isArray(match.reasons) ? match.reasons : [];
+      return '<article class="list-card"><strong>' + escapeHTML(report.title || "Possible item") + '</strong><p>' +
+        escapeHTML(report.public_ref || report.reference || "") + ' · ' + escapeHTML(report.location_area || report.location || "Campus") +
+        '</p><span class="status-pill">' + escapeHTML(match.strength || "Suggested match") + '</span>' +
+        (reasons.length ? '<p class="field-hint">' + escapeHTML(reasons.join(" · ")) + '</p>' : '') + publicMatchClaimButton(report) + '</article>';
+    }).join("") : '<p class="field-hint">No possible matches are available yet. Try refreshing later.</p>');
+  } catch(error) { target.innerHTML = '<p class="form-error">' + escapeHTML(error.message) + '</p>'; }
+}
+$("#copyPublicTrackingLink").addEventListener("click", async () => {
+  const field = $("#publicTrackLink");
+  const value = field.value.trim();
+  if (!value) { showToast("Paste or open the private tracking link from your receipt first.", true); return; }
+  try { await navigator.clipboard.writeText(value); showToast("Private tracking link copied.", false); }
+  catch (_) { field.focus(); field.select(); showToast("Select and copy the private tracking link.", false); }
+});
+$("#publicPrivacyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!lastPublicTracking) return;
+  const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+  if (!access) { $("#publicPrivacyError").textContent = "Open the private tracking link from your receipt first."; return; }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  $("#publicPrivacyError").textContent = "";
+  try {
+    const result = await publicApi("/api/public/privacy-requests", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        reference: lastPublicTracking.reference,
+        roll_number: access.roll,
+        tracking_secret: access.secret,
+        request_type: $("#publicPrivacyType").value,
+        details: $("#publicPrivacyDetails").value.trim()
+      })
+    });
+    $("#publicPrivacyDialog").close();
+    showToast(result.message || "Privacy request submitted.", false);
+  } catch(error) {
+    $("#publicPrivacyError").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#closePublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+$("#cancelPublicPrivacy").addEventListener("click", () => $("#publicPrivacyDialog").close());
+
+$("#publicTrackForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const resultNode = $("#publicTrackResult");
+  const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+  if (!access) {
+    lastPublicTracking = null;
+    resultNode.textContent = "Paste the private LostLink tracking link from your submission receipt. Roll number alone cannot unlock private case details.";
+    return;
+  }
+  const {reference, roll, secret} = access;
+  resultNode.textContent = "Checking private case access…";
+  const credentials = getPublicAccess(reference, roll, secret);
+  if (!credentials) {
+    lastPublicTracking = null;
+    resultNode.textContent = "This private tracking link is incomplete. Open the original link from your receipt.";
+    return;
+  }
+  storePublicAccess(reference, roll, secret);
+  try {
+    const data = await publicApi("/api/public/track/" + encodeURIComponent(reference), {headers:credentials});
+    lastPublicTracking = {reference,roll,data};
+    const record = data.case || data.claim || {};
+    const item = data.case || data.item || {};
+    const isCase = Boolean(data.case);
+    const events = (data.events || []).map(entry => '<article class="list-card"><strong>' + escapeHTML(entry.title) + '</strong><p>' + escapeHTML(entry.message) + '</p><small>' + escapeHTML(humanDateTime(entry.created_at)) + '</small></article>').join("");
+    const actions = [];
+    if (isCase && item.report_type === "lost" && item.status === "open") {
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-refresh-matches>Refresh matches</button>');
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-close-case>Close report</button>');
+    }
+    if (!isCase && record.status === "needs_more_evidence") {
+      actions.push('<button class="button button-liquid button-small" type="button" data-public-add-evidence>Submit requested evidence</button>');
+    }
+    if (isCase && item.image_ai_consent) {
+      actions.push('<button class="button button-quiet button-small" type="button" data-public-revoke-ai-consent>Withdraw AI photo consent</button>');
+    }
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-export>Download my case data</button>');
+    actions.push('<button class="button button-quiet button-small" type="button" data-public-privacy>Request a privacy action</button>');
+    resultNode.innerHTML = '<section class="track-summary"><p><strong>Reference ' + escapeHTML(record.reference || reference) + '</strong> · Status: ' + escapeHTML(statusLabel(record.status || "unknown")) + '</p><p>' + escapeHTML(record.title || item.title || "Claim") + '</p>' +
+      (typeof data.case_points === "number" ? '<p class="field-hint">Points linked to this case: ' + data.case_points + '</p>' : '') +
+      '<div class="form-actions">' + actions.join("") + '</div></section>' +
+      (events ? '<h3>Case updates</h3>' + events : '<p class="field-hint">No additional updates have been recorded yet.</p>') +
+      (isCase && item.report_type === "lost" ? '<div id="publicTrackMatches" class="track-matches"></div>' : '');
+    if (isCase && item.report_type === "lost") await refreshPublicMatches(reference, credentials, $("#publicTrackMatches"));
+  } catch(error) { lastPublicTracking = null; resultNode.textContent = error.message; }
+});
+$("#publicTrackResult").addEventListener("click", async event => {
+  const state = lastPublicTracking;
+  if (!state) return;
+  const credentials = getPublicAccess(state.reference, state.roll);
+  if (!credentials) { lastPublicTracking = null; $("#publicTrackResult").textContent = "Private access is no longer available in this browser."; return; }
+  if (event.target.closest("[data-public-revoke-ai-consent]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before changing photo consent.", true); return; }
+    const button = event.target.closest("[data-public-revoke-ai-consent]");
+    button.disabled = true;
+    try {
+      await publicApi("/api/public/reports/" + encodeURIComponent(state.reference) + "/ai-consent", {
+        method: "POST",
+        headers: {"Content-Type":"application/json", ...getPublicAccess(state.reference, state.roll, access.secret)},
+        body: JSON.stringify({consent:false})
+      });
+      if (state.data && state.data.case) state.data.case.image_ai_consent = false;
+      button.remove();
+      showToast("AI photo consent withdrawn. Stored AI captions and cached image vectors were cleared.", false);
+    } catch(error) {
+      button.disabled = false;
+      showToast(error.message, true);
+    }
+    return;
+  }
+  if (event.target.closest("[data-public-export]")) {
+    const access = parsePublicTrackingUrl($("#publicTrackLink").value);
+    if (!access) { showToast("Open your private tracking link before exporting data.", true); return; }
+    try {
+      const data = await publicApi("/api/public/privacy-export/" + encodeURIComponent(state.reference), {
+        headers: getPublicAccess(state.reference, state.roll, access.secret)
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lostlink-" + state.reference + "-data.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch(error) { showToast(error.message, true); }
+    return;
+  }
+  if (event.target.closest("[data-public-privacy]")) {
+    $("#publicPrivacyError").textContent = "";
+    $("#publicPrivacyDetails").value = "";
+    $("#publicPrivacyDialog").showModal();
+    return;
+  }
+  if (event.target.closest("[data-public-refresh-matches]")) {
+    await refreshPublicMatches(state.reference, credentials, $("#publicTrackMatches"));
+  } else if (event.target.closest("[data-public-close-case]")) {
+    if (!confirm("Close this Lost report? It will no longer appear as an open report.")) return;
+    try {
+      await publicApi("/api/public/cases/" + encodeURIComponent(state.reference) + "/close", {
+        method:"POST", headers:{...credentials,"Content-Type":"application/json"},
+        body:JSON.stringify({reason:"no_longer_searching",note:null})
+      });
+      showToast("Your Lost report has been closed.",false);
+      $("#publicTrackForm").requestSubmit();
+    } catch(error) { showToast(error.message,true); }
+  } else if (event.target.closest("[data-public-add-evidence]")) {
+    $("#publicEvidenceError").textContent = "";
+    $("#publicEvidenceText").value = "";
+    $("#publicEvidenceDialog").showModal();
+  }
+});
+$("#publicEvidenceClose").addEventListener("click", () => $("#publicEvidenceDialog").close());
+$("#publicEvidenceCancel").addEventListener("click", () => $("#publicEvidenceDialog").close());
+$("#publicEvidenceForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!lastPublicTracking) return;
+  const evidence = $("#publicEvidenceText").value.trim();
+  if (evidence.length < 20) { $("#publicEvidenceError").textContent = "Please enter at least 20 characters."; return; }
+  const button = $("#publicEvidenceSubmit");
+  button.disabled = true;
+  try {
+    const state = lastPublicTracking;
+    const result = await publicApi("/api/public/claims/" + encodeURIComponent(state.reference) + "/evidence", {
+      method:"POST",
+      headers:{...getPublicAccess(state.reference, state.roll),"Content-Type":"application/json"},
+      body:JSON.stringify({evidence})
+    });
+    $("#publicEvidenceDialog").close();
+    showToast(result.message || "Additional evidence submitted.",false);
+    $("#publicTrackForm").requestSubmit();
+  } catch(error) { $("#publicEvidenceError").textContent = error.message; }
+  finally { button.disabled = false; }
+});
+
+function assertLocalOfficeLoginAllowed() {
+  if (!appConfig) {
+    throw new Error("LostLink configuration has not loaded. Refresh the page before signing in.");
+  }
+  if (appConfig.auth_mode === "supabase") {
+    throw new Error("Supabase office sign-in is configured, but the authentication client is unavailable. Check the Supabase URL and anon key. Local demo login is disabled.");
+  }
+}
+
+async function start() {
+  showPublicHome();
+  // A blank API_BASE_URL means this page is served by the FastAPI backend itself.
+  // In that same-origin deployment, relative /api/* requests are valid even when
+  // the optional static-host deployment flag says no external backend is configured.
+  if (window.LOSTLINK_DEPLOYMENT_CONFIGURED === false && API_BASE_URL) {
+    $("#publicApiStatus").textContent = "This preview is not connected to the LostLink API yet. Configure BACKEND_ORIGIN in Vercel after deploying the backend.";
+    $("#publicApiStatus").classList.remove("hidden");
+    return;
+  }
+  try {
+    await loadConfig();
+    $("#publicApiStatus").classList.add("hidden");
+  } catch (error) {
+    $("#publicApiStatus").textContent = error.message + " Public reporting will be available when the backend is reachable.";
+    $("#publicApiStatus").classList.remove("hidden");
+    return;
+  }
+  if (appConfig && appConfig.auth_mode === "supabase") {
+    if (!supabaseClient) {
+      showPublicHome();
+      return;
+    }
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      supabaseAccessToken = data && data.session ? data.session.access_token : null;
+      if (!supabaseAccessToken) { showPublicHome(); return; }
+      const profile = await api("/api/me");
+      if (!profile.user || profile.user.role !== "office") throw new Error("This account is not authorised for LostLink. Office staff access only.");
+      enterApp(profile.user);
+    } catch (error) {
+      supabaseAccessToken = null;
+      await supabaseClient?.auth.signOut().catch(() => {});
+      showPublicHome();
+      $("#publicApiStatus").textContent = error.message;
+      $("#publicApiStatus").classList.remove("hidden");
+    }
+    return;
+  }
+  try {
+    const profile = await api("/api/me");
+    if (profile.user && profile.user.role === "office") enterApp(profile.user);
+    else showPublicHome();
+  } catch (_) {
+    showPublicHome();
+  }
+}
+
+$("#loginForm").addEventListener("submit",async event => {
+  event.preventDefault();
+  $("#loginError").textContent = "";
+  try {
+    if (supabaseClient) {
+      const email = $("#loginEmail").value.trim().toLowerCase();
+      const password = $("#loginPassword").value;
+      const {data,error} = await supabaseClient.auth.signInWithPassword({email,password});
+      if (error) throw error;
+      supabaseAccessToken = data.session.access_token;
+      const profile = await api("/api/me");
+      if (!profile.user || profile.user.role !== "office") {
+        await supabaseClient.auth.signOut();
+        supabaseAccessToken = null;
+        throw new Error("This account is not on the authorised office staff list.");
+      }
+      enterApp(profile.user);
+    } else {
+      assertLocalOfficeLoginAllowed();
+      const result = await api("/api/login",{method:"POST",body:{email:$("#loginEmail").value.trim(),password:$("#loginPassword").value}});
+      if (!result.user || result.user.role !== "office") throw new Error("Only authorised office staff can sign in.");
+      enterApp(result.user);
+    }
+    showToast("Office staff signed in successfully.",false);
+  } catch(error) { $("#loginError").textContent = error.message; }
+});
+
+async function launchDemoAccount(email,password) {
+  $("#loginError").textContent = "";
+  try {
+    assertLocalOfficeLoginAllowed();
+    const result = await api("/api/login",{method:"POST",body:{email,password}});
+    if (!result.user || result.user.role !== "office") throw new Error("Only the office demo account is available.");
+    inspectedUser = null;
+    $("#returnToDashboardButton").classList.add("hidden");
+    enterApp(result.user);
+    showToast("Opened the office demo view.",false);
+  } catch(error) { $("#loginError").textContent = error.message; }
+}
+$("#fillOffice").addEventListener("click",() => launchDemoAccount("office@lostlink.local","office123"));
+$("#showLoginButton").addEventListener("click",() => {
+  inspectedUser = currentUser;
+  openPublicOfficeSignIn();
+  $("#returnToDashboardButton").classList.toggle("hidden",!inspectedUser);
+});
+$("#returnToDashboardButton").addEventListener("click",() => {
+  if (inspectedUser) { const prior = inspectedUser; inspectedUser = null; enterApp(prior); }
+});
+$("#logoutButton").addEventListener("click",async() => {
+  const button = $("#logoutButton");
+  button.disabled = true;
+  try {
+    if (supabaseClient) {
+      const {error} = await supabaseClient.auth.signOut();
+      if (error) throw error;
+      clearAuthenticatedImages();
+      supabaseAccessToken = null;
+    } else {
+      await api("/api/logout",{method:"POST"});
+    }
+    if (typeof stopNotificationPolling === "function") stopNotificationPolling();
+    inspectedUser = null;
+    currentUser = null;
+    $("#returnToDashboardButton").classList.add("hidden");
+    showPublicHome();
+    showToast("You have been signed out.",false);
+  } catch (error) {
+    showToast(error.message || "Sign out failed. Please try again.",true);
+  } finally {
+    button.disabled = false;
   }
 });
 $("#studentNav").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-view], [data-go]");
-  if (button) navigate(button.dataset.view || button.dataset.go);
+  const button = event.target.closest("[data-view]");
+  if (button) navigate(button.dataset.view);
 });
 document.addEventListener("click", (event) => {
   const go = event.target.closest("[data-go]");
   if (go) navigate(go.dataset.go);
   const useCategory = event.target.closest("[data-use-category]");
   if (useCategory) {
-    $("#reportCategory").value = useCategory.dataset.useCategory;
-    $("#categorySuggestion").textContent = "Category selected. Review it before submitting.";
+    const form = useCategory.closest("form");
+    if (form) {
+      reportField("reportCategory", form).value = useCategory.dataset.useCategory;
+      reportField("categorySuggestion", form).textContent = "Category selected. Review it before submitting.";
+    }
   }
   const reportKind = event.target.closest("[data-report-kind]");
-  if (reportKind) {
-    setReportMode(reportKind.dataset.reportKind);
-    navigate("report");
-  }
+  if (reportKind) { navigate("report"); setReportMode(reportKind.dataset.reportKind); }
   const detailButton = event.target.closest("[data-view-details]");
   if (detailButton) openItemDetails(detailButton.dataset.viewDetails);
   const notificationMatches = event.target.closest("[data-notification-matches]");
@@ -2091,7 +2832,7 @@ document.addEventListener("click", (event) => {
   const handover = event.target.closest("[data-handover]");
   if (handover) {
     const itemTitle = handover.closest(".list-card")?.querySelector("h3")?.textContent || "this item";
-    openHandoverDialog(handover.dataset.handover, itemTitle);
+    openHandoverDialog(handover.dataset.handover, itemTitle, handover.dataset.roll || "");
   }
   const storageUpdate = event.target.closest("[data-storage-update]");
   if (storageUpdate) {
@@ -2100,22 +2841,40 @@ document.addEventListener("click", (event) => {
   }
   const notification = event.target.closest("[data-notification-read]");
   if (notification) markNotificationRead(notification.dataset.notificationRead);
+  const privacyReview = event.target.closest("[data-privacy-review]");
+  if (privacyReview) openPrivacyDecision(privacyReview.dataset.privacyReview, privacyReview.dataset.privacyType, privacyReview.dataset.privacySubject);
   const certificate = event.target.closest("[data-certificate-download]");
-  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else window.location.href = "/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download"; }
+  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
 });
+$("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
+$("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
+$("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
+$("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
+$("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
+$("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
+$("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
 $("#searchForm").addEventListener("submit", (event) => { event.preventDefault(); loadBrowse(); });
 $("#readAllNotifications").addEventListener("click", markAllNotificationsRead);
+$("#refreshPrivacyRequests").addEventListener("click", () => loadOffice("privacyRequests"));
+$("#privacyDecisionForm").addEventListener("submit", submitPrivacyDecision);
+$("#closePrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
+$("#cancelPrivacyDecision").addEventListener("click", () => { $("#privacyDecisionDialog").close(); selectedPrivacyRequestId = null; });
 $("#clearFilters").addEventListener("click", resetSearch);
-$("#reportForm").addEventListener("submit", submitReport);
-$("#suggestCategoryButton").addEventListener("click", suggestReportCategory);
-$("#backToReportTypes").addEventListener("click", resetReportMode);
-$("#reportImage").addEventListener("change", () => {
-  const file = $("#reportImage").files[0];
-  $("#imageLabel").textContent = file ? file.name : "Choose a photo";
+document.querySelectorAll("#lostReportForm, #foundReportForm").forEach((form) => {
+  form.addEventListener("submit", submitReport);
+  const categoryButton = form.querySelector(form.id === "foundReportForm" ? "#suggestCategoryButtonFound" : "#suggestCategoryButton");
+  const backButton = form.querySelector(form.id === "foundReportForm" ? "#backToReportTypesFound" : "#backToReportTypes");
+  const cancelButton = form.querySelector(form.id === "foundReportForm" ? "#cancelReportFound" : "#cancelReport");
+  const imageInput = reportField("reportImage", form);
+  if (categoryButton) categoryButton.addEventListener("click", suggestReportCategory);
+  if (backButton) backButton.addEventListener("click", resetReportMode);
+  if (cancelButton) cancelButton.addEventListener("click", () => { resetReportMode(); navigate("browse"); });
+  if (imageInput) imageInput.addEventListener("change", () => {
+    const label = reportField("imageLabel", form);
+    const file = imageInput.files[0];
+    if (label) label.textContent = file ? file.name : "Choose a photo";
+  });
 });
-$("#cancelReport").addEventListener("click", () => { resetReportMode(); navigate("start"); });
-if ($("#backToStartBtn")) $("#backToStartBtn").addEventListener("click", () => { resetReportMode(); navigate("start"); });
-if ($("#homeBrandLink")) $("#homeBrandLink").addEventListener("click", (e) => { e.preventDefault(); navigate("start"); });
 $("#claimEvidenceImage").addEventListener("change", () => {
   const file = $("#claimEvidenceImage").files[0];
   $("#claimEvidenceImageLabel").textContent = file ? file.name : "Attach one supporting photo (optional)";
@@ -2125,9 +2884,11 @@ $("#closeItemDetails").addEventListener("click", () => { $("#itemDetailsDialog")
 $("#cancelItemDetails").addEventListener("click", () => { $("#itemDetailsDialog").close(); selectedDetailsReportId = null; });
 $("#itemDetailsClaimButton").addEventListener("click", () => {
   const reportId = selectedDetailsReportId;
+  const report = reportId ? findReportById(reportId) : null;
   $("#itemDetailsDialog").close();
   selectedDetailsReportId = null;
-  if (reportId) openClaim(reportId);
+  if (report) openPublicClaimDialog(report);
+  else if (reportId) openPublicClaimById(reportId);
 });
 document.addEventListener("contextmenu", (event) => {
   if (event.target.closest(".item-visual img, .item-detail-photo, .evidence-image-preview img")) event.preventDefault();
@@ -2171,102 +2932,32 @@ $("#cancelCloseReport").addEventListener("click", () => { $("#closeReportDialog"
 $("#closeClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#cancelClaim").addEventListener("click", () => $("#claimDialog").close());
 $("#closeMatches").addEventListener("click", () => $("#matchesPanel").classList.add("hidden"));
+$("#finnCharacter").addEventListener("click", () => { const tips = ["A useful match starts with a clear item name and category.","Keep one distinctive ownership detail private for the claim review.","Found an item? It becomes searchable after the campus office records it.","Use your case reference in the browser where you submitted it to check updates."]; const node = $("#mascotMessage"); const current = tips.indexOf(node.textContent); setFinnMessage(tips[(current + 1) % tips.length]); });
+$("#finnTipsToggle").addEventListener("click", event => { const dock = $("#finnDock"); const hidden = dock.classList.toggle("tips-disabled"); event.currentTarget.setAttribute("aria-pressed",String(hidden)); event.currentTarget.textContent = hidden ? "Show Finn’s tips" : "Hide Finn’s tips"; if (!hidden) setFinnMessage("I’m back! Tap me whenever you need a clue."); });
 $("#appView").addEventListener("submit", submitIntake);
 $("#browseResults").addEventListener("click", (event) => {
   const button = event.target.closest("[data-claim]");
   if (!button) return;
-  const card = button.closest(".item-card");
-  const ref = card.querySelector(".item-ref").textContent;
-  // Keep the current browse records available to the claim dialog without exposing internal fields.
-  const query = $("#filterQuery").value;
-  loadReportForClaimByRef(button.dataset.claim, ref, query);
+  event.preventDefault();
+  void openPublicClaimById(button.dataset.claim, button.dataset.publicRef || button.closest(".item-card")?.querySelector(".item-ref")?.textContent);
 });
 $("#matchResults").addEventListener("click", (event) => {
   const button = event.target.closest("[data-claim]");
-  if (button) loadReportForClaimByRef(button.dataset.claim, button.closest(".item-card").querySelector(".item-ref").textContent, "");
+  if (!button) return;
+  event.preventDefault();
+  void openPublicClaimById(button.dataset.claim, button.dataset.publicRef || button.closest(".item-card")?.querySelector(".item-ref")?.textContent);
 });
 
-async function loadReportForClaimByRef(reportId, publicRef, searchQuery) {
-  try {
-    const data = await api("/api/reports?" + buildQuery({ q: searchQuery || publicRef }));
-    const report = data.reports.find((item) => item.id === reportId);
-    if (report) {
-      selectedClaimReport = report;
-      showClaimDialog(report);
-      return;
-    }
-    // A report from the match list may not match the current text filter.
-    const retry = await api("/api/reports?q=" + encodeURIComponent(publicRef));
-    const found = retry.reports.find((item) => item.id === reportId);
-    if (!found) throw new Error("This item is no longer available to claim. Refresh the list.");
-    selectedClaimReport = found;
-    showClaimDialog(found);
-  } catch (error) { showToast(error.message, true); }
+async function loadReportForClaimByRef(reportId, publicRef) {
+  return openPublicClaimById(reportId, publicRef);
 }
 
-start();
-
-
-// Profile Tab Tap -> Navigate to Profile View directly
-const profileBtn = $("#profileTabBtn");
-if (profileBtn) {
-  profileBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    navigate("profile");
-  });
-}
-
-// Wire Keyset Pagination Loaders for contract compliance
-if ($("#browseLoadMore")) $("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
-if ($("#myReportsLoadMore")) $("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
-if ($("#myClaimsLoadMore")) $("#myClaimsLoadMore").addEventListener("click", () => loadMyClaims(true));
-if ($("#intakeLoadMore")) $("#intakeLoadMore").addEventListener("click", () => loadOffice("intake"));
-if ($("#inventoryLoadMore")) $("#inventoryLoadMore").addEventListener("click", () => loadOffice("inventory"));
-if ($("#officeClaimsLoadMore")) $("#officeClaimsLoadMore").addEventListener("click", () => loadOffice("officeClaims"));
-if ($("#handoverLoadMore")) $("#handoverLoadMore").addEventListener("click", () => loadOffice("handovers"));
-
-// Wire Edit Profile Dialog
-if ($("#editProfileBtn")) {
-  $("#editProfileBtn").addEventListener("click", () => {
-    if (!currentUser) return;
-    if ($("#editProfileNameInput")) $("#editProfileNameInput").value = currentUser.display_name || "";
-    if ($("#editProfileEmailInput")) $("#editProfileEmailInput").value = currentUser.email || "";
-    if ($("#editProfilePhoneInput")) $("#editProfilePhoneInput").value = currentUser.phone || "";
-    if ($("#editProfileError")) $("#editProfileError").textContent = "";
-    if ($("#editProfileDialog")) $("#editProfileDialog").showModal();
-  });
-}
-if ($("#closeEditProfile")) $("#closeEditProfile").addEventListener("click", () => {
-  if ($("#editProfileDialog")) $("#editProfileDialog").close();
+observeAuthImages();
+start().then(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("track")) {
+    showPublicDestination("track");
+    $("#publicTrackLink").value = window.location.href;
+    $("#publicTrackForm").requestSubmit();
+  }
 });
-if ($("#cancelEditProfile")) $("#cancelEditProfile").addEventListener("click", () => {
-  if ($("#editProfileDialog")) $("#editProfileDialog").close();
-});
-if ($("#editProfileForm")) {
-  $("#editProfileForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const newName = $("#editProfileNameInput") ? $("#editProfileNameInput").value.trim() : "";
-    if (!newName) {
-      if ($("#editProfileError")) $("#editProfileError").textContent = "Please enter a valid display name.";
-      return;
-    }
-    const newPhone = $("#editProfilePhoneInput") ? $("#editProfilePhoneInput").value.trim() : "";
-    if (currentUser) {
-      currentUser.display_name = newName;
-      currentUser.phone = newPhone;
-      if (usingMockApi && mockStore.session) {
-        mockStore.session.display_name = newName;
-        mockStore.session.phone = newPhone;
-      }
-      if ($("#userName")) $("#userName").textContent = newName;
-      if ($("#profileHeroName")) $("#profileHeroName").textContent = newName;
-      if ($("#dropdownUserName")) $("#dropdownUserName").textContent = newName;
-      const initial = newName.charAt(0).toUpperCase();
-      if ($("#userInitial")) $("#userInitial").textContent = initial;
-      if ($("#profileHeroAvatar")) $("#profileHeroAvatar").textContent = initial;
-      if ($("#dropdownAvatar")) $("#dropdownAvatar").textContent = initial;
-    }
-    if ($("#editProfileDialog")) $("#editProfileDialog").close();
-    showToast("Profile details updated successfully.", false);
-  });
-}

@@ -6,7 +6,7 @@ from scripts.migrate_sqlite_to_postgres import unsupported_source_tables
 class MigrationPolicyTests(unittest.TestCase):
     def test_rebuildable_embedding_cache_is_not_a_migration_blocker(self):
         self.assertEqual(
-            unsupported_source_tables({"users", "schema_migrations", "ai_embedding_cache"}),
+            unsupported_source_tables({"users", "schema_migrations", "ai_embedding_cache", "public_roll_identities", "public_rate_limits"}),
             set(),
         )
 
