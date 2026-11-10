@@ -2,6 +2,9 @@
 import os
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from unittest.mock import patch
 from io import BytesIO
 
 from PIL import Image
@@ -296,6 +299,45 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertTrue(row["image_path"])
         self.assertTrue(row["image_sha256"])
         self.assertTrue(row["image_phash"])
+        self.assertTrue(object_storage.read_upload(row["image_path"]))
+
+    def test_simultaneous_report_images_leave_only_current_object(self):
+        created = self.create_public_report("lost", title="Two photo uploads").json()
+        reference = created["case"]["reference"]
+        with main.connect_db() as conn:
+            row = conn.execute(
+                "SELECT id,created_by FROM reports WHERE public_ref=?", (reference,)
+            ).fetchone()
+            case_id, actor_id = row["id"], int(row["created_by"])
+        original_save = public_routes.save_upload
+        both_saved = Barrier(2)
+
+        def save_together(key, content):
+            original_save(key, content)
+            both_saved.wait(timeout=10)
+
+        def upload(color):
+            image = BytesIO()
+            Image.new("RGB", (64, 64), color).save(image, format="PNG")
+            public_routes._persist_public_report_image(
+                reference, case_id, actor_id, image.getvalue()
+            )
+
+        with patch.object(public_routes, "save_upload", side_effect=save_together):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                jobs = [pool.submit(upload, color) for color in (
+                    (120, 80, 40), (40, 120, 80)
+                )]
+                for job in jobs:
+                    job.result(timeout=25)
+
+        with main.connect_db() as conn:
+            row = conn.execute(
+                "SELECT image_path FROM reports WHERE id=?", (case_id,)
+            ).fetchone()
+        stored = list(main.UPLOAD_DIR.glob("*.jpg"))
+        self.assertEqual(len(stored), 1, stored)
+        self.assertEqual(stored[0].name, row["image_path"])
         self.assertTrue(object_storage.read_upload(row["image_path"]))
 
     def test_public_search_returns_open_lost_and_available_found_without_private_fields(self):
