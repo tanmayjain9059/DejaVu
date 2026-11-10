@@ -461,6 +461,26 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(allowed.status_code,200,allowed.text)
         self.assertNotIn("roll_number",allowed.json()["case"])
 
+    def test_invalid_tracking_attempts_are_persistently_rate_limited_without_locking_owner(self):
+        created = self.create_public_report().json()
+        ref = created["case"]["reference"]
+        endpoint = "/api/public/track/" + ref
+        invalid_headers = {
+            "X-LostLink-Roll-Number": "25B81A66J8",
+            "X-LostLink-Tracking-Secret": "an-incorrect-secret",
+        }
+        for attempt in range(30):
+            denied = self.client.get(endpoint, headers=invalid_headers)
+            self.assertEqual(denied.status_code, 404,
+                             f"Attempt {attempt}: {denied.text}")
+        throttled = self.client.get(endpoint, headers=invalid_headers)
+        self.assertEqual(throttled.status_code, 429, throttled.text)
+        owner = self.client.get(endpoint, headers={
+            "X-LostLink-Roll-Number": "25B81A66J8",
+            "X-LostLink-Tracking-Secret": created["tracking_secret"],
+        })
+        self.assertEqual(owner.status_code, 200, owner.text)
+
     def test_found_items_are_hidden_until_office_physically_verifies_intake(self):
         created = self.create_public_report("found")
         self.assertEqual(created.status_code,201,created.text)

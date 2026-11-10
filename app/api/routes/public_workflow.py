@@ -120,6 +120,20 @@ def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, windo
     )
 
 
+def _deny_invalid_public_tracking(request: Request, reference: str) -> None:
+    """Persist failed case-token attempts without blocking a holder of the valid token.
+
+    Count by peer and case reference. Do not store raw reference or tracking
+    credentials in the rate-limit table.
+    """
+    peer_case = _trusted_client_ip(request) + ":" + _hash(reference)
+    # This is a separate committed transaction: the 404 below must not roll
+    # back the attempt, as it would inside the credential-read transaction.
+    with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "tracking-denied", 30, actor_key=peer_case)
+    raise HTTPException(status_code=404, detail="Tracking access not found.")
+
+
 def _public_report(row) -> dict[str, Any]:
     item = serialise_report(row, internal=False)
     # Public image access is deliberately withheld until the private-storage,
@@ -649,6 +663,7 @@ async def public_report_matches(
 @router.get("/track/{reference}")
 def track_one_case(
     reference: str,
+    request: Request,
     roll_number: str = Header(..., alias="X-LostLink-Roll-Number"),
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
@@ -678,7 +693,7 @@ def track_one_case(
                 "events": _tracking_events(conn,int(claim["claimant_id"]),"claim",claim["id"]),
                 "case_points": _case_points(conn,int(claim["claimant_id"]),claim["report_id"]),
             }
-    raise HTTPException(status_code=404,detail="Tracking access not found.")
+    _deny_invalid_public_tracking(request, reference)
 
 
 @router.post("/cases/{reference}/close")
