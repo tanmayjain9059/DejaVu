@@ -363,6 +363,40 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(by_reference.status_code,200,by_reference.text)
         self.assertEqual(by_reference.json()["reports"][0]["public_ref"],lost.json()["case"]["reference"])
 
+    def test_sensitive_lost_report_free_text_is_not_public(self):
+        secret_title = "Passport belonging to Person Example"
+        secret_detail = "Document number P12345678 and the private name Person Example."
+        created = self.client.post("/api/public/reports", json={
+            "report_type": "lost", "roll_number": "25B81A66J8",
+            "title": secret_title, "description": secret_detail,
+            "category": "identity_documents",
+            "brand": "PRIVATE BRAND", "primary_color": "Secret blue",
+            "visible_features": "Document number P12345678",
+            "location_area": "Campus",
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        ref = created.json()["case"]["reference"]
+        listing = self.client.get("/api/public/search?report_type=lost")
+        self.assertEqual(listing.status_code, 200, listing.text)
+        item = next(row for row in listing.json()["reports"] if row["public_ref"] == ref)
+        self.assertEqual(item["category"], "other")
+        self.assertEqual(item["title"], "Personal item reported lost")
+        self.assertIsNone(item["brand"])
+        self.assertIsNone(item["visible_features"])
+        self.assertIsNone(item["primary_color"])
+        for sensitive_text in (secret_title, secret_detail, "P12345678", "PRIVATE BRAND"):
+            self.assertNotIn(sensitive_text, listing.text)
+        tracked = self.client.get("/api/public/track/" + ref, headers={
+            "X-LostLink-Roll-Number": "25B81A66J8",
+            "X-LostLink-Tracking-Secret": created.json()["tracking_secret"],
+        })
+        self.assertEqual(tracked.status_code, 200, tracked.text)
+        self.assertEqual(tracked.json()["case"]["title"], "Personal item reported lost")
+        with main.connect_db() as conn:
+            row = conn.execute("SELECT title,description FROM reports WHERE public_ref=?", (ref,)).fetchone()
+        self.assertEqual(row["title"], secret_title)
+        self.assertEqual(row["description"], secret_detail)
+
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
         second = self.create_public_report(roll="25B81A66J8",title="Red notebook").json()

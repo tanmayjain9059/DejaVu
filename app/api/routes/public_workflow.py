@@ -135,11 +135,17 @@ def _public_report(row) -> dict[str, Any]:
         item["brand"] = None
         item["visible_features"] = None
     if item.get("category") in {"identity_documents", "keys_access"}:
-        # Do not publicly label identity documents or access credentials.
+        # Free-text fields may contain ID numbers, names, door codes or card
+        # identifiers. Mask them as well as the category on every public route.
         item["category"] = "other"
         item["category_label"] = "Personal item"
-        if item.get("report_type") == "found":
-            item["title"] = "Personal item held by the campus office"
+        item["title"] = ("Personal item held by the campus office"
+                         if item.get("report_type") == "found"
+                         else "Personal item reported lost")
+        item["description"] = "Sensitive identifying details are withheld from public listings."
+        item["brand"] = None
+        item["visible_features"] = None
+        item["primary_color"] = None
     # Public Lost listings must not reveal a precise loss location or time.
     if item.get("report_type") == "lost":
         item["location"] = "CVR campus"
