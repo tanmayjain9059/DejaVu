@@ -71,3 +71,11 @@ def test_cloudflare_worker_asset_build_emits_security_headers(tmp_path):
         assert required in headers
     assert "script-src 'self' 'unsafe-inline'" not in headers
     assert (tmp_path / "dist/index.html").exists()
+
+
+def test_retired_office_ai_status_route_is_absent():
+    from app.main import app
+    assert not any(
+        getattr(route, "path", None) == "/api/office/ai-status"
+        for route in app.routes
+    )
