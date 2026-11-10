@@ -3,23 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f2e9dc">
-  <meta name="description" content="Report lost and found items on campus, discover possible matches, and complete verified handovers with LostLink.">
+  <meta name="theme-color" content="#dcebf5">
+  <meta name="description" content="LostLink campus lost and found reporting and claim verification. Apple-grade liquid glass interface.">
   <title>LostLink · Campus Lost &amp; Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=public-claim-workflow-20261109">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <!-- Warm ambient lighting for the LostLink campus identity -->
+  <!-- 21st.dev Aurora Background by @manuarora700 -->
+  <div class="aurora-background-container" aria-hidden="true">
+    <div class="aurora-layer-base"></div>
+    <div class="aurora-layer"></div>
+  </div>
+  <!-- Ambient Liquid Glass Orbs (soft water glow matching 21st.dev navbar palette) -->
   <div class="ambient-mesh" aria-hidden="true">
     <div class="liquid-orb orb-1"></div>
     <div class="liquid-orb orb-2"></div>
     <div class="liquid-orb orb-3"></div>
   </div>
 
-  <!-- Subtle refraction used by the floating navigation surface -->
+  <!-- SVG Refraction Filter for 21st.dev Liquid Glass Navbar -->
   <svg width="0" height="0" style="position: absolute; pointer-events: none;" aria-hidden="true">
     <filter id="nimbus-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.006 0.02" numOctaves="2" seed="7" result="noise" />
@@ -28,277 +33,159 @@
     </filter>
   </svg>
 
-  <!-- ==================== LOGIN VIEW (LIQUID GLASS LOGIN) ==================== -->
-  <main id="loginView" class="login-shell">
-    <section class="login-story public-landing-shell">
-      <header class="public-topbar" id="publicTopbar">
-        <div class="brand-liquid-pill">
-          <span class="nimbus-glass" aria-hidden="true"></span>
-          <span class="liquid-logo-bubble">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z" />
+<!-- ==================== MAIN APP VIEW ==================== -->
+  <main id="appView" class="app-shell">
+    <!-- Uncluttered Top Navigation Bar -->
+    <header class="app-header">
+      <!-- Redesigned Top-Left Modern Logo Badge -->
+      <div class="header-left">
+        <a class="brand-header-logo" href="#" id="homeBrandLink" aria-label="LostLink Home">
+          <span class="brand-icon-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </span>
-          <span class="brand-text">LostLink</span>
-          <span class="brand-live-dot" title="Active Campus System"></span>
-        </div>
-        <nav id="publicNav" class="nimbus-nav public-nav" data-tone="light" aria-label="Public LostLink navigation">
+          <span class="brand-text">Lost<span class="brand-accent">Link</span></span>
+        </a>
+      </div>
+
+      <!-- 21st.dev Liquid Glass Navbar Floating Center Component (UNMODIFIED) -->
+      <div class="header-center">
+        <nav id="studentNav" class="nimbus-nav" data-tone="light" data-gl="on" data-refract="on" aria-label="Campus Navigation">
           <span class="nimbus-glass" aria-hidden="true"></span>
-          <button class="nimbus-item public-nav-item active" type="button" data-public-destination="home" aria-current="page"><span class="nv-ico">⌂</span><span>Home</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="browse"><span class="nv-ico">⌕</span><span>Browse</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="lost"><span class="nv-ico">−</span><span>Lost</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="found"><span class="nv-ico">＋</span><span>Found</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="track"><span class="nv-ico">◷</span><span>Track</span></button>
-          <button class="nimbus-item public-nav-item" type="button" data-public-destination="office"><span class="nv-ico">▦</span><span>Office</span></button><a class="nimbus-item public-nav-item" href="/static/privacy.html"><span class="nv-ico">⌑</span><span>Privacy</span></a>
-        </nav>
-      </header>
+          <canvas id="nimbusCanvas" class="nimbus-water" aria-hidden="true"></canvas>
+          <span id="nimbusDrop" class="nimbus-drop" aria-hidden="true"></span>
 
-      <div class="story-copy public-story">
-        <section id="publicHomeContent" class="public-home-content">
-          <p class="eyebrow"><span class="pulse-dot"></span> YOUR CAMPUS. YOUR LOST &amp; FOUND.</p>
-          <h1 class="public-title">Lost something?<br><span>Let's bring it back.</span></h1>
-          <p class="public-lede">LostLink connects lost belongings with the people looking for them — with a little help from campus and one very curious detective.</p>
-
-          <div class="public-action-panel" id="publicActionPanel">
-            <div class="public-action-heading">
-              <span class="public-kicker">WHAT BRINGS YOU HERE?</span>
-              <span class="public-case-id">CASE DESK · 01</span>
-            </div>
-            <div class="public-actions">
-              <button class="public-action-card lost-action" type="button" data-public-report="lost">
-                <span class="public-action-icon" aria-hidden="true">⌕</span>
-                <span class="public-action-copy"><strong>Lost Report</strong><small>Something went missing? Let's look for it.</small></span>
-                <span class="public-action-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button class="public-action-card found-action" type="button" data-public-report="found">
-                <span class="public-action-icon" aria-hidden="true">✦</span>
-                <span class="public-action-copy"><strong>Found Report</strong><small>Found something? Help it find its owner.</small></span>
-                <span class="public-action-arrow" aria-hidden="true">↗</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="public-trust-row"><div><strong>01</strong><span>Report in minutes</span></div><div><strong>02</strong><span>Discover found items</span></div><div><strong>03</strong><span>Verified campus handover</span></div></div>
-          <p class="public-footnote">A match is a helpful lead — ownership is confirmed through the campus office.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <p id="publicApiStatus" class="field-hint hidden" role="status"></p>
-        </section>
-
-        <section id="publicLostPage" class="public-destination hidden">
-          <button class="public-back" type="button" data-public-home>← Back to home</button>
-          <p class="eyebrow">PUBLIC REPORT · LOST</p>
-          <h1 class="public-title">Let's find<br><span>what's missing.</span></h1>
-          <p class="public-lede">Submit a report using your college roll number. No student account or password is needed.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <div class="report-kind-guidance"><span class="report-guidance-kicker">LOST ITEM · HELP US RETRACE IT</span><h3>Think back to the last moment you had the item.</h3><p>Share what you remember and where you last saw or used it. Keep unique ownership clues private for verification.</p></div>
-          <form id="publicReportForm" class="form-card form-stack liquid-glass-panel">
-            <input id="publicReportType" type="hidden" value="lost">
-            <label><span>College roll number · Required</span><input id="publicRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
-            <div class="two-columns public-contact-fields">
-              <label><span>Phone number · Optional</span><input id="publicContactPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
-              <label><span>Email address · Optional</span><input id="publicContactEmail" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
-            </div>
-            <small class="field-hint">Contact details are private and visible only to authorised campus office staff.</small>
-            <label><span>Item name · Required</span><input id="publicTitle" required minlength="4" maxlength="100" placeholder="e.g. Black water bottle"></label>
-            <div class="public-category-field"><label><span>Category · Required</span><select id="publicCategory" required><option value="">Loading categories…</option></select></label></div>
-            <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrand" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColor" maxlength="60" placeholder="e.g. Matte black"></label></div>
-            <label><span>Distinctive visible features · Optional</span><textarea id="publicFeatures" rows="2" maxlength="400" placeholder="Stickers, scratches, patterns or other visible details"></textarea></label>
-            <label><span>Description · Required</span><textarea id="publicDescription" required minlength="10" maxlength="1200" rows="4" placeholder="Describe visible details. Keep private proof of ownership out of this description."></textarea></label>
-            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestion" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You confirm the final choice.</small></div>
-            <div class="public-location-group">
-              <label><span>Last-known building / campus area</span><select id="publicBlock"><option value="">Choose a building or outdoor area</option></select></label>
-              <div class="two-columns">
-                <label><span>Floor · Optional</span><select id="publicFloor"><option value="">Not sure</option></select></label>
-                <label><span>Room / specific spot · Optional</span><input id="publicRoom" maxlength="80" placeholder="e.g. CSE Lab, corridor, classroom"></label>
-              </div>
-              <label><span>Nearby landmark / additional detail · Optional</span><input id="publicArea" maxlength="120" placeholder="e.g. near the library issue counter"></label>
-            </div>
-            <label><span>When did you last see it?</span><input id="publicDate" type="datetime-local"></label>
-            <label><span>Private ownership clues · Staff only</span><textarea id="publicPrivateDetail" rows="3" maxlength="1200" placeholder="Hidden marks, unique stickers, scratches or details only you would know. Do not include these in the public description."></textarea><small class="field-hint">Visible only to authorised campus office staff. Never shown in public listings or matching results.</small></label>
-            <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImage" type="file" accept="image/jpeg,image/png,image/webp"></label>
-            <small class="field-hint">Photos are stored privately for office review. AI analysis is optional and requires the separate consent below. Do not upload identity cards or documents.</small>
-            <label class="field-hint"><input id="publicImageAiConsentFound" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional.</label>
-            <label class="field-hint"><input id="publicImageAiConsent" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional.</label>
-            <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
-            <p id="publicReportError" class="form-error" role="alert"></p>
-            <button class="button button-liquid" type="submit">Submit lost report ↗</button>
-          </form>
-        </section>
-
-<section id="publicFoundPage" class="public-destination hidden">
-          <button class="public-back" type="button" data-public-home>← Back to home</button>
-          <p class="eyebrow">PUBLIC REPORT · FOUND</p>
-          <h1 class="public-title">You found it.<br><span>Let's reunite it.</span></h1>
-          <p class="public-lede">Tell us what you found and where. The campus office must confirm physical receipt before the item appears in search.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <div class="report-kind-guidance"><span class="report-guidance-kicker">FOUND ITEM · HELP RETURN IT SAFELY</span><h3>Describe only what you observed when you discovered the item.</h3><p>Record the visible condition and exact discovery spot. Do not publish names, IDs, serial numbers, contents or hidden identifying marks.</p></div>
-          <form id="publicFoundReportForm" class="form-card form-stack liquid-glass-panel">
-            <input id="publicReportTypeFound" type="hidden" value="found">
-            <label><span>College roll number · Required</span><input id="publicRollNumberFound" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8"></label>
-            <div class="two-columns public-contact-fields">
-              <label><span>Phone number · Optional</span><input id="publicContactPhoneFound" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"></label>
-              <label><span>Email address · Optional</span><input id="publicContactEmailFound" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
-            </div>
-            <small class="field-hint">Contact details are private and visible only to authorised campus office staff.</small>
-            <label><span>Item found · Required</span><input id="publicTitleFound" required minlength="4" maxlength="100" placeholder="e.g. Silver water bottle I found"></label>
-            <div class="public-category-field"><label><span>Category · Required</span><select id="publicCategoryFound" required><option value="">Loading categories…</option></select></label></div>
-            <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrandFound" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColorFound" maxlength="60" placeholder="e.g. Matte black"></label></div>
-            <label><span>Visible condition and features · Optional</span><textarea id="publicFeaturesFound" rows="2" maxlength="400" placeholder="Scratches, damage, colour, brand or visible exterior details"></textarea></label>
-            <label><span>Describe the found item · Required</span><textarea id="publicDescriptionFound" required minlength="10" maxlength="1200" rows="4" placeholder="Describe only observable details. Do not publish names, student IDs, serial numbers, contents or hidden identifying marks."></textarea></label>
-            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestionFound" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You confirm the final choice.</small></div>
-            <div class="public-location-group">
-              <label><span>Discovery building / campus area</span><select id="publicBlockFound"><option value="">Choose a building or outdoor area</option></select></label>
-              <div class="two-columns">
-                <label><span>Floor · Optional</span><select id="publicFloorFound"><option value="">Not sure</option></select></label>
-                <label><span>Room / specific spot · Optional</span><input id="publicRoomFound" maxlength="80" placeholder="e.g. classroom, lab, corridor"></label>
-              </div>
-              <label><span>Nearby landmark / exact discovery spot · Optional</span><input id="publicAreaFound" maxlength="120" placeholder="e.g. outside the library entrance"></label>
-            </div>
-            <label><span>When did you find it?</span><input id="publicDateFound" type="datetime-local"></label>
-            <label><span>Item condition</span><select id="publicItemConditionFound"><option value="">Choose condition</option><option value="good">Good condition</option><option value="damaged">Damaged</option><option value="partially_damaged">Partially damaged</option><option value="unknown">Unknown</option></select></label>
-            <fieldset class="public-handover-fields">
-              <legend>Handover details · If already handed over</legend>
-              <label><span>Date and time handed over · Optional</span><input id="publicHandoverAtFound" type="datetime-local"></label>
-              <label><span>Office / person who received it · Optional</span><input id="publicHandoverRecipientFound" maxlength="120" placeholder="Office name or receiving staff member"></label>
-              <label><span>Handover notes · Optional</span><textarea id="publicHandoverNoteFound" rows="2" maxlength="800" placeholder="Any details that may help the office locate the item"></textarea></label>
-              <small class="field-hint">Submitting these details does not confirm office receipt. Staff must verify physical receipt before the item becomes searchable.</small>
-            </fieldset>
-            <label><span>Optional item photo · JPG, PNG or WebP · Max 5 MB</span><input id="publicImageFound" type="file" accept="image/jpeg,image/png,image/webp"></label>
-            <small class="field-hint">Photos are stored privately for office review. AI analysis is optional and requires the separate consent below. Do not upload identity cards or documents.</small>
-            <p class="field-hint">Your roll number is stored for officer verification and is never shown in public search.</p>
-            <p id="publicReportErrorFound" class="form-error" role="alert"></p>
-            <button class="button button-liquid" type="submit">Submit found report ↗</button>
-          </form>
-        </section>
-        <section id="publicBrowsePage" class="public-destination hidden">
-          <button class="public-back" type="button" data-public-home>← Back to home</button>
-          <p class="eyebrow">PUBLIC DISCOVERY</p><h1 class="public-title">Search <span>campus reports.</span></h1>
-          <p class="public-lede">Search open Lost reports and office-received Found items by name, category, or visible description. Private details are never displayed.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <form id="publicBrowseForm" class="form-stack"><input id="publicBrowseQuery" type="search" maxlength="100" placeholder="Search e.g. black calculator"><select id="publicBrowseCategory"><option value="">All categories</option></select><button class="button button-liquid" type="submit">Search items</button></form>
-          <div id="publicBrowseResults" class="stack-list"></div><p id="publicBrowseEmpty" class="field-hint hidden">No public reports match that search yet.</p>
-        </section>
-        <section id="publicTrackPage" class="public-destination hidden">
-          <button class="public-back" type="button" data-public-home>← Back to home</button>
-          <p class="eyebrow">PRIVATE CASE ACCESS</p><h1 class="public-title">Track your <span>report.</span></h1>
-          <p class="public-lede">Open or paste the private tracking link from your submission receipt. You do not need to enter a separate secret; your roll number alone cannot unlock a case.</p>
-          <div data-finn-slot class="public-finn-slot"></div>
-          <form id="publicTrackForm" class="form-stack">
-            <label><span>Private tracking link</span><input id="publicTrackLink" type="url" required autocomplete="url" placeholder="Paste the private link from your receipt"></label>
-            <p class="field-hint">Keep this link private. Anyone who has it can view the associated case status.</p>
-            <div class="form-actions"><button class="button button-liquid" type="submit">View private status</button><button id="copyPublicTrackingLink" class="button button-quiet" type="button">Copy private link</button></div>
-          </form>
-          <div id="publicTrackResult" class="stack-list" aria-live="polite"><div id="publicTrackMatches" class="track-matches"></div></div>
-        </section>
-      </div>
-      <div class="story-footer public-story-footer">
-        <span>LostLink · A little help finding your way back</span>
-        <div class="public-account-actions"><button id="publicBrowseButton" class="public-signin-link" type="button">Browse found items ↗</button><button id="publicTrackButton" class="public-signin-link" type="button">Track a report ↗</button><button id="publicOfficeButton" class="public-signin-link" type="button">Office staff ↗</button></div>
-      </div>
-    </section>
-
-    <section id="officeLoginPanel" class="login-panel liquid-glass-panel hidden">
-      <div class="panel-specular-light" aria-hidden="true"></div>
-      <div class="panel-kicker">
-        <span class="status-dot"></span>
-        <span id="loginPanelKicker">OFFICE STAFF ACCESS</span>
-      </div>
-      <button class="office-panel-back" id="closeOfficeAccess" type="button">← Back to LostLink</button>
-      <h2 id="loginPanelTitle">Office staff sign in</h2>
-      <p id="loginPanelCopy" class="muted">Authorised campus staff only.</p>
-      <p id="officeAccessModeNote" class="field-hint hidden" role="status"></p>
-      <div data-finn-slot class="public-finn-slot"></div>
-
-      <form id="loginForm" class="form-stack">
-        <label>
-          <span>Email address</span>
-          <div class="input-glass-wrap">
-            <input id="loginEmail" type="email" autocomplete="username" required placeholder="you@college.edu">
-          </div>
-        </label>
-        <label>
-          <span>Password</span>
-          <div class="input-glass-wrap">
-            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
-          </div>
-        </label>
-        <button id="loginSubmitButton" class="button button-liquid button-full" type="submit">
-          <span>Sign in</span>
-          <span class="button-arrow" aria-hidden="true">↗</span>
-        </button>
-        <p id="loginError" class="form-error" role="alert"></p>
-      </form>
-
-      <button id="returnToDashboardButton" class="button button-quiet button-full hidden" type="button">Return to dashboard</button>
-
-      <div id="demoAccess" class="demo-access hidden">
-        <div class="divider-label">
-          <span></span>
-          <small>QUICK DEMO ACCOUNTS</small>
-          <span></span>
-        </div>
-        <div class="demo-accounts-grid">
-          <button id="fillOffice" data-demo-role="office" class="demo-account glass-pill demo-office" type="button">
-            <span class="avatar avatar-office">O</span>
-            <div class="demo-info">
-              <strong>Campus Office Staff</strong>
-              <small>office@lostlink.local</small>
-            </div>
-            <span class="arrow">→</span>
+          <!-- Start / Home view -->
+          <button class="nimbus-item tab-button active" type="button" data-go="start" aria-label="Start" aria-current="page">
+            <span class="nv-ico" data-fx="glow">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3.5 11.2 12 4l8.5 7.2" /><path d="M6 9.6V20h12V9.6" /><path class="nv-door" d="M10 20v-5h4v5Z" />
+              </svg>
+            </span>
+            <span class="nimbus-label">Start</span>
           </button>
-        </div>
-        <p class="demo-credentials">Local demo mode: office staff access only. Student reporting is public and does not require an account.</p>
+
+          <!-- Browse items -->
+          <button class="nimbus-item tab-button" type="button" data-view="browse" aria-label="Browse items">
+            <span class="nv-ico" data-fx="spin">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17" />
+              </svg>
+            </span>
+            <span class="nimbus-label">Browse</span>
+          </button>
+
+          <!-- Submit Report -->
+          <button class="nimbus-item tab-button" type="button" data-view="report" aria-label="New report">
+            <span class="nv-ico" data-fx="drop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Report</span>
+          </button>
+
+          <!-- My reports -->
+          <button class="nimbus-item tab-button" type="button" data-view="my-reports" aria-label="My reports">
+            <span class="nv-ico" data-fx="plane">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.2 3.6 5.4l2.7 6.8-2.7 6.4L21 12.2Zm-14.7 0H13" />
+              </svg>
+            </span>
+            <span class="nimbus-label">My Reports</span>
+          </button>
+
+          <!-- My claims -->
+          <button class="nimbus-item tab-button" type="button" data-view="my-claims" aria-label="My claims">
+            <span class="nv-ico" data-fx="wave">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3 19 6v5c0 4.7-3 7.7-7 10-4-2.3-7-5.3-7-10V6z"></path><path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Claims</span>
+            <span id="claimNavCount" class="nav-count hidden">0</span>
+          </button>
+
+          <!-- Notifications -->
+          <button class="nimbus-item tab-button" type="button" data-view="notifications" aria-label="Notifications">
+            <span class="nv-ico" data-fx="pop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Alerts</span>
+            <span id="notificationNavCount" class="nav-count hidden">0</span>
+          </button>
+
+          <!-- Activity & certificates -->
+          <button id="activityNavButton" class="nimbus-item tab-button" type="button" data-view="activity" aria-label="Activity & certificates">
+            <span class="nv-ico" data-fx="glow">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="5"></circle><path d="m8 12-1 9 5-3 5 3-1-9"></path>
+              </svg>
+            </span>
+            <span class="nimbus-label">Activity</span>
+          </button>
+
+          <!-- Office console (office only) -->
+          <button id="officeNavButton" class="nimbus-item tab-button office-tab hidden" type="button" data-view="office" aria-label="Office Console">
+            <span class="nv-ico" data-fx="spin">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+            </span>
+            <span class="nimbus-label">Console</span>
+          </button>
+
+          <!-- Profile tab -->
+          <button id="profileNavButton" class="nimbus-item tab-button" type="button" data-view="profile" aria-label="Profile">
+            <span class="nv-ico" data-fx="pop">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <span class="nimbus-label">Profile</span>
+          </button>
+        </nav>
       </div>
 
-      <div class="privacy-note">
-        <span class="lock-icon">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-        </span>
-        <div>
-          <strong>Private by design</strong>
-          <small>Claim evidence and verification details are accessible only to the claimant and authorised staff.</small>
-        </div>
+      <!-- Redesigned Single Liquid Glass Profile Tab Button -->
+      <div class="header-right">
+        <button id="profileTabBtn" class="profile-liquid-pill" type="button" data-view="profile" aria-label="Open user profile">
+          <span class="nimbus-glass" aria-hidden="true"></span>
+          <span id="userInitial" class="avatar avatar-student">A</span>
+          <div class="profile-pill-info">
+            <span id="userName" class="profile-pill-name">Alex Chen</span>
+            <span id="roleChip" class="profile-role-chip">Student</span>
+          </div>
+          <span class="profile-pill-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </button>
       </div>
-    </section>
-  </main>
+    </header>
 
-  <!-- ==================== MAIN APP VIEW ==================== -->
-  <main id="appView" class="app-shell hidden">
-    <header class="app-header">
-<a class="brand-lockup compact" id="homeBrandLink" href="/" aria-label="LostLink home"><span class="brand-mark">LL</span><span><strong>LostLink</strong><small>Campus lost &amp; found</small></span></a>
-<div class="header-center"><nav id="studentNav" class="nimbus-nav" data-tone="light" aria-label="LostLink navigation">
-<span class="nimbus-glass" aria-hidden="true"></span>
-<button id="officeDashboardNav" class="nimbus-item tab-button hidden" type="button" data-view="office" aria-label="Office dashboard"><span class="nv-ico">⌂</span><span class="nimbus-label">Dashboard</span></button><button class="nimbus-item tab-button" type="button" data-view="start"><span class="nv-ico">⌂</span><span class="nimbus-label">Start</span></button>
-<button class="nimbus-item tab-button" type="button" data-view="browse"><span class="nv-ico">⌕</span><span class="nimbus-label">Browse</span></button>
-<button class="nimbus-item tab-button" type="button" data-view="report"><span class="nv-ico">＋</span><span class="nimbus-label">Reports</span></button>
-<button class="nimbus-item tab-button" type="button" data-view="notifications"><span class="nv-ico">♧</span><span class="nimbus-label">Alerts</span><span id="notificationNavCount" class="nav-count hidden">0</span></button><button class="nimbus-item tab-button hidden" type="button" id="privacyRequestsNav" data-view="privacyRequests"><span class="nv-ico">⌑</span><span class="nimbus-label">Privacy requests</span></button>
-</nav></div>
-<div class="header-right"><span id="roleChip" class="role-chip">Student</span><div class="user-menu"><span id="userInitial" class="avatar avatar-student">A</span><span id="userName" class="user-name">Campus user</span></div>
-<button id="showLoginButton" class="button button-quiet button-small" type="button">Login screen</button><button id="finnTipsToggle" class="button button-quiet button-small" type="button" aria-pressed="false">Hide Finn’s tips</button><button id="logoutButton" class="button button-quiet button-small" type="button">Sign out</button></div>
-</header>
-    <section class="welcome-row">
-      <div>
-        <p class="eyebrow">CAMPUS PROPERTY, MADE EASIER</p>
-        <h1 id="welcomeTitle">Find what you are looking for.</h1>
-        <p id="welcomeSubtitle" class="muted">Search reports and explore possible matches.</p>
-      </div>
-      <div class="welcome-mark" aria-hidden="true"><span>LL</span><i>↗</i></div>
-    </section>
-
-    
+    <!-- Hidden elements maintained for app.js status compatibility -->
+    <div class="sr-only" aria-hidden="true">
+      <h1 id="welcomeTitle">LostLink</h1>
+      <p id="welcomeSubtitle">Campus lost and found</p>
+      <span id="dropdownAvatar"></span>
+      <span id="dropdownUserName"></span>
+      <span id="dropdownUserEmail"></span>
+      <span id="switchViewLabel"></span>
+    </div>
 
     <section id="notice" class="notice hidden" role="status"></section>
-    <div id="appModeNote" class="app-mode-note hidden" role="status">Offline preview: changes stay in this browser session and are not saved to the campus database.</div>
+    <div id="appModeNote" class="app-mode-note hidden" role="status">Interactive offline preview: changes stay in this browser session.</div>
 
+    <!-- ==================== 1. STARTING VIEW (CLEAN, FOCUSED: LOST VS FOUND ONLY) ==================== -->
     <section id="startView" class="content-view start-view">
       <div class="start-hero">
-        <div class="start-badge">
-          <span class="sparkle-icon">✦</span>
-          <span>CAMPUS WORKFLOW</span>
-        </div>
         <h1 class="start-title">What would you like to do?</h1>
         <p class="start-subtitle">Report missing property or hand in an item you discovered on campus.</p>
       </div>
@@ -322,7 +209,7 @@
           <div class="start-card-action">
             <button class="button button-liquid button-full" type="button" data-report-kind="lost">
               <span>Start lost report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
+              <span class="btn-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
         </div>
@@ -343,7 +230,7 @@
           <div class="start-card-action">
             <button class="button button-liquid button-full button-found-action" type="button" data-report-kind="found">
               <span>Start found report</span>
-              <span class="btn-arrow" aria-hidden="true">→</span>
+              <span class="btn-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
         </div>
@@ -352,7 +239,7 @@
       <!-- Quiet, non-cluttering secondary discovery link -->
       <div class="start-browse-prompt">
         <span>Looking for items currently held in office custody?</span>
-        <button class="link-btn" type="button" data-go="browse">Browse office inventory ↗</button>
+        <button class="link-btn" type="button" data-go="browse">Browse office inventory &rarr;</button>
       </div>
     </section>
 
@@ -370,8 +257,10 @@
       <form id="searchForm" class="filter-panel glass-card">
         <div class="search-main-row">
           <label class="search-field">
-            <span class="search-icon">⌕</span>
-            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. “backpack”)...">
+            <span class="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input id="filterQuery" type="search" placeholder="Search by name, brand, colour, or reference (e.g. &ldquo;backpack&rdquo;)...">
           </label>
           <button class="button button-liquid" type="submit">Search</button>
           <button id="clearFilters" class="button button-quiet" type="button">Reset</button>
@@ -398,9 +287,11 @@
       </form>
 
       <div id="browseResults" class="item-grid"></div>
-      <button id="browseLoadMore" class="button button-quiet button-small hidden" type="button">Load more items</button>
+      <div class="pagination-controls"><button id="browseLoadMore" class="button button-quiet button-small hidden" type="button">Load more items</button></div>
       <div id="browseEmpty" class="empty-state hidden">
-        <span class="empty-icon">⌕</span>
+        <span class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
         <h3>No items found</h3>
         <p>Try a broader keyword or reset filters. Sensitive items have restricted public details.</p>
       </div>
@@ -414,29 +305,31 @@
           <h2 id="reportModeTitle">Choose your report type</h2>
           <p id="reportModeDescription" class="muted">Lost and Found have separate guided paths so each report starts with the right context.</p>
         </div>
-        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">← Back to options</button>
+        <button id="backToStartBtn" class="button button-quiet button-small" type="button" data-go="start">&larr; Back to options</button>
       </div>
 
+      <div id="reportTypeChooser" class="report-type-chooser">
+        <button class="report-type-card glass-card" type="button" data-report-kind="lost">
+          <span class="report-type-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
+          <strong>I lost something</strong>
+          <small>Tell us what went missing, when you last saw it and where to search.</small>
+          <span class="report-type-action">Start lost report &rarr;</span>
+        </button>
+        <button class="report-type-card glass-card" type="button" data-report-kind="found">
+          <span class="report-type-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </span>
+          <strong>I found something</strong>
+          <small>Record the item and where it was found. Office staff must receive it before it is searchable.</small>
+          <span class="report-type-action">Start found report &rarr;</span>
+        </button>
+      </div>
 
-      <div id="reportTypeChooser" class="report-mode-switch" role="group" aria-label="Choose report type">
-        <button class="report-mode-option selected" type="button" data-report-kind="lost" aria-pressed="true">
-          <span class="mode-option-mark">01</span><span><strong>I Lost Something</strong><small>Find an item you misplaced</small></span>
-        </button>
-        <button class="report-mode-option" type="button" data-report-kind="found" aria-pressed="false">
-          <span class="mode-option-mark">02</span><span><strong>I Found Something</strong><small>Help return an item to its owner</small></span>
-        </button>
-      </div>
-      <div class="report-secondary-links" aria-label="Your reports and claims">
-        <button class="link-btn" type="button" data-go="my-reports">View my reports ↗</button>
-        <button class="link-btn" type="button" data-go="my-claims">View my claims ↗</button>
-        <button class="link-btn" type="button" data-go="activity">My activity ↗</button>
-      </div>
-      
-      <div class="report-intro"><p class="eyebrow">CAMPUS LOST &amp; FOUND</p><h2 id="reportExperienceHeading">Let's find what you've lost.</h2><p id="reportExperienceCopy">Tell us a little about the item. We'll help connect you with possible matches across campus.</p></div>
       <div class="form-layout">
-        <form id="lostReportForm" class="form-card form-stack liquid-glass-panel hidden report-entry-form">
-          <input id="reportType" name="report_type" type="hidden" value="lost">
-          <section id="lostReportGuidance" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">LOST ITEM · HELP US RETRACE IT</span><h3>Think back to the last moment you had the item.</h3><p>Describe what you remember and where you last saw or used it. Keep one or two ownership clues private for claim verification.</p><ul><li>Use your best estimate for the last-seen time.</li><li>Keep unique marks or private proof out of the public description.</li></ul></section>
+        <form id="reportForm" class="form-card form-stack liquid-glass-panel hidden">
+          <input id="reportType" name="report_type" type="hidden" value="">
           
           <div class="form-section-heading">
             <span class="step-number">01</span>
@@ -448,25 +341,35 @@
 
           <div class="two-columns">
             <label>
-              <span id="reportItemNameLabel">Item name</span> <span class="field-required">Required</span>
+              <span>College roll number <span class="field-required">Required</span></span>
+              <input id="reportRollNumber" name="roll_number" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8">
+            </label>
+            <label>
+              <span>Contact phone <span class="field-optional">Optional</span></span>
+              <input id="reportContactPhone" name="contact_phone" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 98765 43210">
+            </label>
+          </div>
+
+          <div class="two-columns">
+            <label>
+              <span>Item name <span class="field-required">Required</span></span>
               <input id="reportTitle" name="title" required minlength="4" maxlength="100" placeholder="e.g. Navy backpack">
             </label>
             <div>
               <label for="reportCategory"><span>Category <span class="field-required">Required</span></span></label>
               <select id="reportCategory" name="category" required></select>
-
+              <div class="category-ai-control">
+                <button id="suggestCategoryButton" class="button button-quiet button-small" type="button">Suggest category with AI</button>
+                <small id="categorySuggestion" class="field-hint" role="status">AI suggestion is optional. You choose the final category.</small>
+              </div>
             </div>
           </div>
 
           <label>
-            <span id="reportDescriptionLabel">Description</span> <span class="field-required">Required</span>
+            <span>Description <span class="field-required">Required</span></span>
             <textarea id="reportDescription" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Item type, visible condition, size, and what makes it recognisable"></textarea>
-            <small id="reportDescriptionHelp" class="field-hint">Keep one or two unique ownership clues private. Share them later in a claim so the office can verify ownership.</small>
+            <small class="field-hint">Describe visible details only. Keep private proof of ownership, serial numbers, and passwords out of this description.</small>
           </label>
-          <div class="category-ai-control ai-assist-inline">
-            <button id="suggestCategoryButton" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest category with AI</button>
-            <small id="categorySuggestion" class="field-hint ai-suggestion-output" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You choose what to apply.</small>
-          </div>
 
           <div class="form-section-heading space-top">
             <span class="step-number">02</span>
@@ -488,9 +391,15 @@
           </div>
 
           <label>
-            <span id="reportFeaturesLabel">Visible characteristics</span> <span class="field-optional">Optional</span>
+            <span>Visible characteristics <span class="field-optional">Optional</span></span>
             <textarea id="reportFeatures" name="visible_features" rows="2" maxlength="400" placeholder="e.g. Two front pockets, black zip, small scratch on the outer flap"></textarea>
             <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
+          </label>
+
+          <label>
+            <span>Private verification clues <span class="field-optional">Staff only</span></span>
+            <textarea id="reportPrivateDetail" name="private_detail" rows="2" maxlength="1200" placeholder="Hidden marks, unique stickers, scratches, or details only you would know. Never shown publicly."></textarea>
+            <small class="field-hint">Visible only to authorised campus office staff to verify ownership.</small>
           </label>
 
           <label>
@@ -509,7 +418,7 @@
 
           <div class="two-columns">
             <label>
-              <span id="reportBlockLabel">Campus location</span> <span class="field-required">Required</span>
+              <span>Block / building or area <span class="field-required">Required</span></span>
               <select id="reportBlock" name="location_block"><option value="">Choose a block or area</option></select>
             </label>
             <label>
@@ -524,7 +433,7 @@
               <input id="reportRoom" name="location_room" maxlength="80" placeholder="e.g. A-102">
             </label>
             <label>
-              <span id="reportAreaLabel">Nearby area / landmark</span> <span class="field-optional">Optional</span>
+              <span>Nearby area / landmark <span class="field-optional">Optional</span></span>
               <input id="reportArea" name="location_area" maxlength="120" placeholder="e.g. Library entrance, cafeteria">
             </label>
           </div>
@@ -538,153 +447,38 @@
           </div>
 
           <label class="upload-box glass-card" for="reportImage">
-            <span class="upload-symbol">↥</span>
+            <span class="upload-symbol">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
             <span>
               <strong id="imageLabel">Choose a photo</strong>
-              <small>JPG, PNG or WebP · up to 5 MB</small>
+              <small>JPG, PNG or WebP &middot; up to 5 MB</small>
             </span>
             <input id="reportImage" name="image" type="file" accept="image/jpeg,image/png,image/webp">
           </label>
           <p id="reportImageWarning" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
-          <label class="field-hint"><input id="reportImageAiConsent" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional; text-based matching remains available.</label>
           <p id="reportError" class="form-error" role="alert"></p>
 
           <div class="form-actions">
             <button id="reportSubmitButton" class="button button-liquid" type="submit">
               <span id="reportSubmitLabel">Submit lost report</span>
-              <span aria-hidden="true">↗</span>
+              <span aria-hidden="true">&rarr;</span>
             </button>
             <button id="backToReportTypes" class="button button-quiet" type="button">Change type</button>
             <button id="cancelReport" class="button button-quiet" type="button">Cancel</button>
           </div>
         </form>
 
-<form id="foundReportForm" class="form-card form-stack liquid-glass-panel hidden found-report-form report-entry-form">
-          <input id="reportTypeFound" name="report_type" type="hidden" value="found">
-          <section id="foundReportGuidanceFound" class="report-kind-guidance" aria-live="polite"><span class="report-guidance-kicker">FOUND ITEM · HELP RETURN IT SAFELY</span><h3>Describe only what you observed when you discovered the item.</h3><p>Record the visible condition and exact discovery spot. Do not publish names, IDs, serial numbers, contents or hidden identifying marks.</p><ul><li>Record when and where you actually found it.</li><li>Hand the item to the campus office; staff confirm receipt and assign its LostLink Tag ID.</li></ul></section>
-          
-          <div class="form-section-heading">
-            <span class="step-number">01</span>
-            <div>
-              <strong id="reportFormStepTitleFound">Report details</strong>
-              <small id="reportFormStepHintFound">Add the item and context.</small>
-            </div>
+        <aside class="side-guidance glass-card">
+          <div class="guidance-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           </div>
-
-          <div class="two-columns">
-            <label>
-              <span id="reportItemNameLabelFound">Item found</span> <span class="field-required">Required</span>
-              <input id="reportTitleFound" name="title" required minlength="4" maxlength="100" placeholder="e.g. Silver water bottle I found">
-            </label>
-            <div>
-              <label for="reportCategoryFound"><span>Category <span class="field-required">Required</span></span></label>
-              <select id="reportCategoryFound" name="category" required></select>
-
-            </div>
-          </div>
-
-          <label>
-            <span id="reportDescriptionLabelFound">Describe the item you found</span> <span class="field-required">Required</span>
-            <textarea id="reportDescriptionFound" name="description" rows="4" required minlength="10" maxlength="1200" placeholder="Describe the item as found: type, size, material, condition and visible details. Do not guess who owns it."></textarea>
-            <small id="reportDescriptionHelpFound" class="field-hint">Share only safe, observable details. Do not include names, student IDs, serial numbers, contents or hidden identifying marks.</small>
-          </label>
-          <div class="category-ai-control ai-assist-inline">
-            <button id="suggestCategoryButtonFound" class="button button-quiet button-small ai-suggest-button" type="button"><span aria-hidden="true">✦</span> Suggest category with AI</button>
-            <small id="categorySuggestionFound" class="field-hint ai-suggestion-output" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You choose what to apply.</small>
-          </div>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">02</span>
-            <div>
-              <strong>Additional item details</strong>
-              <small>Optional details improve search and candidate matching.</small>
-            </div>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Brand / make <span class="field-optional">Optional</span></span>
-              <input id="reportBrandFound" name="brand" maxlength="80" placeholder="e.g. Wildcraft, Apple">
-            </label>
-            <label>
-              <span>Main colour <span class="field-optional">Optional</span></span>
-              <input id="reportColorFound" name="primary_color" maxlength="60" placeholder="e.g. Navy blue">
-            </label>
-          </div>
-
-          <label>
-            <span id="reportFeaturesLabelFound">Visible condition and features</span> <span class="field-optional">Optional</span>
-            <textarea id="reportFeaturesFound" name="visible_features" rows="2" maxlength="400" placeholder="Scratches, stickers, damage, colour, brand, visible exterior details…"></textarea>
-            <small class="field-hint">Only enter features safe to show to others. Keep owner-only secrets for the private claim form.</small>
-          </label>
-
-          <label>
-            <span id="reportDateLabelFound">When did you find it?</span> <span class="field-optional">Optional</span>
-            <input id="reportDateFound" name="occurred_at" type="datetime-local">
-            <small id="reportDateHelpFound" class="field-hint">Use your best estimate; leave blank if you are unsure.</small>
-          </label>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">03</span>
-            <div>
-              <strong id="reportLocationHeadingFound">Where exactly did you find it?</strong>
-              <small id="reportLocationHelpFound">Record the discovery spot, not the office handover or storage location.</small>
-            </div>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span id="reportBlockLabelFound">Found at block / building</span> <span class="field-required">Required</span>
-              <select id="reportBlockFound" name="location_block"><option value="">Choose a block or area</option></select>
-            </label>
-            <label>
-              <span>Floor <span class="field-optional">Optional</span></span>
-              <select id="reportFloorFound" name="location_floor"><option value="">Not sure</option></select>
-            </label>
-          </div>
-
-          <div class="two-columns">
-            <label>
-              <span>Room <span class="field-optional">Optional</span></span>
-              <input id="reportRoomFound" name="location_room" maxlength="80" placeholder="e.g. A-102">
-            </label>
-            <label>
-              <span id="reportAreaLabelFound">Found near / specific spot</span> <span class="field-optional">Optional</span>
-              <input id="reportAreaFound" name="location_area" maxlength="120" placeholder="e.g. Outside Lab 3, under a library desk, near the stairs">
-            </label>
-          </div>
-
-          <div class="form-section-heading space-top">
-            <span class="step-number">04</span>
-            <div>
-              <strong>Photograph (optional)</strong>
-              <small>A photo helps staff and students identify the item.</small>
-            </div>
-          </div>
-
-          <label class="upload-box glass-card" for="reportImageFound">
-            <span class="upload-symbol">↥</span>
-            <span>
-              <strong id="imageLabelFound">Choose a photo</strong>
-              <small>JPG, PNG or WebP · up to 5 MB</small>
-            </span>
-            <input id="reportImageFound" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-          </label>
-          <p id="reportImageWarningFound" class="field-hint">Avoid photos that expose identity numbers, student IDs, or sensitive data.</p>
-          <label class="field-hint"><input id="reportImageAiConsentFound" type="checkbox"> I agree that this photo may be processed by LostLink’s locally hosted AI matching and (if enabled) image-description models. This is optional; text-based matching remains available.</label>
-          <p id="reportErrorFound" class="form-error" role="alert"></p>
-
-          <div class="form-actions">
-            <button id="reportSubmitButtonFound" class="button button-liquid" type="submit">
-              <span id="reportSubmitLabelFound">Submit found report</span>
-              <span aria-hidden="true">↗</span>
-            </button>
-            <button id="backToReportTypesFound" class="button button-quiet" type="button">Change type</button>
-            <button id="cancelReportFound" class="button button-quiet" type="button">Cancel</button>
-          </div>
-        </form>
-
-        <aside class="side-guidance finn-guidance" aria-label="Report guidance"><h3>Help us retrace your steps.</h3><p>Accurate details about the item and its last known location help narrow possible matches.</p><div class="guidance-rule"><span>✓</span><span><strong>Rebuild the timeline</strong><small>Tell us when you last remember having the item.</small></span></div><div class="guidance-rule"><span>✓</span><span><strong>Keep proof private</strong><small>Save one or two distinctive ownership clues for the claim review.</small></span></div><div class="guidance-rule"><span>✓</span><span><strong>Narrow the search</strong><small>Add the block, floor, room or nearby place.</small></span></div></aside>
+          <h3>Helpful details make better matches.</h3>
+          <p class="muted">Describe what is visible, when and where it was last seen, and safe characteristics.</p>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Be specific</strong><small>“Blue backpack with 2 pockets” is better than “bag”.</small></span></div>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Keep proof private</strong><small>Save hidden marks for the private claim form.</small></span></div>
+          <div class="guidance-rule"><span class="rule-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>Honest estimates</strong><small>Choose an approximate area if exact room is unknown.</small></span></div>
+        </aside>
       </div>
     </section>
 
@@ -696,12 +490,33 @@
           <h2>My reports</h2>
           <p class="muted">Check submitted reports and review AI candidate matches for your lost items.</p>
         </div>
-        <button class="button button-liquid" type="button" data-go="report">＋ New report</button>
+        <button class="button button-liquid" type="button" data-go="report">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>New report</span>
+        </button>
       </div>
+      <!-- Private Case Tracking Card -->
+      <div class="glass-card" style="margin-bottom: 24px; padding: 20px 24px; border-radius: var(--radius-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <span class="card-kicker" style="color: var(--water-blue); font-weight: 700;">PRIVATE CASE TRACKING</span>
+            <h3 style="margin:4px 0 6px;">Track a public report or claim</h3>
+            <p class="muted" style="margin:0; font-size:13.5px;">Enter your case reference (e.g. LL-...) and roll number to check live status, AI match candidates, and updates.</p>
+          </div>
+          <form id="trackCaseForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; width:100%; max-width:680px; margin-top:12px;">
+            <input id="trackRefInput" required placeholder="Case Reference (LL-...)" style="flex:2; min-width:180px;">
+            <input id="trackRollInput" required placeholder="Roll Number" style="flex:1; min-width:130px;">
+            <input id="trackSecretInput" type="password" placeholder="Tracking Secret" style="flex:1.2; min-width:150px;">
+            <button class="button button-liquid" type="submit">Track case</button>
+          </form>
+        </div>
+        <div id="trackResultDisplay" class="hidden" style="margin-top:18px; padding-top:18px; border-top: 1px solid rgba(255,255,255,0.18);"></div>
+      </div>
+
       <div id="myReportsList" class="stack-list"></div>
-      <button id="myReportsLoadMore" class="button button-quiet button-small hidden" type="button">Load more reports</button>
+      <div class="pagination-controls"><button id="myReportsLoadMore" class="button button-quiet button-small hidden" type="button">Load more reports</button></div>
       <div id="myReportsEmpty" class="empty-state hidden">
-        <span class="empty-icon">▤</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
         <h3>No reports yet</h3>
         <p>Your lost and found reports will appear here.</p>
       </div>
@@ -728,21 +543,15 @@
         </div>
       </div>
       <div id="myClaimsList" class="stack-list"></div>
-      <button id="myClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button>
+      <div class="pagination-controls"><button id="myClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
       <div id="myClaimsEmpty" class="empty-state hidden">
-        <span class="empty-icon">◷</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
         <h3>No claims submitted</h3>
         <p>When you submit a claim for an office-held item, its review status appears here.</p>
       </div>
     </section>
 
     <!-- ==================== 6. NOTIFICATIONS VIEW ==================== -->
-    <section id="privacyRequestsView" class="content-view hidden">
-      <div class="section-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Privacy requests</h2><p class="muted">Review verified requests for access, correction or erasure. Record the action taken and any retention reason.</p></div><button class="button button-quiet button-small" type="button" id="refreshPrivacyRequests">Refresh</button></div>
-      <div id="privacyRequestsList" class="stack-list"></div>
-      <p id="privacyRequestsEmpty" class="empty-state hidden">No privacy requests are waiting for review.</p>
-    </section>
-
     <section id="notificationsView" class="content-view hidden">
       <div class="section-heading">
         <div>
@@ -754,14 +563,14 @@
       </div>
       <div id="notificationsList" class="stack-list"></div>
       <div id="notificationsEmpty" class="empty-state hidden">
-        <span class="empty-icon">♧</span>
+        <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
         <h3>All caught up</h3>
         <p>New match suggestions and review updates will appear here.</p>
       </div>
     </section>
 
     <!-- ==================== 7. ACTIVITY & CERTIFICATES VIEW ==================== -->
-    <section id="activityView" class="content-view hidden activity-finn-anchor">
+    <section id="activityView" class="content-view hidden">
       <div class="section-heading">
         <div>
           <p class="eyebrow">VERIFIED RECOGNITION</p>
@@ -811,6 +620,226 @@
       </div>
     </section>
 
+    <!-- ==================== 7.5 PROFILE VIEW ==================== -->
+    <section id="profileView" class="content-view hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CAMPUS IDENTITY &amp; ACCOUNT</p>
+          <h2>User profile</h2>
+          <p class="muted">Manage your campus credentials, view your role permissions, track verified contributions, and switch demo roles.</p>
+        </div>
+        <span id="profileStatusBadge" class="count-pill">Active session</span>
+      </div>
+
+      <!-- Profile Hero Card -->
+      <div class="profile-hero-card">
+        <div class="profile-hero-main">
+          <div class="profile-avatar-wrapper">
+            <span id="profileHeroAvatar" class="profile-hero-avatar avatar-student">D</span>
+            <span class="profile-online-indicator" title="Active campus session"></span>
+          </div>
+          <div class="profile-hero-info">
+            <div class="profile-name-row">
+              <h3 id="profileHeroName">Demo Student</h3>
+              <span id="profileHeroRole" class="role-chip">Student</span>
+            </div>
+            <p id="profileHeroEmail" class="profile-email">student@lostlink.local</p>
+            <div class="profile-meta-chips">
+              <span class="profile-meta-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Verified Campus Member</span>
+              </span>
+              <span class="profile-meta-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Demo Session Active</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-hero-actions">
+          <button id="editProfileBtn" class="button button-quiet" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+              <path d="m15 5 4 4"/>
+            </svg>
+            <span>Edit profile</span>
+          </button>
+          <button id="viewSwitchBtn" class="button button-liquid" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+            <span id="profileHeroSwitchText">Switch to office</span>
+          </button>
+          <button id="logoutButton" class="button button-quiet button-danger-quiet" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Sign out</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Profile Bento Summary Cards -->
+      <div class="profile-bento-grid">
+        <div class="profile-bento-card" data-go="activity">
+          <div class="bento-header">
+            <span class="eyebrow">RECOGNITION</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profilePointsVal" class="bento-num">0</span>
+            <span class="bento-unit">verified points</span>
+          </div>
+          <p id="profileMilestoneTier" class="bento-label">Verified Finder tier</p>
+          <span class="bento-link">View activity &amp; certificates &rarr;</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="my-reports">
+          <div class="bento-header">
+            <span class="eyebrow">MY REPORTS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileReportsCount" class="bento-num">0</span>
+            <span class="bento-unit">reports filed</span>
+          </div>
+          <p class="bento-label">Lost &amp; found submissions</p>
+          <span class="bento-link">Manage my reports &rarr;</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="my-claims">
+          <div class="bento-header">
+            <span class="eyebrow">CLAIMS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileClaimsCount" class="bento-num">0</span>
+            <span class="bento-unit">claims recorded</span>
+          </div>
+          <p class="bento-label">Ownership verification status</p>
+          <span class="bento-link">Check claims &rarr;</span>
+        </div>
+
+        <div class="profile-bento-card" data-go="notifications">
+          <div class="bento-header">
+            <span class="eyebrow">ALERTS</span>
+            <div class="bento-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+            </div>
+          </div>
+          <div class="bento-metric">
+            <span id="profileAlertsCount" class="bento-num">0</span>
+            <span class="bento-unit">active alerts</span>
+          </div>
+          <p class="bento-label">Match notifications enabled</p>
+          <span class="bento-link">Configure alerts &rarr;</span>
+        </div>
+      </div>
+
+      <!-- Campus Role Privileges & Guidelines Card -->
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">ROLE &amp; CAPABILITIES</p>
+            <h3>Account privileges &amp; guidelines</h3>
+            <p class="muted">Summary of permissions granted to your current designation.</p>
+          </div>
+        </div>
+        <div id="profilePrivilegesCard" class="profile-privileges-card">
+          <div class="privilege-item">
+            <div class="privilege-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div>
+              <strong>Campus Lost &amp; Found Submissions</strong>
+              <p class="muted">File reports for lost personal items or items found across university buildings, libraries, and common areas.</p>
+            </div>
+          </div>
+          <div class="privilege-item">
+            <div class="privilege-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div>
+              <strong>Private Claim Verification</strong>
+              <p class="muted">Submit confidential ownership proof, serial numbers, and photos. Evidence is kept strictly private from other students.</p>
+            </div>
+          </div>
+          <div class="privilege-item">
+            <div class="privilege-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div>
+              <strong>Recognition &amp; Certificates</strong>
+              <p class="muted">Earn verified activity points upon staff intake or handover. Download verifiable PDF certificates for campus community service.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Shortcuts -->
+      <div class="office-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">NAVIGATION SHORTCUTS</p>
+            <h3>Quick actions</h3>
+            <p class="muted">Jump directly to common campus lost and found workflows.</p>
+          </div>
+        </div>
+        <div class="profile-shortcuts-grid">
+          <button class="profile-shortcut-btn" type="button" data-go="report">
+            <span class="shortcut-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </span>
+            <div class="shortcut-text">
+              <strong>File a New Report</strong>
+              <small>Report lost property or submit a found item</small>
+            </div>
+          </button>
+          <button class="profile-shortcut-btn" type="button" data-go="browse">
+            <span class="shortcut-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <div class="shortcut-text">
+              <strong>Browse Found Property</strong>
+              <small>Search tagged items currently held at campus office</small>
+            </div>
+          </button>
+          <button class="profile-shortcut-btn" type="button" data-go="activity">
+            <span class="shortcut-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                <path d="M4 22h16"/>
+                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+              </svg>
+            </span>
+            <div class="shortcut-text">
+              <strong>View Recognition Ledger</strong>
+              <small>Inspect points history and community leaderboard</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- ==================== 8. OFFICE CONSOLE VIEW ==================== -->
     <section id="officeView" class="content-view hidden">
       <div class="section-heading">
@@ -832,7 +861,7 @@
           </div>
         </div>
         <div id="intakeQueue" class="stack-list"></div>
-        <button id="intakeLoadMore" class="button button-quiet button-small hidden" type="button">Load more intake reports</button>
+        <div class="pagination-controls"><button id="intakeLoadMore" class="button button-quiet button-small hidden" type="button">Load more intake</button></div>
         <div id="intakeEmpty" class="inline-empty hidden">No found-item reports are waiting for intake.</div>
       </div>
 
@@ -845,7 +874,7 @@
           </div>
         </div>
         <div id="officeInventory" class="stack-list"></div>
-        <button id="inventoryLoadMore" class="button button-quiet button-small hidden" type="button">Load more inventory</button>
+        <div class="pagination-controls"><button id="inventoryLoadMore" class="button button-quiet button-small hidden" type="button">Load more inventory</button></div>
         <div id="officeInventoryEmpty" class="inline-empty hidden">No tagged items currently in campus custody.</div>
       </div>
 
@@ -858,7 +887,7 @@
           </div>
         </div>
         <div id="officeClaims" class="stack-list"></div>
-        <button id="officeClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button>
+        <div class="pagination-controls"><button id="officeClaimsLoadMore" class="button button-quiet button-small hidden" type="button">Load more claims</button></div>
         <div id="officeClaimsEmpty" class="inline-empty hidden">No claims currently under review.</div>
       </div>
 
@@ -871,20 +900,24 @@
           </div>
         </div>
         <div id="handoverQueue" class="stack-list"></div>
-        <button id="handoverLoadMore" class="button button-quiet button-small hidden" type="button">Load more handovers</button>
+        <div class="pagination-controls"><button id="handoverLoadMore" class="button button-quiet button-small hidden" type="button">Load more handovers</button></div>
         <div id="handoverEmpty" class="inline-empty hidden">No approved claims awaiting handover.</div>
       </div>
     </section>
 
-    <div data-finn-slot class="app-finn-slot"></div>
-</main>
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <span>LostLink · Campus Property Assistance Protocol</span>
+      <span>AI suggestions are discovery aids, not proof of ownership. Handover requires office verification.</span>
+    </footer>
+  </main>
 
   <!-- ==================== DIALOGS & MODALS ==================== -->
   <dialog id="closeReportDialog" class="dialog-card liquid-glass-panel">
     <form id="closeReportForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">REPORT LIFECYCLE</p><h2 id="closeReportDialogTitle">Close lost report</h2></div>
-        <button id="closeCloseReport" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeCloseReport" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <p id="closeReportDescription" class="muted small-copy">Close a lost report when recovered elsewhere or no longer searching.</p>
       <label>
@@ -911,7 +944,7 @@
     <form id="decisionConfirmForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">CLAIM REVIEW</p><h2 id="decisionConfirmTitle">Confirm review decision</h2></div>
-        <button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeDecisionConfirm" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <p id="decisionConfirmMessage" class="muted small-copy"></p>
       <p class="field-hint">The decision will be logged to audit trail. Approval moves claim to ready for collection.</p>
@@ -927,7 +960,7 @@
     <form id="additionalEvidenceForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">CLAIM FOLLOW-UP</p><h2>Add ownership evidence</h2></div>
-        <button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeAdditionalEvidence" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <p id="additionalEvidenceSummary" class="muted small-copy">The office requested more evidence for this claim.</p>
       <label>
@@ -946,7 +979,7 @@
     <form id="storageUpdateForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">CAMPUS INVENTORY</p><h2>Update storage location</h2></div>
-        <button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeStorageUpdate" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <p id="storageUpdateSummary" class="muted small-copy">Update only after the physical item has been moved.</p>
       <label>
@@ -969,16 +1002,13 @@
     <form id="handoverForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">PHYSICAL RETURN</p><h2>Confirm item handover</h2></div>
-        <button id="closeHandover" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeHandover" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <p id="handoverSummary" class="muted small-copy">Read the physical label and verify claimant identity before release.</p>
       <label>
         <span>Physical Tag ID <span class="field-required">Required</span></span>
         <input id="handoverTag" required minlength="4" maxlength="80" autocomplete="off" placeholder="Read exact ID printed on item's physical label">
       </label>
-      <div id="handoverRollVerificationGroup" class="hidden">
-        <label><span>Verified college roll number <span class="field-required">Required for public claims</span></span><input id="handoverVerifiedRoll" minlength="5" maxlength="20" autocomplete="off" placeholder="Enter the roll number shown on the college ID"></label>
-      </div>
       <label class="checkbox-line"><input id="handoverIdentityChecked" type="checkbox" required> I checked the claimant's identity under campus policy.</label>
       <label class="checkbox-line"><input id="handoverPhysicalChecked" type="checkbox" required> I physically handed the item to the verified claimant.</label>
       <label>
@@ -998,7 +1028,7 @@
     <div class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">PUBLIC ITEM RECORD</p><h2 id="itemDetailsTitle">Item details</h2></div>
-        <button id="closeItemDetails" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeItemDetails" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <div id="itemDetailsContent" class="item-details-content"></div>
       <div class="form-actions">
@@ -1012,9 +1042,19 @@
     <form id="claimForm" class="form-stack">
       <div class="dialog-heading">
         <div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Help verify this item</h2></div>
-        <button id="closeClaim" type="button" class="icon-button" aria-label="Close">×</button>
+        <button id="closeClaim" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <div id="claimItemSummary" class="claim-item-summary"></div>
+      <div class="two-columns">
+        <label>
+          <span>College roll number <span class="field-required">Required</span></span>
+          <input id="claimRollNumber" required minlength="5" maxlength="20" autocomplete="off" placeholder="e.g. 25B81A66J8">
+        </label>
+        <label>
+          <span>Contact phone <span class="field-optional">Optional</span></span>
+          <input id="claimPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 98765 43210">
+        </label>
+      </div>
       <label>
         <span>Link to your lost report <span class="field-optional">Optional</span></span>
         <select id="claimLostReport"><option value="">No linked lost report</option></select>
@@ -1031,10 +1071,12 @@
         <label class="checkbox-line"><input type="checkbox" name="claimEvidenceType" value="other"> Other verifiable evidence</label>
       </fieldset>
       <label class="upload-box glass-card" for="claimEvidenceImage">
-        <span class="upload-symbol">＋</span>
+        <span class="upload-symbol">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </span>
         <span>
           <strong id="claimEvidenceImageLabel">Attach one supporting photo (optional)</strong>
-          <small>JPG, PNG or WebP · up to 5 MB</small>
+          <small>JPG, PNG or WebP &middot; up to 5 MB</small>
         </span>
         <input id="claimEvidenceImage" name="claim_evidence_image" type="file" accept="image/jpeg,image/png,image/webp">
       </label>
@@ -1050,91 +1092,34 @@
     </form>
   </dialog>
 
-  <dialog id="publicClaimDialog" class="dialog-card liquid-glass-panel">
-    <form id="publicClaimForm" class="form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">OWNERSHIP CLAIM</p><h2>Claim this found item</h2></div><button id="publicClaimClose" type="button" class="icon-button" aria-label="Close">×</button></div>
-      <div id="publicClaimItemSummary" class="claim-item-summary"></div>
-      <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"><small class="field-hint">This is attribution only, not identity verification. The campus office verifies the claimant before handover.</small></label>
-      <label><span>Phone number · Optional</span><input id="publicClaimPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"><small class="field-hint">Shared privately with authorised campus office staff for claim follow-up.</small></label>
-      <label><span>Link to your Lost report <span class="field-optional">Optional</span></span><input id="publicClaimLostReference" maxlength="24" placeholder="e.g. LL-XXXXXXX"></label>
-      <fieldset class="evidence-type-fieldset"><legend>Supporting evidence <span class="field-required">Choose at least one</span></legend>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="purchase_or_receipt"> Purchase or receipt proof</label>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="packaging_or_accessory"> Matching packaging or accessory</label>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="timeline_and_location"> Date and place of loss</label>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="device_or_account_context"> Device or account context</label>
-        <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="other"> Other verifiable evidence</label>
-      </fieldset>
-      <label><span>Private ownership explanation <span class="field-required">At least 20 characters</span></span><textarea id="publicClaimEvidence" rows="5" required minlength="20" maxlength="1800" placeholder="Describe details that only the owner would know."></textarea></label>
-      <p class="field-hint">Your claim is reviewed by authorised campus staff. You can check updates in the browser used to submit this claim.</p>
-      <p id="publicClaimError" class="form-error" role="alert"></p>
-      <div class="form-actions"><button id="publicClaimSubmit" class="button button-liquid" type="submit">Submit private claim</button><button id="publicClaimCancel" class="button button-quiet" type="button">Cancel</button></div>
+  <dialog id="editProfileDialog" class="dialog-card liquid-glass-panel">
+    <form id="editProfileForm" class="form-stack">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">CAMPUS PROFILE</p><h2>Edit profile details</h2></div>
+        <button id="closeEditProfile" type="button" class="icon-button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <p class="muted small-copy">Update your public campus display name and contact preferences.</p>
+      <label>
+        <span>Display name <span class="field-required">Required</span></span>
+        <input id="editProfileNameInput" required minlength="2" maxlength="60" placeholder="e.g. Alex Chen">
+      </label>
+      <label>
+        <span>Campus email <span class="field-optional">Institutional</span></span>
+        <input id="editProfileEmailInput" disabled readonly class="input-disabled">
+      </label>
+      <label>
+        <span>Contact phone / WhatsApp <span class="field-optional">Optional</span></span>
+        <input id="editProfilePhoneInput" type="tel" maxlength="24" placeholder="e.g. +91 98765 43210 (for return notices)">
+      </label>
+      <p id="editProfileError" class="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button id="saveEditProfileBtn" class="button button-liquid" type="submit">Save changes</button>
+        <button id="cancelEditProfile" class="button button-quiet" type="button">Cancel</button>
+      </div>
     </form>
   </dialog>
-  <dialog id="publicEvidenceDialog" class="dialog-card liquid-glass-panel"><form id="publicEvidenceForm" class="form-stack">
-    <div class="dialog-heading"><div><p class="eyebrow">ADDITIONAL EVIDENCE</p><h2>Respond to the office</h2></div><button id="publicEvidenceClose" type="button" class="icon-button" aria-label="Close">×</button></div>
-    <label><span>Additional private evidence <span class="field-required">At least 20 characters</span></span><textarea id="publicEvidenceText" rows="5" required minlength="20" maxlength="1800"></textarea></label>
-    <p id="publicEvidenceError" class="form-error" role="alert"></p>
-    <div class="form-actions"><button id="publicEvidenceSubmit" class="button button-liquid" type="submit">Send evidence</button><button id="publicEvidenceCancel" class="button button-quiet" type="button">Cancel</button></div>
-  </form></dialog>
-  <div id="toast" class="toast hidden" role="status"></div>
 
-  <!-- Finn is mounted at document level so he persists across public and authenticated views. -->
-  <div class="mascot-dock" id="finnDock" aria-label="Finn, your LostLink campus detective">
-    <div class="mascot-note" id="finnNote" role="status" aria-live="polite"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
-    <button class="finn-character" id="finnCharacter" type="button" aria-label="Wake Finn for a little help">
-      <svg class="finn-mascot" viewBox="0 0 240 205" role="img" aria-label="Finn the fox detective, peeking over the LostLink case desk">
-        <defs>
-          <linearGradient id="finnFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6b16e"/><stop offset=".55" stop-color="#d8783f"/><stop offset="1" stop-color="#a94f30"/></linearGradient>
-          <linearGradient id="finnCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ed"/><stop offset="1" stop-color="#ead5bb"/></linearGradient>
-          <linearGradient id="finnCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#916344"/><stop offset="1" stop-color="#51362b"/></linearGradient>
-          <linearGradient id="finnHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#78533a"/><stop offset="1" stop-color="#3e2b23"/></linearGradient>
-          <filter id="finnDrop" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#4b3020" flood-opacity=".22"/></filter>
-        </defs>
-        <g class="finn-tail-group"><path class="finn-tail" d="M65 167C23 170 10 142 23 111c12-28 40-31 60-12 13 13 11 29-1 38-10 7-22 3-29-5 1 18 17 28 34 28Z"/><path class="finn-tail-tip" d="M23 119c12-17 31-19 47-9-4 17-20 26-38 22Z"/></g>
-        <g class="finn-body" filter="url(#finnDrop)">
-          <path class="finn-coat" d="M65 174Q75 145 111 145q39-4 66 27l9 30H55Z"/>
-          <path class="finn-shirt" d="m101 151 20 29 19-29-19-10Z"/>
-          <path class="finn-paw finn-paw-left" d="M74 157q-16 5-14 19 2 10 17 9l17-10Z"/>
-          <path class="finn-paw finn-paw-right" d="M157 157q16 5 14 19-2 10-17 9l-17-10Z"/>
-          <path class="finn-ear" d="M72 89 52 20Q86 34 102 73Z"/><path class="finn-ear-inner" d="m69 66-7-31q18 14 25 32Z"/>
-          <path class="finn-ear finn-ear-right" d="m143 73 31-54q5 42-12 75Z"/><path class="finn-ear-inner" d="m153 69 14-30q0 25-9 39Z"/>
-          <path class="finn-head" d="M57 103Q59 55 119 53q61-1 66 50 5 51-45 65-22 7-43-1-44-13-40-64Z"/>
-          <path class="finn-muzzle" d="M79 119q17-18 40-5 22-13 43 5-5 31-42 32-36-1-41-32Z"/>
-          <path class="finn-eye-line" d="M83 105q12-12 24 0m20 0q12-12 24 0"/>
-          <g class="finn-eyes"><ellipse class="finn-eye" cx="98" cy="109" rx="5" ry="7"/><ellipse class="finn-eye" cx="139" cy="109" rx="5" ry="7"/><circle class="finn-eye-glint" cx="100" cy="106" r="1.7"/><circle class="finn-eye-glint" cx="141" cy="106" r="1.7"/></g>
-          <path class="finn-nose" d="M113 126q7-7 14 0-7 9-14 0Z"/><path class="finn-smile" d="M120 132q-9 10-17 2m17-2q9 10 17 2"/>
-          <path class="finn-hat" d="M64 79Q78 40 119 39q42-1 57 37l-12 13q-43-23-88 3Z"/><path class="finn-hat-brim" d="M53 88q63-25 137-2 11 4 13 13-77-10-148 15Z"/>
-          <path class="finn-hat-band" d="M79 78q39-18 77-3" />
-          <g class="finn-glass">
-            <circle class="finn-lens" cx="178" cy="123" r="22"/><circle class="finn-lens-shine" cx="178" cy="123" r="15"/>
-            <path class="finn-handle" d="m194 140 22 24"/>
-          </g>
-        </g>
-      </svg>
-    </button>
-  </div>
-  <dialog id="privacyDecisionDialog" class="modal-dialog">
-    <form id="privacyDecisionForm" class="form-card form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Update privacy request</h2></div><button type="button" class="dialog-close" id="closePrivacyDecision" aria-label="Close">×</button></div>
-      <p id="privacyDecisionSummary" class="field-hint"></p>
-      <label><span>Decision</span><select id="privacyDecisionAction" required><option value="in_review">Move to review</option><option value="completed">Mark completed</option><option value="declined">Decline request</option></select></label>
-      <label><span>Review note / action taken</span><textarea id="privacyDecisionNote" required minlength="10" maxlength="2000" rows="4" placeholder="Record what was reviewed, action taken, or why retention is necessary."></textarea></label>
-      <div class="form-actions"><button class="button button-liquid" type="submit">Save decision</button><button class="button button-quiet" type="button" id="cancelPrivacyDecision">Cancel</button></div>
-      <p id="privacyDecisionError" class="form-error" role="alert"></p>
-    </form>
-  </dialog>
-  <dialog id="publicPrivacyDialog" class="modal-dialog">
-    <form id="publicPrivacyForm" class="form-card form-stack">
-      <div class="dialog-heading"><div><p class="eyebrow">YOUR DATA</p><h2>Request a privacy action</h2></div><button type="button" class="dialog-close" id="closePublicPrivacy" aria-label="Close">×</button></div>
-      <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share the tracking link with anyone else.</p>
-      <label><span>Request type</span><select id="publicPrivacyType" required><option value="access">Access / copy of my data</option><option value="correction">Correct my data</option><option value="erasure">Request erasure</option></select></label>
-      <label><span>Details (optional)</span><textarea id="publicPrivacyDetails" rows="4" maxlength="2000" placeholder="Describe the information or correction requested."></textarea></label>
-      <div class="form-actions"><button class="button button-liquid" type="submit">Submit request</button><button class="button button-quiet" type="button" id="cancelPublicPrivacy">Cancel</button></div>
-      <p id="publicPrivacyError" class="form-error" role="alert"></p>
-    </form>
-  </dialog>
-  <script src="/deployment-config.js"></script>
-  <script src="/static/app.js?v=lostlink-privacy-ai-auth-20261109c" defer></script>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/app.js" defer></script>
 </body>
 </html>
