@@ -1,3 +1,14 @@
+/**
+ * ============================================================================
+ * DejaVu - Campus Lost and Found
+ * 
+ * Third-Party Components & Attributions:
+ * - 21st.dev Liquid Glass Waterline Navigation
+ *   Created by @gughigug (https://21st.dev) - Licensed under the MIT License
+ * - 21st.dev Aurora Animated Background
+ *   Created by @manuarora700 (https://21st.dev) - Licensed under the MIT License
+ * ============================================================================
+ */
 /* ==========================================================================
    LOSTLINK · LIQUID GLASS DESIGN SYSTEM
    Exact Palette & Material Tokens Matched to 21st.dev Liquid Glass Navbar
@@ -4123,4 +4134,299 @@ a:hover { color: var(--ll-primary-hover); }
   padding: 0;
   accent-color: #96552f;
   box-shadow: none !important;
+}
+
+/* ==========================================================================
+   PORT 8002 LIQUID GLASS STYLING (RESTORED EXACT UI)
+   - Canvas: #f8fafc with 21st.dev Aurora background
+   - Lost Report & Primary: Water Blue (#00A2FF / #0284C7)
+   - Found Report: Golden Amber (#F59E0B / #D97706)
+   - Inset Specular Glass Buttons (Zero heavy text stroke)
+   - 3D Animated Detective Fox Mascot
+   ========================================================================== */
+
+:root {
+  --canvas-bg: #f8fafc;
+  --water-blue: #00A2FF;
+  --water-deep: #0284C7;
+  --water-dark: #0369A1;
+  --water-glow: rgba(0, 162, 255, 0.22);
+  --water-rim: rgba(255, 255, 255, 0.88);
+  --amber: #F59E0B;
+  --amber-soft: rgba(245, 158, 11, 0.14);
+}
+
+/* Ambient Aurora Background from port 8002 */
+.ambient-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: #f8fafc;
+}
+
+.liquid-orb.orb-1 {
+  position: absolute;
+  top: -120px;
+  right: -80px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.45;
+  background: radial-gradient(circle, rgba(0, 162, 255, 0.28) 0%, rgba(126, 232, 255, 0.15) 60%, transparent 80%);
+  animation: floatOrb 18s ease-in-out infinite alternate;
+}
+
+.liquid-orb.orb-2 {
+  position: absolute;
+  bottom: -80px;
+  left: -60px;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.45;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(147, 197, 253, 0.15) 70%, transparent 80%);
+  animation: floatOrb 22s ease-in-out infinite alternate-reverse;
+}
+
+.liquid-orb.orb-3 {
+  position: absolute;
+  top: 35%;
+  left: 30%;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, rgba(254, 243, 199, 0.1) 65%, transparent 80%);
+  animation: floatOrb 26s ease-in-out infinite alternate;
+}
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -20px) scale(1.05); }
+  100% { transform: translate(-20px, 30px) scale(0.95); }
+}
+
+/* 1. LOST REPORT CARD (WATER BLUE) */
+.public-action-card.lost-action,
+[data-public-report="lost"] {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(186, 230, 253, 0.8);
+  box-shadow: 0 4px 18px -4px rgba(0, 162, 255, 0.12), inset 0 1px 1px #fff;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.25s ease;
+}
+
+.public-action-card.lost-action:hover,
+[data-public-report="lost"]:hover {
+  border-color: rgba(0, 162, 255, 0.6);
+  box-shadow: 0 8px 24px -4px rgba(0, 162, 255, 0.22), inset 0 1px 1px #fff;
+  transform: translateY(-2px);
+}
+
+.lost-action .public-action-icon,
+.icon-lost {
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 55%),
+              linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%) !important;
+  color: #0284C7 !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 4px 12px -2px rgba(2, 132, 199, 0.18) !important;
+}
+
+/* 2. FOUND REPORT CARD (GOLDEN AMBER - PORT 8002 ORIGINAL) */
+.public-action-card.found-action,
+[data-public-report="found"] {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(254, 215, 170, 0.8);
+  box-shadow: 0 4px 18px -4px rgba(217, 119, 6, 0.12), inset 0 1px 1px #fff;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.25s ease;
+}
+
+.public-action-card.found-action:hover,
+[data-public-report="found"]:hover {
+  border-color: rgba(217, 119, 6, 0.6);
+  box-shadow: 0 8px 24px -4px rgba(217, 119, 6, 0.22), inset 0 1px 1px #fff;
+  transform: translateY(-2px);
+}
+
+.found-action .public-action-icon,
+.icon-found {
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 55%),
+              linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%) !important;
+  color: #D97706 !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 4px 12px -2px rgba(217, 119, 6, 0.18) !important;
+}
+
+/* 3. FOUND REPORT BUTTON (GOLDEN AMBER - PORT 8002 EXACT) */
+.button-found-action,
+button.button-found-action,
+#publicFoundReportForm button[type="submit"] {
+  color: #FFFFFF !important;
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%),
+              linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.95),
+              0 8px 24px -6px rgba(217, 119, 6, 0.45) !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+}
+
+.button-found-action:hover,
+#publicFoundReportForm button[type="submit"]:hover {
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 1),
+              0 14px 30px -4px rgba(217, 119, 6, 0.55) !important;
+  transform: translateY(-2px);
+}
+
+.button-found-action:active,
+#publicFoundReportForm button[type="submit"]:active {
+  transform: scale(0.985);
+}
+
+/* 4. PRIMARY, LIQUID, AND SEARCH BUTTONS (WATER BLUE - PORT 8002 EXACT) */
+.button-primary,
+.button-liquid,
+.search-button,
+#reportSubmitButton,
+#claimSubmitButton,
+#publicReportForm button[type="submit"],
+#publicBrowseForm button[type="submit"],
+#publicTrackForm button[type="submit"],
+#publicEvidenceForm button[type="submit"] {
+  color: #FFFFFF !important;
+  background: radial-gradient(120% 140% at 30% 0%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%),
+              linear-gradient(135deg, #00A2FF 0%, #0284C7 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.95),
+              inset 0 -2px 5px rgba(0, 162, 255, 0.35),
+              0 8px 24px -4px rgba(0, 162, 255, 0.45) !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+}
+
+.button-primary:hover,
+.button-liquid:hover,
+.search-button:hover,
+#reportSubmitButton:hover,
+#claimSubmitButton:hover,
+#publicReportForm button[type="submit"]:hover,
+#publicBrowseForm button[type="submit"]:hover,
+#publicTrackForm button[type="submit"]:hover,
+#publicEvidenceForm button[type="submit"]:hover {
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 1),
+              inset 0 -2px 6px rgba(0, 162, 255, 0.4),
+              0 14px 30px -4px rgba(0, 162, 255, 0.55) !important;
+  transform: translateY(-2px);
+}
+
+.button-primary:active,
+.button-liquid:active,
+.search-button:active {
+  transform: scale(0.985);
+}
+
+/* 5. FROSTED QUIET BUTTONS */
+.button-quiet {
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 999px !important;
+}
+
+.button-quiet:hover {
+  background: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+/* 6. 3D DETECTIVE MASCOT (FINN) ANIMATIONS */
+.detective-mascot-svg {
+  filter: drop-shadow(0 10px 18px rgba(0, 40, 90, 0.18));
+  transform-origin: 70% 100%;
+  animation: finn-3d-idle 5s ease-in-out infinite;
+}
+
+@keyframes finn-3d-idle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-4px) rotate(1deg); }
+  50% { transform: translateY(-1px) rotate(-1deg); }
+  75% { transform: translateY(-5px) rotate(0.5deg); }
+}
+
+.mascot-search-cone {
+  transform-origin: 178px 122px;
+  animation: finn-search-beam 3.2s ease-in-out infinite;
+}
+
+@keyframes finn-search-beam {
+  0%, 100% { opacity: 0.75; transform: scale(1) rotate(0deg); }
+  50% { opacity: 0.35; transform: scale(1.08) rotate(-4deg); }
+}
+
+.mascot-magnifier {
+  transform-origin: 178px 122px;
+  animation: finn-magnifier-bob 4s ease-in-out infinite;
+}
+
+@keyframes finn-magnifier-bob {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35% { transform: translate(2px, -4px) rotate(3deg); }
+  70% { transform: translate(-2px, -2px) rotate(-2deg); }
+}
+
+.mascot-specular-arc {
+  animation: finn-lens-shimmer 2.8s ease-in-out infinite;
+}
+
+@keyframes finn-lens-shimmer {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.4; }
+}
+
+.mascot-ear-right-twitch {
+  transform-origin: 162px 94px;
+  animation: finn-ear-twitch 4s ease-in-out infinite;
+}
+
+@keyframes finn-ear-twitch {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  92% { transform: rotate(4deg); }
+  96% { transform: rotate(-3deg); }
+}
+
+.mascot-eyes {
+  animation: finn-blink 5.5s infinite;
+  transform-origin: 119px 111px;
+}
+
+@keyframes finn-blink {
+  0%, 94%, 98%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+.mascot-tail-swish {
+  transform-origin: 65px 167px;
+  animation: finn-tail-wag 3.8s ease-in-out infinite;
+}
+
+@keyframes finn-tail-wag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detective-mascot-svg,
+  .mascot-search-cone,
+  .mascot-magnifier,
+  .mascot-specular-arc,
+  .mascot-ear-right-twitch,
+  .mascot-eyes,
+  .mascot-tail-swish {
+    animation: none !important;
+  }
 }

@@ -721,3 +721,7 @@ For local development without creating a hosted database, see [Local PostgreSQL 
 - [Production Compose file](compose.production.yml) — binds the app only to localhost for a TLS reverse proxy; requires real `DATABASE_URL`, `SESSION_SECRET`, and `ALLOWED_HOSTS` environment values.
 - The public-first landing page keeps students outside the authenticated office console; Lost/Found report actions open dedicated destination views.
 
+## Attribution & Third-Party Licenses
+
+- **21st.dev Liquid Glass Waterline Navigation**: Designed by [@gughigug](https://21st.dev) — Licensed under the [MIT License](https://opensource.org/licenses/MIT).
+- **21st.dev Aurora Animated Background**: Designed by [@manuarora700](https://21st.dev) — Licensed under the [MIT License](https://opensource.org/licenses/MIT).

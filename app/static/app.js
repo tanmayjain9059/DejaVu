@@ -1,3 +1,10 @@
+/**
+ * DejaVu / LostLink Frontend Application
+ * 
+ * Attributions:
+ * - 21st.dev Liquid Glass Waterline Navigation by @gughigug (MIT License)
+ * - 21st.dev Aurora Animated Background by @manuarora700 (MIT License)
+ */
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
