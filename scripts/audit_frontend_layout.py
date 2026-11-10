@@ -225,6 +225,24 @@ def main() -> int:
                 return_home(page)
 
                 if width == 1440:
+                    # API/user-controlled text must render as text, never executable markup.
+                    injection = '<img src=x onerror="window.__lostlink_xss=true">'
+                    safe = page.evaluate("""(payload) => {
+                      const markup = itemCard({
+                        id: "xss-regression", report_type: "lost",
+                        title: payload, description: payload,
+                        visible_features: payload, category: "other",
+                        public_ref: "LL-XSS-TEST", location: "CVR campus",
+                        occurred_at: null, image_url: null, status: "open"
+                      });
+                      const wrapper = document.createElement("div");
+                      wrapper.innerHTML = markup;
+                      return !wrapper.querySelector("img") &&
+                        wrapper.querySelector("h3")?.textContent === payload &&
+                        wrapper.querySelector(".item-description")?.textContent === payload;
+                    }""", injection)
+                    if not safe:
+                        raise AssertionError("API-provided report text was not escaped by item card rendering")
                     lost_reference = submit_public_report(page, "lost")
                     submit_public_report(page, "found")
 
