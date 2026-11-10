@@ -30,6 +30,7 @@ from app.core.config import (
     MATCHING_CANDIDATE_LIMIT,
     MAX_UPLOAD_BYTES,
     SESSION_SECRET,
+    SENSITIVE_CATEGORIES,
     MAX_OPEN_CLAIMS_PER_STUDENT,
     UPLOAD_DIR,
 )
@@ -563,8 +564,8 @@ async def upload_public_report_image(
 @router.get("/search")
 def search_public_reports(category: str | None = Query(default=None, max_length=60), q: str | None = Query(default=None, max_length=100), report_type: Literal["all", "lost", "found"] = "all", limit: int = Query(default=50, ge=1, le=100)):
     """Public discovery across open Lost reports and office-received Found inventory."""
-    if category and category not in CATEGORY_LABELS:
-        raise HTTPException(status_code=422, detail="Choose a valid report category.")
+    if category and (category not in CATEGORY_LABELS or category in SENSITIVE_CATEGORIES):
+        raise HTTPException(status_code=422, detail="Choose a public report category.")
     clauses = []
     params: list[Any] = []
     if report_type in {"all", "lost"}:
@@ -572,12 +573,15 @@ def search_public_reports(category: str | None = Query(default=None, max_length=
     if report_type in {"all", "found"}:
         clauses.append("(report_type='found' AND status='available')")
     where = "(" + " OR ".join(clauses) + ")"
-    if category and category in CATEGORY_LABELS:
+    if category == "other":
+        # Sensitive categories are indistinguishable from public "other".
+        where += " AND category IN ('other','identity_documents','keys_access')"
+    elif category:
         where += " AND category=?"
         params.append(category)
     if q and q.strip():
         term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
-        where += " AND (LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
+        where += " AND (LOWER(CASE WHEN category IN ('identity_documents','keys_access') THEN 'other' ELSE category END) LIKE ? ESCAPE '!' OR (category NOT IN ('identity_documents','keys_access') AND LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!') OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
         params.extend([term,term,term])
     with connect_db() as conn:
         rows = conn.execute("SELECT * FROM reports WHERE " + where + " ORDER BY created_at DESC,id DESC LIMIT ?", (*params,limit)).fetchall()
@@ -599,17 +603,19 @@ def get_public_found_item(report_id: str):
 
 @router.get("/found")
 def browse_public_found(category: str | None = Query(default=None, max_length=60), q: str | None = Query(default=None, max_length=100), limit: int = Query(default=50, ge=1, le=100)):
-    if category and category not in CATEGORY_LABELS:
-        raise HTTPException(status_code=422, detail="Choose a valid report category.")
+    if category and (category not in CATEGORY_LABELS or category in SENSITIVE_CATEGORIES):
+        raise HTTPException(status_code=422, detail="Choose a public report category.")
     clauses = ["report_type='found'", "status='available'"]
     params: list[Any] = []
-    if category and category in CATEGORY_LABELS:
+    if category == "other":
+        clauses.append("category IN ('other','identity_documents','keys_access')")
+    elif category:
         clauses.append("category=?")
         params.append(category)
     if q and q.strip():
         term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
         clauses.append(
-            "(LOWER(category) LIKE ? ESCAPE '!' OR LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
+            "(LOWER(CASE WHEN category IN ('identity_documents','keys_access') THEN 'other' ELSE category END) LIKE ? ESCAPE '!' OR (category NOT IN ('identity_documents','keys_access') AND LOWER(COALESCE(primary_color,'')) LIKE ? ESCAPE '!') OR LOWER(COALESCE(public_ref,'')) LIKE ? ESCAPE '!')"
         )
         params.extend([term,term,term])
     with connect_db() as conn:

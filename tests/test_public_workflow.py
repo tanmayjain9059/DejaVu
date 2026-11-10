@@ -397,6 +397,32 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(row["title"], secret_title)
         self.assertEqual(row["description"], secret_detail)
 
+    def test_sensitive_categories_cannot_be_enumerated_by_public_search_filters(self):
+        created = self.client.post("/api/public/reports", json={
+            "report_type": "lost", "roll_number": "25B81A66J8",
+            "title": "Private identity document",
+            "description": "Private passport number must not be searchable.",
+            "category": "identity_documents", "primary_color": "secretviolet",
+            "location_area": "CVR campus",
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        ref = created.json()["case"]["reference"]
+        for path in ("/api/public/search", "/api/public/found"):
+            denied = self.client.get(path + "?category=identity_documents")
+            self.assertEqual(denied.status_code, 422, denied.text)
+            denied_key = self.client.get(path + "?category=keys_access")
+            self.assertEqual(denied_key.status_code, 422, denied_key.text)
+            for private_query in ("identity_documents", "secretviolet"):
+                response = self.client.get(path + "?q=" + private_query)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertNotIn(ref, response.text)
+        visible = self.client.get("/api/public/search?category=other")
+        self.assertEqual(visible.status_code, 200, visible.text)
+        self.assertIn(ref, visible.text)
+        masked = self.client.get("/api/public/search?q=other")
+        self.assertEqual(masked.status_code, 200, masked.text)
+        self.assertIn(ref, masked.text)
+
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
         second = self.create_public_report(roll="25B81A66J8",title="Red notebook").json()
