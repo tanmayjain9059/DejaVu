@@ -282,18 +282,14 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('class="public-ai-panel"', self.html)
         self.assertIn(".public-ai-panel", self.css)
 
-    def test_global_theme_uses_consistent_bone_beige_palette(self):
-        self.assertIn("--ll-paper: #f2e9dc", self.css)
-        self.assertIn("--ll-primary: #96552f", self.css)
-        self.assertIn("--canvas-bg: var(--ll-paper)", self.css)
-        self.assertIn("--water-blue: var(--ll-primary)", self.css)
-        self.assertNotIn("#dcebf5", self.css.lower())
-        self.assertNotIn("#0284c7", self.css.lower())
-        self.assertNotIn("#2563eb", self.css.lower())
-        self.assertNotIn("#00a2ff", self.css.lower())
-        self.assertNotIn("rgba(37,99,235", self.css.lower())
-        self.assertIn(".report-kind-guidance", self.css)
+    def test_global_theme_uses_port_8002_liquid_glass_palette(self):
+        self.assertIn("--canvas-bg: #f8fafc", self.css)
+        self.assertIn("--water-blue: #00A2FF", self.css)
+        self.assertIn("--water-deep: #0284C7", self.css)
+        self.assertIn("--amber: #F59E0B", self.css)
+        self.assertIn(".button-found-action", self.css)
         self.assertIn(".button-primary", self.css)
+        self.assertIn(".button-liquid", self.css)
 
     def test_navigation_destinations_are_oval_on_desktop_and_mobile(self):
         self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
@@ -422,5 +418,36 @@ class FrontendContractTests(unittest.TestCase):
         demo_end = self.js.index('$("#fillOffice").addEventListener', demo_start)
         self.assertIn("assertLocalOfficeLoginAllowed();", self.js[demo_start:demo_end])
 
+    def test_twentyfirst_dev_license_and_attribution_present(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("21st.dev", self.css)
+        self.assertIn("MIT License", self.css)
+        self.assertIn("@gughigug", self.css)
+        self.assertIn("@manuarora700", self.css)
+        self.assertIn("21st.dev", readme)
+        self.assertIn("MIT License", readme)
+
+    def test_detective_mascot_3d_and_animated_elements_present(self):
+        self.assertIn('id="finnDock"', self.html)
+        self.assertIn('id="finnCharacter"', self.html)
+        self.assertIn('id="mascotMessage"', self.html)
+        self.assertIn("mascot-search-cone", self.html)
+        self.assertIn("mascot-magnifier", self.html)
+        self.assertIn("mascot-glass-arm", self.html)
+        self.assertIn(".mascot-search-cone", self.css)
+
+    def test_found_amber_and_lost_water_blue_styling(self):
+        self.assertIn(".found-action", self.css)
+        self.assertIn(".lost-action", self.css)
+        self.assertIn(".button-found-action", self.css)
+        self.assertIn("#f59e0b", self.css.lower())
+        self.assertIn("#00a2ff", self.css.lower())
+
+    def test_button_liquid_glass_specular_styling(self):
+        self.assertIn(".button-primary", self.css)
+        self.assertIn(".button-liquid", self.css)
+        self.assertIn("radial-gradient", self.css)
+
 if __name__ == "__main__":
+
     unittest.main()

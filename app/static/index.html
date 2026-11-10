@@ -1085,32 +1085,149 @@
   <div class="mascot-dock" id="finnDock" aria-label="Finn, your LostLink campus detective">
     <div class="mascot-note" id="finnNote" role="status" aria-live="polite"><span id="mascotMessage">Psst… got a mystery for me?</span><span class="mascot-note-tail"></span></div>
     <button class="finn-character" id="finnCharacter" type="button" aria-label="Wake Finn for a little help">
-      <svg class="finn-mascot" viewBox="0 0 240 205" role="img" aria-label="Finn the fox detective, peeking over the LostLink case desk">
+            <svg class="finn-mascot detective-mascot-svg" viewBox="0 0 240 240" role="img" aria-label="Finn the 3D fox detective with hat and magnifying glass">
         <defs>
-          <linearGradient id="finnFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6b16e"/><stop offset=".55" stop-color="#d8783f"/><stop offset="1" stop-color="#a94f30"/></linearGradient>
-          <linearGradient id="finnCream" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8ed"/><stop offset="1" stop-color="#ead5bb"/></linearGradient>
-          <linearGradient id="finnCoat" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#916344"/><stop offset="1" stop-color="#51362b"/></linearGradient>
-          <linearGradient id="finnHat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#78533a"/><stop offset="1" stop-color="#3e2b23"/></linearGradient>
-          <filter id="finnDrop" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#4b3020" flood-opacity=".22"/></filter>
+          <filter id="mascot3dShadow" x="-20%" y="-20%" width="150%" height="150%">
+            <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#002244" flood-opacity="0.25"/>
+          </filter>
+          <filter id="finnDrop" x="-30%" y="-30%" width="170%" height="180%">
+            <feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#4b3020" flood-opacity=".22"/>
+          </filter>
+          <linearGradient id="mascotFur" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fb923c"/>
+            <stop offset="55%" stop-color="#ea580c"/>
+            <stop offset="100%" stop-color="#c2410c"/>
+          </linearGradient>
+          <linearGradient id="finnFur" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#f6b16e"/><stop offset=".55" stop-color="#d8783f"/><stop offset="1" stop-color="#a94f30"/>
+          </linearGradient>
+          <linearGradient id="mascotCream" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fffbeb"/>
+            <stop offset="100%" stop-color="#fed7aa"/>
+          </linearGradient>
+          <linearGradient id="finnCream" x1="0" y1="0" x2="0" y2="1">
+            <stop stop-color="#fff8ed"/><stop offset="1" stop-color="#ead5bb"/>
+          </linearGradient>
+          <linearGradient id="mascotHat" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#334155"/>
+            <stop offset="60%" stop-color="#1e293b"/>
+            <stop offset="100%" stop-color="#0f172a"/>
+          </linearGradient>
+          <linearGradient id="finnHat" x1="0" y1="0" x2="0" y2="1">
+            <stop stop-color="#78533a"/><stop offset="1" stop-color="#3e2b23"/>
+          </linearGradient>
+          <linearGradient id="mascotHatBand" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#3b82f6"/>
+            <stop offset="50%" stop-color="#60a5fa"/>
+            <stop offset="100%" stop-color="#1d4ed8"/>
+          </linearGradient>
+          <linearGradient id="mascotJacket" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#475569"/>
+            <stop offset="50%" stop-color="#334155"/>
+            <stop offset="100%" stop-color="#1e293b"/>
+          </linearGradient>
+          <linearGradient id="finnCoat" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#916344"/><stop offset="1" stop-color="#51362b"/>
+          </linearGradient>
+          <linearGradient id="detectiveSearchBeam" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="rgba(192, 132, 252, 0.75)"/>
+            <stop offset="35%" stop-color="rgba(99, 102, 241, 0.45)"/>
+            <stop offset="100%" stop-color="rgba(59, 130, 246, 0)"/>
+          </linearGradient>
+          <linearGradient id="goldRim" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fbbf24"/>
+            <stop offset="50%" stop-color="#d97706"/>
+            <stop offset="100%" stop-color="#b45309"/>
+          </linearGradient>
+          <radialGradient id="glassLensShine" cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.85)"/>
+            <stop offset="45%" stop-color="rgba(192,132,252,0.3)"/>
+            <stop offset="80%" stop-color="rgba(99,102,241,0.2)"/>
+            <stop offset="100%" stop-color="rgba(59,130,246,0.35)"/>
+          </radialGradient>
         </defs>
-        <g class="finn-tail-group"><path class="finn-tail" d="M65 167C23 170 10 142 23 111c12-28 40-31 60-12 13 13 11 29-1 38-10 7-22 3-29-5 1 18 17 28 34 28Z"/><path class="finn-tail-tip" d="M23 119c12-17 31-19 47-9-4 17-20 26-38 22Z"/></g>
-        <g class="finn-body" filter="url(#finnDrop)">
-          <path class="finn-coat" d="M65 174Q75 145 111 145q39-4 66 27l9 30H55Z"/>
-          <path class="finn-shirt" d="m101 151 20 29 19-29-19-10Z"/>
-          <path class="finn-paw finn-paw-left" d="M74 157q-16 5-14 19 2 10 17 9l17-10Z"/>
-          <path class="finn-paw finn-paw-right" d="M157 157q16 5 14 19-2 10-17 9l-17-10Z"/>
-          <path class="finn-ear" d="M72 89 52 20Q86 34 102 73Z"/><path class="finn-ear-inner" d="m69 66-7-31q18 14 25 32Z"/>
-          <path class="finn-ear finn-ear-right" d="m143 73 31-54q5 42-12 75Z"/><path class="finn-ear-inner" d="m153 69 14-30q0 25-9 39Z"/>
-          <path class="finn-head" d="M57 103Q59 55 119 53q61-1 66 50 5 51-45 65-22 7-43-1-44-13-40-64Z"/>
-          <path class="finn-muzzle" d="M79 119q17-18 40-5 22-13 43 5-5 31-42 32-36-1-41-32Z"/>
-          <path class="finn-eye-line" d="M83 105q12-12 24 0m20 0q12-12 24 0"/>
-          <g class="finn-eyes"><ellipse class="finn-eye" cx="98" cy="109" rx="5" ry="7"/><ellipse class="finn-eye" cx="139" cy="109" rx="5" ry="7"/><circle class="finn-eye-glint" cx="100" cy="106" r="1.7"/><circle class="finn-eye-glint" cx="141" cy="106" r="1.7"/></g>
-          <path class="finn-nose" d="M113 126q7-7 14 0-7 9-14 0Z"/><path class="finn-smile" d="M120 132q-9 10-17 2m17-2q9 10 17 2"/>
-          <path class="finn-hat" d="M64 79Q78 40 119 39q42-1 57 37l-12 13q-43-23-88 3Z"/><path class="finn-hat-brim" d="M53 88q63-25 137-2 11 4 13 13-77-10-148 15Z"/>
-          <path class="finn-hat-band" d="M79 78q39-18 77-3" />
-          <g class="finn-glass">
-            <circle class="finn-lens" cx="178" cy="123" r="22"/><circle class="finn-lens-shine" cx="178" cy="123" r="15"/>
-            <path class="finn-handle" d="m194 140 22 24"/>
+        <g class="mascot-character-body" filter="url(#mascot3dShadow)">
+          <!-- Fox Tail -->
+          <g class="mascot-tail-swish finn-tail-group">
+            <path class="finn-tail" d="M65 167C23 170 10 142 23 111c12-28 40-31 60-12 13 13 11 29-1 38-10 7-22 3-29-5 1 18 17 28 34 28Z" fill="url(#mascotFur)"/>
+            <path class="finn-tail-tip" d="M23 119c12-17 31-19 47-9-4 17-20 26-38 22Z" fill="url(#mascotCream)"/>
+          </g>
+          <!-- Detective Trenchcoat / Jacket -->
+          <g class="mascot-jacket">
+            <path class="finn-coat" d="M65 174 Q75 145 111 145 Q150 141 177 172 L186 205 H55 Z" fill="url(#mascotJacket)"/>
+            <!-- Lapels and Collar -->
+            <path d="M88 152 L111 188 L101 205" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+            <path d="M134 152 L111 188 L121 205" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+            <!-- Shirt / Tie inside -->
+            <path class="finn-shirt" d="M103 151 L111 163 L119 151 Z" fill="#ffffff"/>
+            <path d="M111 162 L114 182 L111 187 L108 182 Z" fill="#6366f1"/>
+            <!-- Buttons -->
+            <circle cx="111" cy="192" r="2.5" fill="#e2e8f0"/>
+            <circle cx="111" cy="201" r="2.5" fill="#e2e8f0"/>
+          </g>
+          <!-- Head Group -->
+          <g class="mascot-head-group">
+            <!-- Left Ear -->
+            <path class="finn-ear" d="M72 89 L52 20 Q86 34 102 73 Z" fill="url(#mascotFur)"/>
+            <path class="finn-ear-inner" d="M69 66 L62 35 Q80 49 87 67 Z" fill="url(#mascotCream)"/>
+            <!-- Right Ear with Twitch -->
+            <g class="mascot-ear-right-twitch">
+              <path class="finn-ear finn-ear-right" d="M143 73 L174 19 Q179 61 162 94 Z" fill="url(#mascotFur)"/>
+              <path class="finn-ear-inner" d="M153 69 L167 39 Q167 64 158 78 Z" fill="url(#mascotCream)"/>
+            </g>
+            <!-- Head Base -->
+            <path class="finn-head" d="M57 103 Q59 55 119 53 Q180 52 185 103 Q190 154 140 168 Q118 175 97 167 Q53 154 57 103 Z" fill="url(#mascotFur)"/>
+            <!-- Cheeks / Muzzle -->
+            <path class="finn-muzzle" d="M79 119 Q96 101 119 114 Q141 101 162 119 Q157 150 120 151 Q84 150 79 119 Z" fill="url(#mascotCream)"/>
+            <!-- Expressive Eyes with Blink -->
+            <g class="mascot-eyes finn-eyes">
+              <!-- Left Eye -->
+              <ellipse class="finn-eye" cx="98" cy="111" rx="5.5" ry="7.5" fill="#0f172a"/>
+              <circle class="finn-eye-glint" cx="96" cy="108" r="2.2" fill="#ffffff"/>
+              <circle cx="100" cy="113" r="1.1" fill="#ffffff"/>
+              <!-- Right Eye -->
+              <ellipse class="finn-eye" cx="140" cy="111" rx="5.5" ry="7.5" fill="#0f172a"/>
+              <circle class="finn-eye-glint" cx="138" cy="108" r="2.2" fill="#ffffff"/>
+              <circle cx="142" cy="113" r="1.1" fill="#ffffff"/>
+            </g>
+            <!-- Cute Nose & Smile -->
+            <path class="finn-nose" d="M113 126 Q120 119 127 126 Q120 135 113 126 Z" fill="#0f172a"/>
+            <path class="finn-smile" d="M120 132 Q111 142 103 134 M120 132 Q129 142 137 134" stroke="#451a03" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <!-- Left Paw Resting on Desk -->
+            <path class="finn-paw finn-paw-left" d="M74 157 Q58 162 60 176 Q62 186 77 185 L94 175 Z" fill="url(#mascotFur)"/>
+            <!-- 3D Detective Fedora Hat -->
+            <g class="mascot-hat-group">
+              <!-- Hat Crown -->
+              <path class="finn-hat" d="M64 79 Q78 40 119 39 Q161 38 176 76 L164 89 Q121 66 76 92 Z" fill="url(#mascotHat)"/>
+              <!-- Hat Crown Pinch (3D Crease) -->
+              <path d="M102 44 Q119 55 136 44" stroke="rgba(0,0,0,0.3)" stroke-width="3" fill="none"/>
+              <!-- Hat Ribbon / Band -->
+              <path class="finn-hat-band" d="M77 82 Q119 63 162 82 L163 88 Q119 70 76 88 Z" fill="url(#mascotHatBand)"/>
+              <!-- Hat Brim -->
+              <path class="finn-hat-brim" d="M51 87 Q115 62 189 85 Q200 89 202 98 Q125 72 45 102 Q44 91 51 87 Z" fill="url(#mascotHat)"/>
+              <path d="M52 88 Q115 63 188 86" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+            </g>
+          </g>
+          <!-- 3D Animated Magnifying Glass Arm with Search Beam -->
+          <g class="mascot-glass-arm finn-glass">
+            <!-- Right Paw Holding Magnifier -->
+            <path class="finn-paw finn-paw-right" d="M154 158 Q170 163 168 177 Q166 187 151 186 L134 176 Z" fill="url(#mascotFur)"/>
+            <!-- Magnifying Glass with Light Beam -->
+            <g class="mascot-magnifier">
+              <!-- Searching Cone of Light -->
+              <polygon class="mascot-search-cone" points="178,122 238,65 238,180" fill="url(#detectiveSearchBeam)"/>
+              <!-- Handle -->
+              <path class="finn-handle" d="M192 138 L218 165" stroke="#451a03" stroke-width="7" stroke-linecap="round"/>
+              <path d="M193 139 L217 164" stroke="url(#goldRim)" stroke-width="3" stroke-linecap="round"/>
+              <!-- Gold Frame -->
+              <circle cx="178" cy="122" r="25" fill="none" stroke="url(#goldRim)" stroke-width="5"/>
+              <circle cx="178" cy="122" r="25" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.2"/>
+              <!-- Glass Lens -->
+              <circle class="finn-lens" cx="178" cy="122" r="22.5" fill="url(#glassLensShine)"/>
+              <!-- Specular Glint -->
+              <circle class="finn-lens-shine" cx="173" cy="117" r="14" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+              <path class="mascot-specular-arc" d="M164 112 A 18 18 0 0 1 192 112" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.95"/>
+            </g>
           </g>
         </g>
       </svg>
