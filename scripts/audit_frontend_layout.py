@@ -162,6 +162,7 @@ def submit_public_report(page, kind: str) -> None:
     if "tracking secret" in page.locator("#publicTrackResult").inner_text().lower():
         raise AssertionError("Tracking result exposed credential wording")
     return_home(page)
+    return reference
 
 
 def main() -> int:
@@ -224,7 +225,7 @@ def main() -> int:
                 return_home(page)
 
                 if width == 1440:
-                    submit_public_report(page, "lost")
+                    lost_reference = submit_public_report(page, "lost")
                     submit_public_report(page, "found")
 
                 if (width == 1440):
@@ -232,7 +233,8 @@ def main() -> int:
                     page.locator("#publicNav [data-public-destination='browse']").click()
                     page.locator("#publicBrowsePage").wait_for(state="visible")
                     page.locator("#publicBrowseResults").get_by_text("Black backpack I lost", exact=True).wait_for(timeout=10000)
-                    page.locator("#publicBrowseQuery").fill("Black backpack I lost")
+                    # Public search intentionally excludes free-text titles and descriptions.
+                    page.locator("#publicBrowseQuery").fill(lost_reference)
                     page.locator("#publicBrowseForm").locator('button[type="submit"]').click()
                     page.locator("#publicBrowseResults").get_by_text("Black backpack I lost", exact=True).wait_for(timeout=10000)
                     page.locator("#publicBrowseQuery").fill("lostlink-no-such-campus-item-92841")
