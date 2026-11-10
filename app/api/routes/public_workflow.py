@@ -648,12 +648,15 @@ async def public_report_matches(
     tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
 ):
     roll = _roll(roll_number)
+    report_id = None
     with connect_db() as conn:
-        _enforce_rate_limit(conn, request, "matches", 20, window_minutes=60)
         row = conn.execute("SELECT * FROM reports WHERE public_ref=?", (reference,)).fetchone()
-        if not row or row["report_type"] != "lost" or row["roll_number"] != roll or not _verify_token(row["tracking_hash"],tracking_secret):
-            raise HTTPException(status_code=404,detail="Tracking access not found.")
-        report_id = row["id"]
+        if (row and row["report_type"] == "lost" and row["submission_channel"] == "public"
+                and row["roll_number"] == roll and _verify_token(row["tracking_hash"], tracking_secret)):
+            _enforce_rate_limit(conn, request, "matches", 20, window_minutes=60)
+            report_id = row["id"]
+    if report_id is None:
+        _deny_invalid_public_tracking(request, reference)
     return {
         "matches": await _rank_public_matches_async(report_id),
         "note": "Suggestions support discovery only; they do not establish ownership.",

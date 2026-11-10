@@ -461,6 +461,24 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(allowed.status_code,200,allowed.text)
         self.assertNotIn("roll_number",allowed.json()["case"])
 
+    def test_invalid_match_access_uses_failed_access_limit_not_success_quota(self):
+        created = self.create_public_report().json()
+        reference = created["case"]["reference"]
+        endpoint = "/api/public/reports/" + reference + "/matches"
+        invalid = {
+            "X-LostLink-Roll-Number": "25B81A66J8",
+            "X-LostLink-Tracking-Secret": "incorrect-secret",
+        }
+        for index in range(30):
+            result = self.client.get(endpoint, headers=invalid)
+            self.assertEqual(result.status_code, 404, f"Attempt {index}: {result.text}")
+        self.assertEqual(self.client.get(endpoint, headers=invalid).status_code, 429)
+        good = self.client.get(endpoint, headers={
+            "X-LostLink-Roll-Number": "25B81A66J8",
+            "X-LostLink-Tracking-Secret": created["tracking_secret"],
+        })
+        self.assertEqual(good.status_code, 200, good.text)
+
     def test_invalid_tracking_attempts_are_persistently_rate_limited_without_locking_owner(self):
         created = self.create_public_report().json()
         ref = created["case"]["reference"]
