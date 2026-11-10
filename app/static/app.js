@@ -2300,10 +2300,14 @@ $("#publicClaimForm").addEventListener("submit", async event => {
   button.disabled = true;
   try {
     const lostReportReference = $("#publicClaimLostReference").value.trim();
+    const claimProof = getPublicAccess(lostReportReference, roll);
+    if (!claimProof) {
+      throw new Error("Open your private Lost-report tracking link in this browser before submitting a claim. Use the same roll number and Lost report reference.");
+    }
     const result = await publicApi("/api/public/found/" + encodeURIComponent(selectedPublicFoundId) + "/claims", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({roll_number:roll,contact_phone:contactPhone || null,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference || null})
+      headers: {"Content-Type":"application/json", "X-LostLink-Tracking-Secret":claimProof["X-LostLink-Tracking-Secret"]},
+      body: JSON.stringify({roll_number:roll,contact_phone:contactPhone || null,evidence,evidence_types:evidenceTypes,lost_report_reference:lostReportReference})
     });
     storePublicAccess(result.claim.reference, roll, result.tracking_secret);
     const claimTrackingUrl = $("#publicTrackLink").value;

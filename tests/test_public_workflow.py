@@ -347,12 +347,19 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
 
         # Claim submission must work without a student or office session.
         self.client.cookies.clear()
-        claim_response = self.client.post("/api/public/found/"+report_id+"/claims",json={
+        claim_payload = {
             "roll_number":"25B81A66J9",
             "evidence":"I can identify a blue sticker below the battery cover and a small scratch on the right edge.",
             "evidence_types":["distinctive_features","other"],
             "lost_report_reference":lost.json()["case"]["reference"],
-        })
+        }
+        claim_url = "/api/public/found/"+report_id+"/claims"
+        self.assertEqual(self.client.post(claim_url,json={k:v for k,v in claim_payload.items()
+            if k != "lost_report_reference"}).status_code,422)
+        self.assertEqual(self.client.post(claim_url,json=claim_payload,
+            headers={"X-LostLink-Tracking-Secret":"wrong-token"}).status_code,404)
+        claim_response = self.client.post(claim_url,json=claim_payload,
+            headers={"X-LostLink-Tracking-Secret":lost.json()["tracking_secret"]})
         self.assertEqual(claim_response.status_code,201,claim_response.text)
         claim = claim_response.json()["claim"]
         tracking_secret = claim_response.json()["tracking_secret"]
@@ -381,7 +388,8 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             "roll_number":"25B81A66J9",
             "evidence":"I can identify a blue sticker below the battery cover and a small scratch on the right edge.",
             "evidence_types":["distinctive_features"],
-        })
+            "lost_report_reference":lost.json()["case"]["reference"],
+        },headers={"X-LostLink-Tracking-Secret":lost.json()["tracking_secret"]})
         self.assertEqual(duplicate.status_code,409,duplicate.text)
 
         self.office_login()

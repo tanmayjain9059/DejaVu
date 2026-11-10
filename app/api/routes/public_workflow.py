@@ -296,7 +296,7 @@ class PublicClaimBody(BaseModel):
     contact_phone: str | None = Field(default=None, max_length=20)
     evidence: str = Field(min_length=20, max_length=1800)
     evidence_types: list[str] = Field(min_length=1, max_length=6)
-    lost_report_reference: str | None = Field(default=None, max_length=40)
+    lost_report_reference: str = Field(min_length=4, max_length=40)
 
 
 class PublicEvidenceBody(BaseModel):
@@ -708,7 +708,10 @@ def close_public_case(
 
 
 @router.post("/found/{report_id}/claims", status_code=201)
-def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request):
+def submit_public_claim(
+    report_id: str, body: PublicClaimBody, request: Request,
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
     roll = _roll(body.roll_number)
     contact_phone = (body.contact_phone or "").strip() or None
     if contact_phone:
@@ -741,16 +744,16 @@ def submit_public_claim(report_id: str, body: PublicClaimBody, request: Request)
         # Do not let an unauthenticated visitor exhaust another student's
         # per-student active-claim quota by submitting that student's roll.
         # Anonymous claim volume is bounded by the IP-based rate limiter above.
-        lost_report_id = None
-        if body.lost_report_reference:
-            linked = conn.execute(
-                """SELECT id FROM reports WHERE public_ref=? AND report_type='lost' AND status='open'
-                   AND created_by=? AND roll_number=? AND submission_channel='public'""",
-                (body.lost_report_reference,actor_id,roll),
-            ).fetchone()
-            if not linked:
-                raise HTTPException(status_code=404,detail="The linked Lost report was not found for this roll number.")
-            lost_report_id = linked["id"]
+        # A roll number identifies the claimant but cannot authorise a claim.
+        # The claimant proves access to their own Lost report, never the finder's report.
+        linked = conn.execute(
+            """SELECT id,tracking_hash FROM reports WHERE public_ref=? AND report_type='lost'
+               AND status='open' AND created_by=? AND roll_number=? AND submission_channel='public'""",
+            (body.lost_report_reference,actor_id,roll),
+        ).fetchone()
+        if not linked or not _verify_token(linked["tracking_hash"], tracking_secret):
+            raise HTTPException(status_code=404,detail="Lost report tracking access not found.")
+        lost_report_id = linked["id"]
         approved_claim = conn.execute(
             "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
             (report_id,),

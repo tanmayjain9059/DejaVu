@@ -1056,7 +1056,7 @@
       <div id="publicClaimItemSummary" class="claim-item-summary"></div>
       <label><span>College roll number</span><input id="publicClaimRoll" required minlength="5" maxlength="20" autocomplete="off" placeholder="Enter your roll number"><small class="field-hint">This is attribution only, not identity verification. The campus office verifies the claimant before handover.</small></label>
       <label><span>Phone number · Optional</span><input id="publicClaimPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"><small class="field-hint">Shared privately with authorised campus office staff for claim follow-up.</small></label>
-      <label><span>Link to your Lost report <span class="field-optional">Optional</span></span><input id="publicClaimLostReference" maxlength="24" placeholder="e.g. LL-XXXXXXX"></label>
+      <label><span>Your Lost report reference <span class="field-required">Required</span></span><input id="publicClaimLostReference" required maxlength="40" placeholder="Lost report reference"><small class="field-hint">Open your private Lost-report tracking link in this browser first. We verify its private credential without asking you to type or disclose the secret.</small></label>
       <fieldset class="evidence-type-fieldset"><legend>Supporting evidence <span class="field-required">Choose at least one</span></legend>
         <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="distinctive_features"> Distinctive features or owner-only details</label>
         <label class="checkbox-line"><input type="checkbox" name="publicClaimEvidenceType" value="purchase_or_receipt"> Purchase or receipt proof</label>
