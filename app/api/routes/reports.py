@@ -189,69 +189,6 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
             "message": "Lost report submitted." if body.report_type == "lost" else "Found-item report submitted for office intake. It will become searchable after staff confirm receipt."}
 
 
-@router.put("/api/reports/{report_id}")
-async def update_report(
-    report_id: str,
-    body: ReportBody,
-    user: dict[str, Any] = Depends(authenticated_user),
-):
-    """Edit public report details while the report remains in an editable workflow state."""
-    if len(body.title.strip()) < 4:
-        raise HTTPException(status_code=422, detail="Enter an item name of at least 4 characters.")
-    if len(body.description.strip()) < 10:
-        raise HTTPException(status_code=422, detail="Add at least 10 characters describing the item.")
-    if body.category not in CATEGORY_LABELS:
-        raise HTTPException(status_code=422, detail="Choose a valid item category.")
-    if not (body.location_block or body.location_area):
-        raise HTTPException(status_code=422, detail="Choose a campus block or area.")
-    if body.occurred_at:
-        try:
-            datetime.fromisoformat(body.occurred_at.replace("Z", "+00:00"))
-        except ValueError:
-            raise HTTPException(status_code=422, detail="Use a valid ISO date and time, or leave the date blank if unknown.")
-
-    with connect_db() as conn:
-        conn.execute("BEGIN IMMEDIATE")
-        lock_row(conn, "reports", "id", report_id)
-        row = read_report(conn, report_id)
-        is_office = user["role"] == "office"
-        if not is_office and int(row["created_by"]) != int(user["id"]):
-            raise HTTPException(status_code=404, detail="Report not found.")
-        if body.report_type != row["report_type"]:
-            raise HTTPException(status_code=422, detail="A report's lost/found type cannot be changed after submission.")
-        if row["report_type"] == "lost":
-            if row["status"] != "open":
-                raise HTTPException(status_code=409, detail="Only an open lost report can be edited.")
-        elif is_office:
-            if row["status"] in {"returned", "cancelled"}:
-                raise HTTPException(status_code=409, detail="A completed or cancelled found report cannot be edited.")
-        elif row["status"] != "awaiting_intake":
-            raise HTTPException(status_code=409, detail="A found report can only be edited by its owner before office intake.")
-
-        timestamp = now_iso()
-        conn.execute(
-            """UPDATE reports SET title=?, description=?, brand=?, primary_color=?,
-               visible_features=?, category=?, occurred_at=?, location_block=?,
-               location_floor=?, location_room=?, location_area=?, updated_at=?
-               WHERE id=?""",
-            (body.title.strip(), body.description.strip(),
-             (body.brand or "").strip() or None,
-             (body.primary_color or "").strip() or None,
-             (body.visible_features or "").strip() or None,
-             body.category, body.occurred_at, body.location_block,
-             body.location_floor, body.location_room, body.location_area,
-             timestamp, report_id),
-        )
-        audit(conn, user["id"], "report_details_updated", "report", report_id, {
-            "report_type": row["report_type"],
-            "fields": ["title", "description", "brand", "primary_color",
-                       "visible_features", "category", "occurred_at",
-                       "location_block", "location_floor", "location_room", "location_area"],
-        })
-        updated = read_report(conn, report_id)
-    return {"report": serialise_report(updated, internal=is_office), "message": "Report details updated."}
-
-
 @router.post("/api/reports/{report_id}/close")
 async def close_report(
     report_id: str,

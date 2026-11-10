@@ -79,3 +79,12 @@ def test_retired_office_ai_status_route_is_absent():
         getattr(route, "path", None) == "/api/office/ai-status"
         for route in app.routes
     )
+
+
+def test_retired_report_put_route_is_absent():
+    from app.main import app
+    assert not any(
+        getattr(route, "path", None) == "/api/reports/{report_id}"
+        and "PUT" in getattr(route, "methods", set())
+        for route in app.routes
+    )
