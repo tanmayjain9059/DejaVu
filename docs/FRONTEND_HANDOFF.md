@@ -18,7 +18,7 @@ LostLink uses a public student workflow. Students do **not** create accounts, si
 4. A successful submission displays a public reference and one-time tracking secret. The student must save both.
 5. A Lost report starts open and can receive ranked possible-match suggestions.
 6. A Found report starts as `awaiting_intake`. It is not publicly searchable until office staff physically receive the item, verify the reporter's college ID, record custody, assign a Tag ID and complete intake.
-7. Students can search open Lost reports and Found items whose status is `available`; only Found items can be claimed. A claim requires roll attribution and private evidence text.
+7. Students can search open Lost reports and Found items whose status is `available`; only Found items can be claimed. A claim requires private evidence plus the claimant's own open Lost-report reference and its matching tracking secret. The finder’s Found-report secret must never be shared with a claimant.
 8. A student tracks a report or claim with its reference, roll number and matching tracking secret.
 
 ## Public API contract
@@ -30,13 +30,13 @@ All public routes are under `/api/public`. They do not require a session cookie 
 | POST | `/api/public/reports` | Submit a Lost or Found report |
 | GET | `/api/public/search` | Search open Lost reports and available Found items | 
 | GET | `/api/public/found` | Browse available Found items only |
-| GET | `/api/public/track/{reference}?roll_number=...` | Read one token-authorised report or claim |
-| GET | `/api/public/reports/{reference}/matches?roll_number=...` | Retrieve ranked matches for one Lost report |
-| POST | `/api/public/found/{report_id}/claims` | Submit a claim with private evidence |
+| GET | `/api/public/track/{reference}` | Read one token-authorised report or claim |
+| GET | `/api/public/reports/{reference}/matches` | Retrieve ranked matches for one Lost report |
+| POST | `/api/public/found/{report_id}/claims` | Submit evidence, claimant Lost-report reference, and tracking secret in header |
 | POST | `/api/public/claims/{reference}/evidence` | Add evidence after the office requests it |
 | POST | `/api/public/cases/{reference}/close` | Close an eligible Lost report or withdraw a Found report before intake |
 
-Tracking requests send the one-time secret in `X-LostLink-Tracking-Secret`. The backend CORS allow-header list includes this header. Public fetches use `credentials: "omit"`.
+Tracking, match and claim-proof requests send the private secret in `X-LostLink-Tracking-Secret` and the associated roll number in `X-LostLink-Roll-Number` where applicable. The backend CORS allow-header list includes these headers. Public fetches use `credentials: "omit"`.
 
 A successful report response contains `case.id`, `case.reference`, `case.status`, `tracking_secret`, and a bounded `matches` list for Lost reports. A successful claim response contains `claim.id`, `claim.reference`, `claim.status`, and `tracking_secret`.
 
@@ -57,13 +57,13 @@ For public submissions, office actions must include `identity_verified_in_person
 - Public report and found-item serializers never return roll numbers, Tag IDs, private storage locations, private intake notes or staff-only verification details.
 - Public search must never filter by or expose roll number.
 - Public tracking must check reference + matching roll number + the corresponding tracking-secret digest.
-- Do not put raw tracking secrets in logs, analytics, query strings, browser storage or error reports.
+- Do not put raw tracking secrets in logs, analytics, query strings or error reports. **Existing limitation:** the current static UI uses a private receipt URL fragment plus sessionStorage to restore access; this is not compliant with the stricter no-token-in-URL/browser-storage policy and needs a reviewed redesign before unrestricted public launch.
 - Do not use the roll number alone to read, update, close, claim, or enumerate records.
 - Public reports and claims write to the canonical `reports` and `claims` tables. Do not create a second student-only business workflow.
 - The canonical matching, notifications, audit, rewards, intake, review and handover services are shared with the public workflow.
 
 ## Current frontend limitations
 
-Public image upload and public evidence-image upload are not yet enabled. The public form currently submits text and structured item attributes. Existing report-photo and evidence storage remains private and accessible only through authenticated application routes. Do not add a public image URL until a case-token-scoped signed-access flow is implemented and reviewed.
+The current backend exposes a **case-scoped private report-photo upload** at `POST /api/public/reports/{reference}/image`, requiring the roll number and matching report tracking secret, with a 5 MB limit. The old static UI calls it after report submission. Its concurrency has regression coverage, but live storage and end-to-end security are **UNVERIFIED**. Public evidence-image uploads remain unavailable. Photos and evidence must not be given public storage URLs; private storage reads need reviewed authorisation.
 
 Before launch, add CAPTCHA/bot controls, institution-approved roll-number validation, public image/evidence handling, retention rules, operational monitoring and a security review.
