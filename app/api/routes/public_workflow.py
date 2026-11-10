@@ -291,7 +291,7 @@ class PublicReportBody(BaseModel):
 
 
 class PublicPrivacyRequestBody(BaseModel):
-    reference: str = Field(min_length=4, max_length=32)
+    reference: str = Field(min_length=4, max_length=40)
     roll_number: str = Field(min_length=5, max_length=20)
     request_type: Literal["access", "correction", "erasure"]
     details: str = Field(default="", max_length=2000)
