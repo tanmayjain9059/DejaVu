@@ -751,12 +751,8 @@ def submit_public_claim(
         ).fetchone()
         if duplicate:
             raise HTTPException(status_code=409,detail="You already have an active claim for this item.")
-        # Public roll numbers are attribution only, not authenticated identity.
-        # Do not let an unauthenticated visitor exhaust another student's
-        # per-student active-claim quota by submitting that student's roll.
-        # Anonymous claim volume is bounded by the IP-based rate limiter above.
-        # A roll number identifies the claimant but cannot authorise a claim.
-        # The claimant proves access to their own Lost report, never the finder's report.
+        # A roll number alone never authorises a claim. First verify access to
+        # the claimant's own Lost report; only then enforce per-claimant limits.
         linked = conn.execute(
             """SELECT id,tracking_hash FROM reports WHERE public_ref=? AND report_type='lost'
                AND status='open' AND created_by=? AND roll_number=? AND submission_channel='public'""",
@@ -765,6 +761,27 @@ def submit_public_claim(
         if not linked or not _verify_token(linked["tracking_hash"], tracking_secret):
             raise HTTPException(status_code=404,detail="Lost report tracking access not found.")
         lost_report_id = linked["id"]
+        # One Lost report cannot support several simultaneous claims.
+        existing_linked = conn.execute(
+            """SELECT id FROM claims WHERE lost_report_id=?
+               AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')""",
+            (lost_report_id,),
+        ).fetchone()
+        if existing_linked:
+            raise HTTPException(
+                status_code=409,
+                detail="This Lost report is already linked to an active claim. Resolve it before claiming another item.",
+            )
+        active_claim_count = conn.execute(
+            """SELECT COUNT(*) FROM claims WHERE claimant_id=?
+               AND status IN ('pending','disputed','needs_more_evidence','approved_for_collection')""",
+            (actor_id,),
+        ).fetchone()[0]
+        if active_claim_count >= MAX_OPEN_CLAIMS_PER_STUDENT:
+            raise HTTPException(
+                status_code=409,
+                detail=f"You have reached the limit of {MAX_OPEN_CLAIMS_PER_STUDENT} active claims.",
+            )
         approved_claim = conn.execute(
             "SELECT id FROM claims WHERE report_id=? AND status='approved_for_collection' LIMIT 1",
             (report_id,),

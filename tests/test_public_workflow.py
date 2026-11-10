@@ -583,6 +583,38 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(report["status"],"returned")
             self.assertEqual(claim_row["status"],"returned")
 
+    def test_one_open_lost_report_cannot_back_two_active_claims(self):
+        finder_one = self.create_public_report("found", roll="25B81A66J1").json()
+        finder_two = self.create_public_report("found", roll="25B81A66J2").json()
+        lost = self.create_public_report("lost", roll="25B81A66J9").json()
+        self.office_login()
+        for found in (finder_one, finder_two):
+            accepted = self.intake(found["case"]["id"],
+                                   roll="25B81A66J1" if found is finder_one else "25B81A66J2")
+            self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.client.cookies.clear()
+        payload = {
+            "roll_number": "25B81A66J9",
+            "evidence": "I can identify the exact marks on the underside of the item and its original case.",
+            "evidence_types": ["distinctive_features"],
+            "lost_report_reference": lost["case"]["reference"],
+        }
+        headers = {"X-LostLink-Tracking-Secret": lost["tracking_secret"]}
+        first = self.client.post("/api/public/found/" + finder_one["case"]["id"] + "/claims",
+                                 json=payload, headers=headers)
+        self.assertEqual(first.status_code, 201, first.text)
+        second = self.client.post("/api/public/found/" + finder_two["case"]["id"] + "/claims",
+                                  json=payload, headers=headers)
+        self.assertEqual(second.status_code, 409, second.text)
+        self.assertIn("already linked", second.json()["detail"])
+        with main.connect_db() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT COUNT(*) FROM claims WHERE lost_report_id=?",
+                (next(row["id"] for row in conn.execute(
+                    "SELECT id FROM reports WHERE public_ref=?",
+                    (lost["case"]["reference"],)).fetchall()),),
+            ).fetchone()[0], 1)
+
     def test_public_lost_report_uses_existing_ai_match_route(self):
         found = self.create_public_report("found")
         self.office_login()
