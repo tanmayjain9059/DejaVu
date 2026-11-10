@@ -79,3 +79,10 @@ def test_retired_office_ai_status_route_is_absent():
         getattr(route, "path", None) == "/api/office/ai-status"
         for route in app.routes
     )
+
+
+def test_frontend_has_no_production_mock_api_switch():
+    source = (ROOT / "app/static/app.js").read_text(encoding="utf-8")
+    assert "usingMockApi" not in source
+    assert "mockApi(" not in source
+    assert "seedMockStore(" not in source

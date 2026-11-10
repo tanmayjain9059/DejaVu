@@ -132,8 +132,6 @@ function explainError(data, fallback) {
 }
 
 
-const usingMockApi = false;
-let mockNoticeShown = false;
 const PAGE_SIZE = 50;
 const pageState = {
   browse: { cursor: null, hasMore: false, loading: false },
@@ -148,235 +146,6 @@ const pageState = {
 let inspectedUser = null;
 let notificationPollTimer = null;
 let notificationPollInFlight = false;
-const MOCK_CATEGORIES = [
- {value:"stationery",label:"Stationery & books"},{value:"clothing",label:"Clothing & everyday items"},
- {value:"bags_wallets",label:"Bags & wallets"},{value:"accessories",label:"Personal accessories"},
- {value:"electronics",label:"Electronics"},{value:"identity_documents",label:"Identity documents & cards"},
- {value:"keys_access",label:"Keys & access cards"},{value:"cash_jewellery",label:"Cash & jewellery"},
- {value:"sports_instruments",label:"Sports equipment & instruments"},{value:"other",label:"Other"}
-];
-const MOCK_USERS = {
- student:{id:101,email:"student@lostlink.local",display_name:"Alex Chen",role:"student"},
- student2:{id:102,email:"student2@lostlink.local",display_name:"Maya Patel",role:"student"},
- office:{id:900,email:"office@lostlink.local",display_name:"Campus Office",role:"office"}
-};
-const mockStore={seeded:false,session:null,reports:[],claims:[],notifications:[],ledger:[],certificates:[],reportImages:{},evidenceImages:{}};
-const mockCopy=value=>JSON.parse(JSON.stringify(value));
-const mockTimestamp=daysAgo=>new Date(Date.now()-(daysAgo||0)*86400000).toISOString();
-function seedMockStore(){
- if(mockStore.seeded)return; mockStore.seeded=true;
- const base={brand:null,primary_color:null,visible_features:null,occurred_at:mockTimestamp(1),location_block:"Block A",location_floor:"1",location_room:"A-101",location_area:"Library entrance",image_path:null,status:"available",value_band:"medium",sensitivity_level:1,verification_level:2,private_detail:"Staff-only identifying detail reserved for office review.",storage_location:"Lost & Found room · Cabinet A · Shelf 01",created_by:900,created_at:mockTimestamp(1),updated_at:mockTimestamp(1)};
- mockStore.reports=[
- {...base,id:"mock-found-backpack",public_ref:"LL-F-1024",report_type:"found",title:"Navy backpack",description:"Dark blue backpack with two front pockets and a silver zipper pull.",brand:"Wildcraft",primary_color:"Navy blue",visible_features:"Two front pockets; silver zipper pull",category:"bags_wallets",tag_id:"LL-CVR-2026-000101",private_detail:"Tiny stitched mark inside the left strap."},
- {...base,id:"mock-found-earbuds",public_ref:"LL-F-1025",report_type:"found",title:"Wireless earbuds case",description:"Black wireless earbud charging case found beside the library study area.",primary_color:"Black",visible_features:"Small white sticker on the back edge",category:"accessories",location_room:"",location_area:"Library study area",tag_id:"LL-CVR-2026-000102",private_detail:"Small white sticker on the back edge."},
- {...base,id:"mock-found-bottle",public_ref:"LL-F-1026",report_type:"found",title:"Steel water bottle",description:"Silver insulated bottle with a black cap and a scratch near the base.",primary_color:"Silver",visible_features:"Black cap; scratch near base",category:"accessories",location_block:"Block B",location_floor:"Ground",location_room:"",location_area:"Cafeteria",tag_id:"LL-CVR-2026-000103",private_detail:"Small dent underneath the base."},
- {...base,id:"mock-awaiting-umbrella",public_ref:"LL-F-1027",report_type:"found",title:"Grey folding umbrella",description:"Compact grey folding umbrella with a curved handle.",primary_color:"Grey",visible_features:"Curved handle",category:"clothing",status:"awaiting_intake",created_by:102,tag_id:null,storage_location:null,private_detail:null,location_block:"Block B",location_floor:"Ground",location_room:"",location_area:"Cafeteria entrance"},
- {...base,id:"mock-lost-backpack",public_ref:"LL-L-1024",report_type:"lost",title:"Dark blue backpack",description:"I lost a dark blue backpack with two front pockets around the library.",primary_color:"Navy blue",visible_features:"Two front pockets",category:"bags_wallets",status:"open",created_by:101,tag_id:null,storage_location:null,private_detail:null,location_area:"Library",location_room:"",verification_level:null},
- {...base,id:"mock-lost-bottle",public_ref:"LL-L-1025",report_type:"lost",title:"Silver insulated bottle",description:"A steel water bottle with black lid, last seen by cafeteria.",primary_color:"Silver",visible_features:"Black cap",category:"accessories",status:"open",created_by:102,tag_id:null,storage_location:null,private_detail:null,location_block:"Block B",location_floor:"Ground",location_room:"",location_area:"Cafeteria",verification_level:null}
- ];
- mockStore.claims=[{id:"mock-claim-backpack",report_id:"mock-found-backpack",lost_report_id:"mock-lost-backpack",claimant_id:101,claimant_name:"Alex Chen",claimant_email:MOCK_USERS.student.email,evidence:"I can identify a stitched mark inside the left strap and have a purchase receipt for the bag.",evidence_types:["distinctive_features","purchase_or_receipt"],status:"pending",appeal_note:null,appeal_count:0,reviewer_note:null,created_at:mockTimestamp(0),updated_at:mockTimestamp(0),verification_checks:[]}];
- mockStore.notifications=[
- {id:"mock-notice-match",user_id:101,event_key:"mock-match",title:"A possible item match was found",message:"A found backpack may match your open lost report LL-L-1024.",entity_type:"report",entity_id:"mock-lost-backpack",read_at:null,created_at:mockTimestamp(0)},
- {id:"mock-notice-intake",user_id:900,event_key:"mock-intake",title:"Found-item report awaiting intake",message:"A grey folding umbrella is waiting for physical intake.",entity_type:"report",entity_id:"mock-awaiting-umbrella",read_at:null,created_at:mockTimestamp(0)}
- ];
- mockStore.ledger=[
- {user_id:101,points:10,reason:"Found item received and tagged by the campus office",report_id:"mock-found-backpack",created_at:mockTimestamp(4)},
- {user_id:102,points:15,reason:"Verified campus contribution",report_id:"mock-found-bottle",created_at:mockTimestamp(2)}
- ];
- mockStore.certificates=[{id:"mock-cert-finder",user_id:101,tier:"Verified Finder",threshold_points:20,points_at_issue:20,serial:"LL-CERT-DEMO-0001",issued_at:mockTimestamp(2)}];
- mockStore.session=mockCopy(MOCK_USERS.student);
-}
-function enableMockMode(){
-  throw new Error("Client-side mock authentication is disabled. Use the configured LostLink API and office-only demo access.");
-}
-function mockNotify(userId,title,message,entityType,entityId,eventKey){
- const key=eventKey||("demo:"+title+":"+entityId+":"+Date.now());
- if(mockStore.notifications.some(n=>n.user_id===userId&&n.event_key===key))return;
- mockStore.notifications.unshift({id:"mock-notice-"+Math.random().toString(36).slice(2,10),user_id:userId,event_key:key,title,message,entity_type:entityType||null,entity_id:entityId||null,read_at:null,created_at:mockTimestamp(0)});
-}
-function mockReadBody(options){
- if(!options||!options.body||options.body instanceof FormData)return options&&options.body instanceof FormData?options.body:{};
- if(typeof options.body==="string"){try{return JSON.parse(options.body);}catch(_){return {};}}
- return options.body;
-}
-function mockReportView(report,internal){
- const sensitive=["identity_documents","keys_access"].includes(report.category)&&!internal, image=mockStore.reportImages[report.id]||null;
- const result={id:report.id,public_ref:report.public_ref,report_type:report.report_type,title:report.title,description:report.description,
- brand:report.brand,primary_color:report.primary_color,visible_features:report.visible_features,category:report.category,
- category_label:(MOCK_CATEGORIES.find(x=>x.value===report.category)||{}).label||report.category,occurred_at:report.occurred_at,
- location:[report.location_block,report.location_floor?"Floor "+report.location_floor:null,(internal||!sensitive)?report.location_room:null,report.location_area].filter(Boolean).join(" · ")||"Location not specified",
- location_block:report.location_block,location_floor:report.location_floor,location_room:internal?report.location_room:null,location_area:report.location_area,
- image_url:sensitive||!image?null:image,status:report.status,created_at:report.created_at,updated_at:report.updated_at};
- if(internal)Object.assign(result,{tag_id:report.tag_id,private_verification_detail:report.private_detail,value_band:report.value_band||"unknown",sensitivity_level:report.sensitivity_level||1,verification_level:report.verification_level,storage_location:report.tag_id?report.storage_location:null,created_by:report.created_by});
- if(report.report_type==="lost"&&currentUser&&currentUser.id===report.created_by)result.has_active_linked_claim=mockStore.claims.some(c=>c.lost_report_id===report.id&&["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
- return result;
-}
-function mockClaimView(claim,internal){
- const report=mockStore.reports.find(r=>r.id===claim.report_id), linked=mockStore.reports.find(r=>r.id===claim.lost_report_id);
- const result={id:claim.id,status:claim.status,evidence_types:claim.evidence_types||[],evidence_image_available:Boolean(mockStore.evidenceImages[claim.id]),created_at:claim.created_at,updated_at:claim.updated_at,appeal_note:claim.appeal_note||null,appeal_count:claim.appeal_count||0,linked_lost_report:linked?{id:linked.id,public_ref:linked.public_ref,title:linked.title,status:linked.status}:null,report:report?mockReportView(report,internal):null};
- if(internal)Object.assign(result,{evidence:claim.evidence,claimant_name:claim.claimant_name,claimant_email:claim.claimant_email,reviewer_note:claim.reviewer_note||null});
- return result;
-}
-async function mockFileDataUrl(file){
- if(!file||!window.FileReader)return null;
- return await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>resolve(null);reader.readAsDataURL(file);});
-}
-function mockRequireOffice(){if(!currentUser||currentUser.role!=="office")throw new Error("Office staff access required.");}
-function mockCertificateDownload(certificateId){
- const cert=mockStore.certificates.find(c=>c.id===certificateId&&(currentUser.role==="office"||c.user_id===currentUser.id));
- if(!cert){showToast("Certificate not found for this demo account.",true);return;}
- const safe=v=>String(v||"").replace(/[^\x20-\x7E]/g,"?").replace(/([\\()])/g,"\\$1");
- const lines=["LOSTLINK - CERTIFICATE OF RECOGNITION",cert.tier,"Awarded to "+currentUser.display_name,String(cert.points_at_issue)+" verified activity points","Certificate ID: "+cert.serial,"Issued: "+String(cert.issued_at).slice(0,10),"Demo preview - not an official college credential"];
- const stream="BT\n/F1 18 Tf\n60 740 Td\n("+safe(lines[0])+") Tj\n/F1 15 Tf\n0 -54 Td\n("+safe(lines[1])+") Tj\n/F1 11 Tf\n0 -40 Td\n("+safe(lines[2])+") Tj\n0 -26 Td\n("+safe(lines[3])+") Tj\n0 -24 Td\n("+safe(lines[4])+") Tj\n0 -20 Td\n("+safe(lines[5])+") Tj\n0 -42 Td\n("+safe(lines[6])+") Tj\nET";
- const objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>","<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>","<< /Length "+stream.length+" >>\nstream\n"+stream+"\nendstream"];
- let pdf="%PDF-1.4\n",offsets=[0];objects.forEach((obj,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\n"+obj+"\nendobj\n";});
- const xref=pdf.length;pdf+="xref\n0 6\n0000000000 65535 f \n";for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
- pdf+="trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF";
- const a=document.createElement("a"),url=URL.createObjectURL(new Blob([pdf],{type:"application/pdf"}));a.href=url;a.download="LostLink-"+cert.serial+".pdf";document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);showToast("Demo certificate PDF generated locally.",false);
-}
-async function mockApi(url,options){
- seedMockStore();const parsed=new URL(url,window.location.href),path=parsed.pathname,method=(options&&options.method||"GET").toUpperCase(),body=mockReadBody(options);
- if(path==="/api/config"&&method==="GET")return {demo_mode:true,points:{verified_intake:10,verified_return:5},certificate_milestones:[{tier:"Verified Finder",threshold:20},{tier:"Campus Helper",threshold:50},{tier:"Community Champion",threshold:100}],categories:mockCopy(MOCK_CATEGORIES),locations:{blocks:["Block A","Block B","Block C","Library","Cafeteria","Other / not sure"],floors:["Ground","1","2","3","Other / not sure"],note:"Interactive local preview"}};
- if(path==="/api/me"&&method==="GET"){mockStore.session=mockStore.session||mockCopy(MOCK_USERS.student);return {user:mockCopy(mockStore.session)};}
- if(path==="/api/login"&&method==="POST"){const email=String(body.email||"").toLowerCase(),user=email.includes("office")?MOCK_USERS.office:email.includes("student2")?MOCK_USERS.student2:MOCK_USERS.student;mockStore.session=mockCopy(user);return {user:mockCopy(user)};}
- if(path==="/api/logout"&&method==="POST"){mockStore.session=null;return {ok:true};}
- if(path==="/api/reports"&&method==="GET"){
-  const q=String(parsed.searchParams.get("q")||"").trim().toLowerCase(),mine=parsed.searchParams.get("mine")==="true",internal=currentUser&&currentUser.role==="office";
-  const filtered=mockStore.reports.filter(r=>{
-   if(!internal&&mine&&r.created_by!==currentUser.id)return false;
-   if(!internal&&!mine&&!(r.report_type==="found"&&r.status==="available"))return false;
-   for(const [param,field] of [["report_type","report_type"],["category","category"]])if(parsed.searchParams.get(param)&&r[field]!==parsed.searchParams.get(param))return false;
-   if(parsed.searchParams.get("block")&&!(r.location_block||"").toLowerCase().includes(parsed.searchParams.get("block").toLowerCase()))return false;
-   if(parsed.searchParams.get("room")&&!(r.location_room||"").toLowerCase().includes(parsed.searchParams.get("room").toLowerCase()))return false;
-   if(internal&&parsed.searchParams.get("status")){
-    const statuses=parsed.searchParams.get("status").split(",").map(x=>x.trim()).filter(Boolean);
-    if(!statuses.includes(r.status))return false;
-   }
-   if(parsed.searchParams.get("date_from")&&String(r.occurred_at||"")<parsed.searchParams.get("date_from"))return false;
-   if(parsed.searchParams.get("date_to")&&String(r.occurred_at||"")>parsed.searchParams.get("date_to")+"T23:59:59")return false;
-   if(q&&!([r.title,r.description,r.public_ref,r.location_area,r.brand,r.primary_color,r.visible_features,r.location_block,r.location_floor,r.location_room].join(" ").toLowerCase().includes(q)))return false;
-   return true;
-  }).sort((a,b)=>b.created_at.localeCompare(a.created_at));
-  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
-  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
-  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
-  return {reports:page.map(r=>mockReportView(r,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore};
- }
- if(path==="/api/reports/category-suggestion"&&method==="POST"){
-  const textValue=[body.title,body.description,body.brand,body.primary_color,body.visible_features].filter(Boolean).join(" ").toLowerCase();
-  const rules=[["electronics",/phone|mobile|laptop|tablet|charger|camera|cable|power bank/],["identity_documents",/identity card|student id|college id|passport|driving licence|debit card|credit card/],["keys_access",/key|keychain|access card/],["bags_wallets",/backpack|rucksack|handbag|wallet|purse|bag/],["stationery",/notebook|textbook|pen|pencil|calculator|ruler/],["clothing",/shirt|jacket|hoodie|sweater|jeans|shoe|uniform/],["accessories",/watch|glasses|spectacles|earbuds|headphones|bracelet|necklace/],["cash_jewellery",/cash|money|coin|gold|silver|jewellery|jewelry/],["sports_instruments",/football|cricket bat|racket|guitar|violin/]];
-  const found=rules.find((rule)=>rule[1].test(textValue));
-  const category=found?found[0]:null;
-  const label=(MOCK_CATEGORIES.find((item)=>item.value===category)||{}).label||null;
-  return {suggestion:category?{status:"suggested",category,label,alternatives:[{category,label,score:1}],engine:"demo_keyword_fallback",requires_confirmation:true}:{status:"uncertain",category:null,alternatives:[],engine:"demo_keyword_fallback",requires_confirmation:true}};
- }
- if(path==="/api/reports"&&method==="POST"){
-  if(!currentUser||currentUser.role!=="student")throw new Error("Submit reports from a student account.");
-  if(String(body.title||"").trim().length<4||String(body.description||"").trim().length<10)throw new Error("Enter a meaningful item title and description.");
-  const report={id:"mock-report-"+Math.random().toString(36).slice(2,10),public_ref:"LL-"+Math.random().toString(36).slice(2,8).toUpperCase(),report_type:body.report_type,title:String(body.title).trim(),description:String(body.description).trim(),brand:body.brand||null,primary_color:body.primary_color||null,visible_features:body.visible_features||null,category:body.category,occurred_at:body.occurred_at||mockTimestamp(0),location_block:body.location_block||"",location_floor:body.location_floor||"",location_room:body.location_room||"",location_area:body.location_area||"",image_path:null,status:body.report_type==="lost"?"open":"awaiting_intake",value_band:"unknown",sensitivity_level:1,verification_level:null,tag_id:null,storage_location:null,private_detail:null,created_by:currentUser.id,created_at:mockTimestamp(0),updated_at:mockTimestamp(0)};
-  mockStore.reports.unshift(report);mockNotify(currentUser.id,body.report_type==="lost"?"Lost report submitted":"Found report submitted",body.report_type==="lost"?"Your lost report is saved.":"Your found report is waiting for office intake.","report",report.id,"report-created:"+report.id);
-  if(report.report_type==="found")mockNotify(MOCK_USERS.office.id,"Found-item report awaiting intake","A new found-item report is waiting for physical office intake.","report",report.id,"found-report:"+report.id);
-  return {report:mockReportView(report,currentUser.role==="office"),message:report.report_type==="lost"?"Lost report submitted.":"Found-item report submitted for office intake."};
- }
- let m=path.match(/^\/api\/reports\/([^/]+)\/(image|matches|intake|storage|close)$/);
- if(m){
-  const id=decodeURIComponent(m[1]),action=m[2],report=mockStore.reports.find(r=>r.id===id);if(!report)throw new Error("Report not found.");
-  if(action==="image"&&method==="POST"){const file=body instanceof FormData?body.get("file"):null,data=await mockFileDataUrl(file);if(data)mockStore.reportImages[id]=data;report.updated_at=mockTimestamp(0);return {report:mockReportView(report,currentUser.role==="office")};}
-  if(action==="matches"&&method==="GET"){
-   const candidates=mockStore.reports.filter(r=>r.report_type==="found"&&r.status==="available").map(r=>{
-    const terms=(report.title+" "+report.description).toLowerCase().split(/\W+/).filter(x=>x.length>2),hay=(r.title+" "+r.description+" "+(r.primary_color||"")+" "+(r.visible_features||"")).toLowerCase(),overlap=terms.filter(term=>hay.includes(term)).length,score=Math.min(.94,.48+overlap*.055);
-    return {report:mockReportView(r,false),score,strength:score>=.72?"strong":score>=.45?"possible":"limited",reasons:["Descriptions contain overlapping item terms.","Category and reported location can help narrow review."]};
-   }).sort((a,b)=>b.score-a.score).slice(0,5);return {matches:candidates};
-  }
-  if(action==="intake"&&method==="POST"){
-   mockRequireOffice();if(report.report_type!=="found"||report.status!=="awaiting_intake"||body.confirmed_physical_receipt!==true)throw new Error("Confirm physical receipt for an item awaiting intake.");
-   report.storage_location=String(body.storage_location||"").trim();if(report.storage_location.length<4)throw new Error("Enter a specific storage location.");
-   report.private_detail=body.private_detail||null;report.value_band=body.value_band||"unknown";report.sensitivity_level=Number(body.sensitivity_level||1);
-   const defaults={stationery:1,clothing:1,bags_wallets:2,accessories:2,electronics:3,identity_documents:4,keys_access:4,cash_jewellery:3,sports_instruments:2,other:3};
-   report.verification_level=report.sensitivity_level>=3?4:Math.max(defaults[report.category]||3,report.sensitivity_level);
-   report.tag_id="LL-CVR-"+new Date().getFullYear()+"-"+String(mockStore.reports.indexOf(report)+101).padStart(6,"0");report.status="available";report.updated_at=mockTimestamp(0);
-   mockNotify(MOCK_USERS.office.id,"Intake confirmed","The item was tagged and placed into campus custody.","report",id,"intake:"+id);
-   if(report.created_by!==MOCK_USERS.office.id){mockStore.ledger.unshift({user_id:report.created_by,points:10,reason:"Found item received and tagged by the campus office",report_id:id,created_at:mockTimestamp(0)});mockNotify(report.created_by,"Found item received and stored","Your item has been accepted by the campus office.","report",id,"intake-reward:"+id);}
-   return {report:mockReportView(report,true),message:"Item received, tagged and stored."};
-  }
-  if(action==="storage"&&method==="POST"){mockRequireOffice();if(!report.tag_id)throw new Error("Only tagged items in custody can be moved.");report.storage_location=String(body.storage_location||"").trim();report.updated_at=mockTimestamp(0);return {report:mockReportView(report,true),message:"Storage location updated."};}
-  if(action==="close"&&method==="POST"){if(!currentUser||currentUser.role!=="student"||report.created_by!==currentUser.id)throw new Error("Report not found.");if(report.report_type==="lost"&&report.status==="open")report.status="closed";else if(report.report_type==="found"&&report.status==="awaiting_intake"&&body.reason==="found_report_withdrawn")report.status="cancelled";else throw new Error("Only an open lost report or found report awaiting office intake can be closed.");report.updated_at=mockTimestamp(0);return {report:mockReportView(report,false),message:"Report closed."};}
- }
- if(path==="/api/claims"&&method==="GET"){
-  const internal=currentUser&&currentUser.role==="office",queue=parsed.searchParams.get("queue")||"all";
-  let filtered=mockStore.claims.filter(c=>internal||c.claimant_id===currentUser.id);
-  if(internal&&queue==="disputed")filtered=filtered.filter(c=>c.status==="disputed");
-  if(internal&&queue==="pending")filtered=filtered.filter(c=>c.status==="pending");
-  if(internal&&queue==="active")filtered=filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status));
-  if(internal&&queue==="handover")filtered=filtered.filter(c=>c.status==="approved_for_collection");
-  if(internal&&queue==="other")filtered=filtered.filter(c=>!["pending","disputed","needs_more_evidence","approved_for_collection"].includes(c.status));
-  const activeCount=internal?null:filtered.filter(c=>["pending","disputed","needs_more_evidence"].includes(c.status)).length;
-  filtered.sort((a,b)=>internal?a.created_at.localeCompare(b.created_at):b.created_at.localeCompare(a.created_at));
-  const pageSize=Math.max(1,Math.min(100,Number(parsed.searchParams.get("page_size")||50)));
-  const offset=Math.max(0,Number(parsed.searchParams.get("cursor")||0));
-  const page=filtered.slice(offset,offset+pageSize),hasMore=offset+pageSize<filtered.length;
-  return {claims:page.map(c=>mockClaimView(c,Boolean(internal))),next_cursor:hasMore?String(offset+pageSize):null,has_more:hasMore,active_count:activeCount};
- }
- if(path==="/api/claims"&&method==="POST"){
-  if(!currentUser||currentUser.role!=="student")throw new Error("Claims must be submitted from a student account.");
-  const report=mockStore.reports.find(r=>r.id===body.report_id);if(!report||report.report_type!=="found"||report.status!=="available")throw new Error("This item is not accepting claims.");
-  if(report.created_by===currentUser.id)throw new Error("You cannot claim your own found-item report.");
-  if(mockStore.claims.some(c=>c.report_id===report.id&&c.claimant_id===currentUser.id&&["pending","disputed","needs_more_evidence","approved_for_collection","rejected"].includes(c.status)))throw new Error("You already have a claim for this item. Follow the existing review.");
-  const types=Array.isArray(body.evidence_types)?body.evidence_types:[];if(!types.length)throw new Error("Choose at least one proof type.");
-  const conflict=mockStore.claims.some(c=>c.report_id===report.id&&["pending","disputed","needs_more_evidence"].includes(c.status));
-  if(conflict)mockStore.claims.filter(c=>c.report_id===report.id&&["pending","disputed","needs_more_evidence"].includes(c.status)).forEach(c=>c.status="disputed");
-  const claim={id:"mock-claim-"+Math.random().toString(36).slice(2,10),report_id:report.id,lost_report_id:body.lost_report_id||null,claimant_id:currentUser.id,claimant_name:currentUser.display_name,claimant_email:currentUser.email,evidence:String(body.evidence||"").trim(),evidence_types:types,status:conflict?"disputed":"pending",appeal_note:null,appeal_count:0,reviewer_note:null,created_at:mockTimestamp(0),updated_at:mockTimestamp(0)};
-  mockStore.claims.unshift(claim);mockNotify(MOCK_USERS.office.id,"Claim submitted","A student submitted a claim that needs ownership review.","claim",claim.id,"claim-submitted:"+claim.id);
-  return {claim:{id:claim.id,status:claim.status,created_at:claim.created_at},message:"Claim submitted for office review."};
- }
- m=path.match(/^\/api\/claims\/([^/]+)\/(evidence-image|evidence|dispute|decision|handover)$/);
- if(m){
-  const id=decodeURIComponent(m[1]),action=m[2],claim=mockStore.claims.find(c=>c.id===id);if(!claim)throw new Error("Claim not found.");const report=mockStore.reports.find(r=>r.id===claim.report_id);
-  if(action==="evidence-image"&&method==="POST"){if(currentUser.role!=="student"||claim.claimant_id!==currentUser.id)throw new Error("This is private claim evidence.");const file=body instanceof FormData?body.get("file"):null,data=await mockFileDataUrl(file);if(data)mockStore.evidenceImages[id]=data;return {ok:true,message:"Demo evidence image is held in memory only."};}
-  if(action==="evidence-image"&&method==="GET"){if(currentUser.role!=="office"&&claim.claimant_id!==currentUser.id)throw new Error("Evidence image is private.");return {ok:true};}
-  if(action==="evidence"&&method==="POST"){if(currentUser.role!=="student"||claim.claimant_id!==currentUser.id)throw new Error("This action is available to the claimant.");if(claim.status!=="needs_more_evidence")throw new Error("The office has not requested additional evidence.");claim.evidence=String(body.evidence||"").trim();claim.status="pending";claim.updated_at=mockTimestamp(0);mockNotify(MOCK_USERS.office.id,"Additional evidence submitted","The claimant added requested evidence.","claim",id,"evidence-added:"+id+":"+claim.updated_at);return {claim:{id,status:claim.status},message:"Additional evidence submitted."};}
-  if(action==="dispute"&&method==="POST"){if(currentUser.role!=="student"||claim.claimant_id!==currentUser.id)throw new Error("This action is available to the claimant.");if(claim.status!=="rejected"||Number(claim.appeal_count||0)>=1)throw new Error("This claim is not eligible for another review request.");claim.status="disputed";claim.appeal_note=String(body.reason||"").trim();claim.appeal_count=1;claim.updated_at=mockTimestamp(0);mockNotify(MOCK_USERS.office.id,"Claim decision review requested","A claimant requested a review.","claim",id,"claim-appeal:"+id);return {claim:{id,status:claim.status},message:"Review request submitted."};}
-  if(action==="decision"&&method==="POST"){
-   mockRequireOffice();if(["rejected","approved_for_collection","returned"].includes(claim.status))throw new Error("This claim has already reached a final review state.");
-   if(body.action==="approve"){
-    const competitors=mockStore.claims.some(c=>c.id!==id&&c.report_id===claim.report_id&&["pending","disputed","needs_more_evidence"].includes(c.status));if(competitors)throw new Error("Other active claims exist. Resolve competing claims before approving this one.");
-    if(report.status!=="available")throw new Error("The item is not available for claim approval.");
-    const selected=[...new Set(body.verification_checks||[])],level=Number(report.verification_level||3),min=({1:2,2:3,3:4,4:4})[level]||4;
-    if(selected.length<min)throw new Error("Verification level L"+level+" requires at least "+min+" distinct checks.");
-    if(!selected.includes("claimant_identity"))throw new Error("Confirm the claimant's identity before approving the claim.");
-    if(level>=4&&!selected.includes("authorised_record"))throw new Error("Restricted items require an authorised record/custodian check.");
-    claim.verification_checks=selected;claim.status="approved_for_collection";report.status="claim_approved";
-   }else if(body.action==="reject")claim.status="rejected";else if(body.action==="request_more_evidence")claim.status="needs_more_evidence";else if(body.action==="mark_disputed")claim.status="disputed";else throw new Error("Unsupported claim decision.");
-   claim.reviewer_note=body.note||null;claim.updated_at=mockTimestamp(0);mockNotify(claim.claimant_id,body.action==="approve"?"Claim verified":"Claim review updated",body.action==="approve"?"Your claim passed office verification. Physical handover is still required.":"The office updated the review for your claim.","claim",id,"claim-decision:"+id+":"+claim.status);
-   return {claim:{id,status:claim.status},message:"Claim review updated. Physical collection is not recorded by this module."};
-  }
-  if(action==="handover"&&method==="POST"){
-   mockRequireOffice();if(claim.status!=="approved_for_collection")throw new Error("Only an office-verified claim can proceed to handover.");
-   if(!body.confirmed_physical_handover||!body.claimant_identity_checked)throw new Error("Confirm identity and physical handover.");
-   if(String(body.tag_id||"").trim()!==String(report.tag_id||""))throw new Error("The physical Tag ID does not match the record.");
-   claim.status="returned";claim.updated_at=mockTimestamp(0);report.status="returned";report.updated_at=mockTimestamp(0);
-   mockStore.ledger.unshift({user_id:claim.claimant_id,points:5,reason:"The reported item was returned to a verified owner",report_id:report.id,created_at:mockTimestamp(0)});
-   if(claim.lost_report_id){const lost=mockStore.reports.find(r=>r.id===claim.lost_report_id);if(lost)lost.status="closed";}
-   mockNotify(claim.claimant_id,"Item returned","The office recorded the verified return.","claim",id,"mock-return:"+id);return {claim_id:id,status:"returned",message:"Physical handover recorded."};
-  }
- }
- if(path==="/api/notifications"&&method==="GET"){const rows=mockStore.notifications.filter(n=>n.user_id===currentUser.id);return {notifications:mockCopy(rows),unread_count:rows.filter(n=>!n.read_at).length};}
- m=path.match(/^\/api\/notifications\/([^/]+)\/read$/);if(m&&method==="POST"){const n=mockStore.notifications.find(x=>x.id===decodeURIComponent(m[1])&&x.user_id===currentUser.id);if(!n)throw new Error("Notification not found.");n.read_at=mockTimestamp(0);return {ok:true};}
- if(path==="/api/notifications/read-all"&&method==="POST"){mockStore.notifications.filter(n=>n.user_id===currentUser.id&&!n.read_at).forEach(n=>n.read_at=mockTimestamp(0));return {ok:true};}
- if(path==="/api/activity/me"&&method==="GET"){
-  if(currentUser.role!=="student")throw new Error("Activity rewards are available to student accounts.");
-  const entries=mockStore.ledger.filter(x=>x.user_id===currentUser.id),total=entries.reduce((sum,x)=>sum+x.points,0),milestones=[{tier:"Verified Finder",threshold:20,key:"verified-finder"},{tier:"Campus Helper",threshold:50,key:"campus-helper"},{tier:"Community Champion",threshold:100,key:"community-champion"}],next=milestones.find(x=>total<x.threshold)||null;
-  return {total_points:total,rules:{verified_intake:10,verified_return:5},ledger:mockCopy(entries),certificates:mockCopy(mockStore.certificates.filter(c=>c.user_id===currentUser.id)),next_milestone:next,points_to_next_milestone:next?next.threshold-total:0,milestones:milestones.map(x=>({...x,earned:total>=x.threshold}))};
- }
- if(path==="/api/leaderboard"&&method==="GET"){
-  const sums=[MOCK_USERS.student,MOCK_USERS.student2].map(u=>({...u,total_points:mockStore.ledger.filter(x=>x.user_id===u.id).reduce((sum,x)=>sum+x.points,0),verified_reports:new Set(mockStore.ledger.filter(x=>x.user_id===u.id).map(x=>x.report_id)).size})).filter(x=>x.total_points>0).sort((a,b)=>b.total_points-a.total_points);
-  const leaders=sums.map((x,i)=>({rank:i+1,display_name:x.display_name,total_points:x.total_points,verified_reports:x.verified_reports,is_me:x.id===currentUser.id})),self=leaders.find(x=>x.is_me);
-  return {leaders:leaders.slice(0,10),my_rank:self?self.rank:null,my_total_points:self?self.total_points:0,participant_count:leaders.length,updated_at:mockTimestamp(0)};
- }
- if(path==="/api/office/summary"&&method==="GET"){mockRequireOffice();const reports=mockStore.reports,claims=mockStore.claims;return {awaiting_intake:reports.filter(x=>x.report_type==="found"&&x.status==="awaiting_intake").length,available_items:reports.filter(x=>x.report_type==="found"&&x.status==="available").length,active_claims:claims.filter(x=>["pending","disputed","needs_more_evidence"].includes(x.status)).length,disputed_claims:claims.filter(x=>x.status==="disputed").length,approved_handover:claims.filter(x=>x.status==="approved_for_collection").length,returned_items:claims.filter(x=>x.status==="returned").length,total_activity_points:mockStore.ledger.reduce((sum,x)=>sum+x.points,0)};}
- throw new Error("This endpoint is not available in the offline preview: "+method+" "+path);
-}
-
 function apiAssetUrl(path) { return /^https?:\/\//i.test(path) ? path : API_BASE_URL + path; }
 function imageSourceAttribute(path) {
   if (supabaseClient && typeof path === "string" && path.startsWith("/api/")) return 'data-auth-image="' + escapeHTML(path) + '"';
@@ -456,7 +225,6 @@ async function api(url, options) {
   if (opts.body && !(opts.body instanceof FormData) && !opts.headers["Content-Type"]) {
     opts.headers["Content-Type"] = "application/json";
   }
-  if (usingMockApi) return mockApi(url, opts);
   if (supabaseClient) {
     const { data } = await supabaseClient.auth.getSession();
     supabaseAccessToken = data && data.session ? data.session.access_token : null;
@@ -656,8 +424,7 @@ function enterApp(user) {
     throw new Error("This account does not have a valid LostLink role.");
   }
   currentUser = user;
-  if (usingMockApi) mockStore.session = mockCopy(user);
-  if ($("#appModeNote")) $("#appModeNote").classList.toggle("hidden", !usingMockApi);
+  if ($("#appModeNote")) $("#appModeNote").classList.add("hidden");
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
   placeFinnIn("#appView [data-finn-slot]");
@@ -1642,7 +1409,7 @@ function officeClaimCard(claim) {
     ? '<div class="evidence-type-list"><strong>CLAIMANT-PROVIDED PROOF TYPES</strong>' +
       evidenceTypes.map((type) => '<span class="characteristic-chip">' + escapeHTML(evidenceTypeLabel(type)) + '</span>').join("") + '</div>'
     : "";
-  const evidenceImageSource = usingMockApi && mockStore.evidenceImages[claim.id] ? mockStore.evidenceImages[claim.id] : "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
+  const evidenceImageSource = "/api/claims/" + encodeURIComponent(claim.id) + "/evidence-image";
   const evidencePhoto = claim.evidence_image_available
     ? '<figure class="evidence-image-preview"><img ' + imageSourceAttribute(evidenceImageSource) + ' alt="Private claim evidence preview" draggable="false"><figcaption>Private preview · claimant and office only</figcaption></figure>'
     : "";
@@ -2848,7 +2615,7 @@ document.addEventListener("click", (event) => {
   const privacyReview = event.target.closest("[data-privacy-review]");
   if (privacyReview) openPrivacyDecision(privacyReview.dataset.privacyReview, privacyReview.dataset.privacyType, privacyReview.dataset.privacySubject);
   const certificate = event.target.closest("[data-certificate-download]");
-  if (certificate) { if (usingMockApi) mockCertificateDownload(certificate.dataset.certificateDownload); else downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true)); }
+  if (certificate) downloadAuthenticatedFile("/api/certificates/" + encodeURIComponent(certificate.dataset.certificateDownload) + "/download", "lostlink-certificate-" + certificate.dataset.certificateDownload + ".pdf").catch((error) => showToast(error.message, true));
 });
 $("#browseLoadMore").addEventListener("click", () => loadBrowse(true));
 $("#myReportsLoadMore").addEventListener("click", () => loadMyReports(true));
