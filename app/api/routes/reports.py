@@ -461,10 +461,12 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
 
 
 @router.get("/api/reports/{report_id}/matches")
-async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
+async def get_matches(report_id: str, request: Request, user: dict[str, Any] = Depends(authenticated_user)):
     from app.matching import matching_engine
+    from app.api.routes.public_workflow import _enforce_rate_limit
 
     with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "authenticated-matches", 60, actor_key="account:" + str(user["id"]))
         lost = read_report(conn, report_id)
         if lost["report_type"] != "lost":
             raise HTTPException(status_code=400, detail="Matches are generated from a lost-item report.")

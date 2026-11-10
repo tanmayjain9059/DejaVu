@@ -99,9 +99,9 @@ def _trusted_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60) -> None:
+def _enforce_rate_limit(conn, request: Request, action: str, maximum: int, window_minutes: int = 60, actor_key: str | None = None) -> None:
     """Rate-limit anonymous writes while storing only a one-way IP digest."""
-    address = _trusted_client_ip(request)
+    address = actor_key if actor_key is not None else _trusted_client_ip(request)
     from app.core.database import lock_advisory_key as _lock_advisory_key
     _lock_advisory_key(conn, "public-rate:" + action, address)
     hash_key = (SESSION_SECRET or "lostlink-local-rate-limit-secret").encode("utf-8")

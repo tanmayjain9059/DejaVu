@@ -127,6 +127,19 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "location_area": "Library",
         }
 
+    def test_authenticated_match_refresh_has_account_rate_limit(self):
+        self.login("claimant@example.test", "claimant-password")
+        created = self.client.post("/api/reports", json=self.report_body(
+            "lost", "Blue backpack", "A blue backpack with two zipped pockets."
+        ))
+        self.assertEqual(created.status_code, 200, created.text)
+        report_id = created.json()["report"]["id"]
+        for _ in range(60):
+            response = self.client.get("/api/reports/" + report_id + "/matches")
+            self.assertEqual(response.status_code, 200, response.text)
+        limited = self.client.get("/api/reports/" + report_id + "/matches")
+        self.assertEqual(limited.status_code, 429, limited.text)
+
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
         self.login("claimant@example.test", "claimant-password")
