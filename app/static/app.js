@@ -2503,3 +2503,112 @@ function initCaseTracking() {
     }
   });
 }
+
+
+/* ==========================================================================
+   3D DETECTIVE MASCOT (FINN) CONTROLLER & CONTEXTUAL MESSAGES
+   ========================================================================== */
+(function initDetectiveMascot() {
+  const dock = $("#detectiveMascotDock");
+  const bubble = $("#detectiveSpeechBubble");
+  const speechText = $("#mascotSpeechText");
+  const btn = $("#detectiveCharacterBtn");
+  const closeBtn = $("#mascotBubbleClose");
+
+  if (!dock || !bubble || !speechText || !btn) return;
+
+  const MESSAGES = {
+    start: "Welcome back to campus, detective. What are we looking for today?",
+    browse: "Let’s search both open Lost reports and items the office has received.",
+    "report-lost": "Let’s make a clear Lost report so we can find useful matches.",
+    "report-found": "Tell us what you found. The office will record it before it appears in search.",
+    report: "Let’s make a clear report. Add the item's details, where it was lost or found, and when it happened.",
+    "my-reports": "Enter your case reference and roll number. I’ll check for private access saved by this browser.",
+    "my-claims": "You can follow claim decisions here. Only authorised office staff verify ownership and arrange handover.",
+    office: "Welcome to the office workspace. I can point you toward intake, inventory, claims and handover steps.",
+    notifications: "Here are all updates regarding your lost and found cases."
+  };
+
+  const CLUES = [
+    "A useful match starts with a clear item name and category.",
+    "Keep one distinctive ownership detail private for the claim review.",
+    "Found an item? It becomes searchable after the campus office records it.",
+    "Use your case reference in the browser where you submitted it to check updates.",
+    "Claims are reviewed by authorised office staff. A possible match never proves ownership.",
+    "Photos help a lot! Just avoid uploading identity cards or documents.",
+    "Psst… got a campus mystery? I’m on the case!"
+  ];
+
+  let currentClueIndex = 0;
+  let bubbleDismissed = false;
+
+  function setMascotMessage(message, awake = true) {
+    if (!message) return;
+    speechText.textContent = message;
+    if (!bubbleDismissed) {
+      bubble.classList.remove("hidden");
+    }
+    if (awake) {
+      btn.classList.remove("inspecting");
+      void btn.offsetWidth; // trigger reflow
+      btn.classList.add("inspecting");
+      setTimeout(() => btn.classList.remove("inspecting"), 1200);
+    }
+  }
+
+  // Hook into navigation changes
+  function updateContextForView(viewName) {
+    const reportType = $("#reportType") ? $("#reportType").value : "";
+    let key = viewName;
+    if (viewName === "report") {
+      key = reportType === "found" ? "report-found" : "report-lost";
+    }
+    const msg = MESSAGES[key] || MESSAGES[viewName] || MESSAGES.start;
+    bubbleDismissed = false; // re-open on new view
+    setMascotMessage(msg, false);
+  }
+
+  // Watch for active tab / section changes
+  const observer = new MutationObserver(() => {
+    const activeSection = document.querySelector(".content-view:not(.hidden)");
+    if (activeSection) {
+      const viewId = activeSection.id.replace("View", "");
+      const map = {
+        start: "start",
+        browse: "browse",
+        report: "report",
+        myReports: "my-reports",
+        myClaims: "my-claims",
+        notifications: "notifications",
+        activity: "start",
+        office: "office",
+        profile: "start"
+      };
+      updateContextForView(map[viewId] || "start");
+    }
+  });
+
+  document.querySelectorAll(".content-view").forEach(el => {
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+  });
+
+  // Clicking Finn cycles through detective tips & plays inspection animation
+  btn.addEventListener("click", () => {
+    bubbleDismissed = false;
+    bubble.classList.remove("hidden");
+    currentClueIndex = (currentClueIndex + 1) % CLUES.length;
+    setMascotMessage(CLUES[currentClueIndex], true);
+  });
+
+  // Close bubble
+  if (closeBtn) {
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      bubbleDismissed = true;
+      bubble.classList.add("hidden");
+    });
+  }
+
+  // Initial greeting
+  setMascotMessage(MESSAGES.start, false);
+})();

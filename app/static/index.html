@@ -913,6 +913,162 @@
   </main>
 
   <!-- ==================== DIALOGS & MODALS ==================== -->
+
+  <!-- ==================== 3D DETECTIVE MASCOT (FINN) ==================== -->
+  <aside class="detective-mascot-dock" id="detectiveMascotDock" aria-label="Detective Finn">
+    <!-- Contextual Speech Bubble -->
+    <div class="detective-speech-bubble" id="detectiveSpeechBubble" role="status" aria-live="polite">
+      <div class="speech-header">
+        <span class="detective-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          FINN &middot; DETECTIVE
+        </span>
+        <button type="button" class="bubble-close-btn" id="mascotBubbleClose" aria-label="Dismiss tip">&times;</button>
+      </div>
+      <p class="speech-text" id="mascotSpeechText">Welcome back to campus, detective. What are we looking for today?</p>
+      <div class="speech-tip-hint">Tap Finn for investigation clues &bull;</div>
+      <span class="speech-tail" aria-hidden="true"></span>
+    </div>
+
+    <!-- 3D Detective Character Button -->
+    <button type="button" class="detective-character-btn" id="detectiveCharacterBtn" aria-label="Finn the Detective Fox - Tap for clues" title="Tap Finn for a detective clue!">
+      <div class="mascot-3d-wrap">
+        <svg class="detective-mascot-svg" viewBox="0 0 240 240" width="130" height="130" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="mascot3dShadow" x="-20%" y="-20%" width="150%" height="150%">
+              <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#002244" flood-opacity="0.25"/>
+            </filter>
+            
+            <linearGradient id="mascotFur" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fb923c"/>
+              <stop offset="55%" stop-color="#ea580c"/>
+              <stop offset="100%" stop-color="#c2410c"/>
+            </linearGradient>
+            <linearGradient id="mascotCream" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fffbeb"/>
+              <stop offset="100%" stop-color="#fed7aa"/>
+            </linearGradient>
+            <linearGradient id="mascotHat" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#334155"/>
+              <stop offset="60%" stop-color="#1e293b"/>
+              <stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+            <linearGradient id="mascotHatBand" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#0284c7"/>
+              <stop offset="50%" stop-color="#38bdf8"/>
+              <stop offset="100%" stop-color="#0369a1"/>
+            </linearGradient>
+            <linearGradient id="mascotJacket" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#475569"/>
+              <stop offset="40%" stop-color="#334155"/>
+              <stop offset="100%" stop-color="#1e293b"/>
+            </linearGradient>
+            <linearGradient id="goldRim" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fef08a"/>
+              <stop offset="30%" stop-color="#eab308"/>
+              <stop offset="70%" stop-color="#ca8a04"/>
+              <stop offset="100%" stop-color="#854d0e"/>
+            </linearGradient>
+            <radialGradient id="glassLensShine" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+              <stop offset="40%" stop-color="#38bdf8" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2"/>
+            </radialGradient>
+            <linearGradient id="detectiveSearchBeam" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#0284c7" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <g id="mascot3dRoot" filter="url(#mascot3dShadow)">
+            <!-- Fluffy Wagging Tail -->
+            <g class="mascot-tail-anim">
+              <path d="M62 170 C20 174 8 145 22 114 C34 86 62 83 82 102 C95 115 93 131 81 140 C71 147 59 143 52 135 C53 153 69 163 86 163 Z" fill="url(#mascotFur)"/>
+              <path d="M22 122 C34 105 53 103 69 113 C65 130 49 139 31 135 Z" fill="url(#mascotCream)"/>
+            </g>
+
+            <!-- Body & Detective Coat/Jacket -->
+            <g class="mascot-body-group">
+              <path d="M64 176 Q76 144 112 144 Q151 140 178 171 L187 202 H54 Z" fill="url(#mascotJacket)"/>
+              <!-- White shirt & Blue Tie -->
+              <path d="M100 150 L120 180 L140 150 L120 140 Z" fill="#f8fafc"/>
+              <path d="M117 152 L123 152 L125 174 L120 178 L115 174 Z" fill="#0284c7"/>
+              <!-- Coat Lapels -->
+              <path d="M88 152 L112 188 L104 202 L70 202 Z" fill="#334155" opacity="0.95"/>
+              <path d="M152 152 L128 188 L136 202 L170 202 Z" fill="#1e293b" opacity="0.95"/>
+              <!-- Buttons -->
+              <circle cx="127" cy="188" r="2.5" fill="#fbbf24"/>
+              <circle cx="127" cy="197" r="2.5" fill="#fbbf24"/>
+              <!-- Left Paw -->
+              <path d="M74 160 Q58 165 60 179 Q62 189 77 188 L94 178 Z" fill="url(#mascotFur)"/>
+            </g>
+
+            <!-- Detective Head & Hat -->
+            <g class="mascot-head-group">
+              <!-- Ears -->
+              <path d="M70 88 L50 18 Q84 32 100 72 Z" fill="url(#mascotFur)"/>
+              <path d="M67 65 L60 34 Q78 48 85 66 Z" fill="url(#mascotCream)"/>
+              <path d="M142 72 L174 18 Q178 60 162 93 Z" fill="url(#mascotFur)"/>
+              <path d="M152 68 L166 38 Q166 63 157 77 Z" fill="url(#mascotCream)"/>
+
+              <!-- 3D Head Shape -->
+              <path d="M56 102 Q58 54 118 52 Q180 51 184 102 Q189 153 139 167 Q117 174 96 166 Q52 153 56 102 Z" fill="url(#mascotFur)"/>
+              <!-- Muzzle & Cheeks -->
+              <path d="M78 118 Q95 100 118 113 Q141 100 162 118 Q157 149 120 150 Q84 149 78 118 Z" fill="url(#mascotCream)"/>
+
+              <!-- Inquisitive 3D Eyes -->
+              <g class="mascot-eyes-group">
+                <ellipse cx="97" cy="108" rx="6" ry="8" fill="#0f172a"/>
+                <circle cx="99" cy="105" r="2.5" fill="#ffffff"/>
+                <circle cx="95" cy="111" r="1.2" fill="#ffffff"/>
+                <ellipse class="mascot-right-eye" cx="139" cy="108" rx="6" ry="8" fill="#0f172a"/>
+                <circle class="mascot-right-glint" cx="141" cy="105" r="2.5" fill="#ffffff"/>
+                <circle cx="137" cy="111" r="1.2" fill="#ffffff"/>
+              </g>
+
+              <!-- Nose & Smile -->
+              <path d="M112 125 Q119 119 126 125 Q119 133 112 125 Z" fill="#1e293b"/>
+              <path d="M119 130 Q110 139 103 131" stroke="#7c2d12" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <path d="M119 130 Q128 139 135 131" stroke="#7c2d12" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+
+              <!-- Fedora Detective Hat -->
+              <g class="mascot-hat-group">
+                <path d="M63 78 Q77 38 118 37 Q160 36 175 76 L163 89 Q120 66 75 92 Z" fill="url(#mascotHat)"/>
+                <path d="M95 44 Q118 48 142 44" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-linecap="round" fill="none"/>
+                <path d="M78 77 Q118 59 157 74 L159 81 Q118 66 76 84 Z" fill="url(#mascotHatBand)"/>
+                <path d="M51 87 Q115 62 189 85 Q200 89 202 98 Q125 72 45 102 Q44 91 51 87 Z" fill="url(#mascotHat)"/>
+                <path d="M52 88 Q115 63 188 86" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+              </g>
+            </g>
+
+            <!-- 3D Animated Magnifying Glass Arm -->
+            <g class="mascot-glass-arm">
+              <!-- Right Paw -->
+              <path d="M154 158 Q170 163 168 177 Q166 187 151 186 L134 176 Z" fill="url(#mascotFur)"/>
+
+              <!-- Magnifying Glass with Light Beam -->
+              <g class="mascot-magnifier">
+                <!-- Searching Cone of Light -->
+                <polygon class="mascot-search-cone" points="178,122 238,65 238,180" fill="url(#detectiveSearchBeam)"/>
+                <!-- Handle -->
+                <path d="M192 138 L218 165" stroke="#451a03" stroke-width="7" stroke-linecap="round"/>
+                <path d="M193 139 L217 164" stroke="url(#goldRim)" stroke-width="3" stroke-linecap="round"/>
+                <!-- Gold Frame -->
+                <circle cx="178" cy="122" r="25" fill="none" stroke="url(#goldRim)" stroke-width="5"/>
+                <circle cx="178" cy="122" r="25" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.2"/>
+                <!-- Glass Lens -->
+                <circle cx="178" cy="122" r="22.5" fill="url(#glassLensShine)"/>
+                <!-- Specular Glint -->
+                <path class="mascot-specular-arc" d="M164 112 A 18 18 0 0 1 192 112" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.95"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <span class="mascot-status-pulse" aria-hidden="true"></span>
+    </button>
+  </aside>
+
   <dialog id="closeReportDialog" class="dialog-card liquid-glass-panel">
     <form id="closeReportForm" class="form-stack">
       <div class="dialog-heading">
