@@ -456,6 +456,10 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         body_secret = self.client.post("/api/public/privacy-requests",
             json={**payload, "tracking_secret": created["tracking_secret"]})
         self.assertEqual(body_secret.status_code, 422, body_secret.text)
+        both_locations = self.client.post("/api/public/privacy-requests",
+            json={**payload, "tracking_secret": created["tracking_secret"]},
+            headers={"X-LostLink-Tracking-Secret": created["tracking_secret"]})
+        self.assertEqual(both_locations.status_code, 422, both_locations.text)
         invalid = self.client.post("/api/public/privacy-requests", json=payload,
             headers={"X-LostLink-Tracking-Secret":"incorrect-secret"})
         self.assertEqual(invalid.status_code, 404, invalid.text)

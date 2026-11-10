@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.schemas import ImageAiConsentBody
 
 from app.core.config import (
@@ -305,6 +305,8 @@ class PublicReportBody(BaseModel):
 
 
 class PublicPrivacyRequestBody(BaseModel):
+    # Never silently accept raw tracking secrets or other unexpected body fields.
+    model_config = ConfigDict(extra="forbid")
     reference: str = Field(min_length=4, max_length=40)
     roll_number: str = Field(min_length=5, max_length=20)
     request_type: Literal["access", "correction", "erasure"]
