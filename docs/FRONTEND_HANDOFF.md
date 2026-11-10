@@ -36,7 +36,7 @@ All public routes are under `/api/public`. They do not require a session cookie 
 | POST | `/api/public/claims/{reference}/evidence` | Add evidence after the office requests it |
 | POST | `/api/public/cases/{reference}/close` | Close an eligible Lost report or withdraw a Found report before intake |
 
-Tracking, match and claim-proof requests send the private secret in `X-LostLink-Tracking-Secret` and the associated roll number in `X-LostLink-Roll-Number` where applicable. The backend CORS allow-header list includes these headers. Public fetches use `credentials: "omit"`.
+Tracking, match, claim-proof and privacy-request submissions send the private secret in `X-LostLink-Tracking-Secret` and the associated roll number in `X-LostLink-Roll-Number` where applicable. The backend CORS allow-header list includes these headers. Public fetches use `credentials: "omit"`.
 
 A successful report response contains `case.id`, `case.reference`, `case.status`, `tracking_secret`, and a bounded `matches` list for Lost reports. A successful claim response contains `claim.id`, `claim.reference`, `claim.status`, and `tracking_secret`. Each raw secret is shown only on its initial receipt. Users must save their reference, roll number and secret and enter them again after reloading; no new secret-bearing link is created.
 

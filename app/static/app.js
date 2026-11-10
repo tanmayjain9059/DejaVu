@@ -2284,11 +2284,10 @@ $("#publicPrivacyForm").addEventListener("submit", async event => {
   try {
     const result = await publicApi("/api/public/privacy-requests", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: {"Content-Type":"application/json", "X-LostLink-Tracking-Secret":access.secret},
       body: JSON.stringify({
         reference: lastPublicTracking.reference,
         roll_number: access.roll,
-        tracking_secret: access.secret,
         request_type: $("#publicPrivacyType").value,
         details: $("#publicPrivacyDetails").value.trim()
       })

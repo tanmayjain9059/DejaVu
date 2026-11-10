@@ -423,6 +423,26 @@ class PublicWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(masked.status_code, 200, masked.text)
         self.assertIn(ref, masked.text)
 
+    def test_privacy_request_never_accepts_tracking_secret_in_json_body(self):
+        created = self.create_public_report().json()
+        reference = created["case"]["reference"]
+        payload = {
+            "reference": reference,
+            "roll_number": "25B81A66J8",
+            "request_type": "access",
+            "details": "Please provide my case records.",
+        }
+        body_secret = self.client.post("/api/public/privacy-requests",
+            json={**payload, "tracking_secret": created["tracking_secret"]})
+        self.assertEqual(body_secret.status_code, 422, body_secret.text)
+        invalid = self.client.post("/api/public/privacy-requests", json=payload,
+            headers={"X-LostLink-Tracking-Secret":"incorrect-secret"})
+        self.assertEqual(invalid.status_code, 404, invalid.text)
+        valid = self.client.post("/api/public/privacy-requests", json=payload,
+            headers={"X-LostLink-Tracking-Secret":created["tracking_secret"]})
+        self.assertEqual(valid.status_code, 201, valid.text)
+        self.assertEqual(valid.json()["status"], "pending")
+
     def test_tracking_secret_is_case_scoped_and_roll_number_alone_is_not_access(self):
         first = self.create_public_report(roll="25B81A66J8",title="Blue notebook").json()
         second = self.create_public_report(roll="25B81A66J8",title="Red notebook").json()

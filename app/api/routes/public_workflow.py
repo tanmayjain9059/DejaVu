@@ -293,7 +293,6 @@ class PublicReportBody(BaseModel):
 class PublicPrivacyRequestBody(BaseModel):
     reference: str = Field(min_length=4, max_length=32)
     roll_number: str = Field(min_length=5, max_length=20)
-    tracking_secret: str = Field(min_length=24, max_length=128)
     request_type: Literal["access", "correction", "erasure"]
     details: str = Field(default="", max_length=2000)
 
@@ -870,7 +869,10 @@ def export_public_case_data(
 
 
 @router.post("/privacy-requests", status_code=201)
-def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Request):
+def create_public_privacy_request(
+    body: PublicPrivacyRequestBody, request: Request,
+    tracking_secret: str = Header(..., alias="X-LostLink-Tracking-Secret"),
+):
     roll = _roll(body.roll_number)
     request_id = uuid.uuid4().hex
     timestamp = now_iso()
@@ -887,8 +889,8 @@ def create_public_privacy_request(body: PublicPrivacyRequestBody, request: Reque
                 (body.reference,),
             ).fetchone()
         verified = bool(
-            (report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], body.tracking_secret))
-            or (claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], body.tracking_secret))
+            (report and report["roll_number"] == roll and _verify_token(report["tracking_hash"], tracking_secret))
+            or (claim and claim["claimant_roll_number"] == roll and _verify_token(claim["tracking_hash"], tracking_secret))
         )
         if not verified:
             raise HTTPException(status_code=404, detail="Private tracking access not found.")
