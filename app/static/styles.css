@@ -4355,3 +4355,4 @@ html { background:var(--canvas-bg); }
 @media (max-width:700px) {
   .dialog-card { padding:20px; width:calc(100vw - 24px); max-height:calc(100dvh - 24px); }
 }
+.field-error-note { color:var(--ll-danger); font-size:.875rem; margin:8px 0; }

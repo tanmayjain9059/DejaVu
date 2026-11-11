@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
@@ -420,6 +422,71 @@ class FrontendContractTests(unittest.TestCase):
         demo_start = self.js.index("async function launchDemoAccount")
         demo_end = self.js.index('$("#fillOffice").addEventListener', demo_start)
         self.assertIn("assertLocalOfficeLoginAllowed();", self.js[demo_start:demo_end])
+
+    def test_aurora_is_decorative_and_respects_reduced_motion(self):
+        self.assertIn('class="aurora-background-container" aria-hidden="true"', self.html)
+        self.assertRegex(self.css, r'@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.aurora-layer-base, \.aurora-layer::after\s*\{\s*animation:none;')
+        self.assertIn('id="publicHomeContent"', self.html)
+        self.assertIn('id="loginForm"', self.html)
+
+    def test_dialog_close_icons_have_consistent_accessible_names(self):
+        controls = re.findall(r'<button\b[^>]*aria-label="Close"[^>]*>(.*?)</button>', self.html, re.S)
+        self.assertGreaterEqual(len(controls), 11)
+        for markup in controls:
+            self.assertIn('aria-hidden="true"', markup)
+            self.assertIn('d="m6 6 12 12M6 18 18 6"', markup)
+        self.assertIn('class="modal-dialog dialog-card liquid-glass-panel"', self.html)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for the navbar controller regression")
+    def test_navbar_spring_settles_resizes_and_respects_reduced_motion(self):
+        # Execute the real controller against measured DOM stand-ins. The Playwright
+        # audit separately checks actual browser geometry and CSS at mobile widths.
+        start = self.js.index("function initLiquidNavbars()")
+        end = self.js.index("\ninitLiquidNavbars();", start)
+        harness = r'''
+const assert = require('node:assert/strict');
+let frames = [], mutations, resized, motionChanged;
+const motion = {matches:false, addEventListener:(_, cb) => motionChanged = cb};
+const item = {offsetLeft:8, offsetWidth:90, offsetTop:7, offsetHeight:44, getClientRects:() => [1]};
+const other = {...item, offsetLeft:200, offsetWidth:110};
+let selected = item, drop, scrolls = [];
+const nav = {
+  clientWidth:300, scrollWidth:600, scrollLeft:0, dataset:{},
+  prepend:el => drop=el, querySelector:() => selected,
+  querySelectorAll:() => [item,other], addEventListener:() => {},
+  scrollTo:options => scrolls.push(options)
+};
+global.window = {matchMedia:() => motion};
+global.document = {querySelectorAll:() => [nav],
+  createElement:() => ({style:{}, setAttribute:() => {}}), fonts:{ready:{then:cb => cb()}}};
+global.MutationObserver = class { constructor(cb) {mutations=cb;} observe(_, opts) {
+  assert.equal(opts.characterData,true); assert.equal(opts.childList,true);
+  assert.ok(opts.attributeFilter.includes('class'));
+}};
+global.ResizeObserver = class { constructor(cb) {resized=cb;} observe() {} };
+global.requestAnimationFrame = cb => {frames.push(cb); return frames.length;};
+function settle() {
+  let time=0, count=0;
+  while(frames.length && count++<400) {time+=16; frames.shift()(time);}
+  assert.equal(frames.length,0,'animation must stop when settled');
+  assert.equal(drop.style.width,`${selected.offsetWidth}px`);
+  assert.equal(drop.style.transform,`translateX(${selected.offsetLeft}px)`);
+}
+initLiquidNavbars(); settle();
+selected=other; mutations(); settle();
+assert.ok(scrolls.length>=2, 'active destination is centered');
+const previousScrolls=scrolls.length;
+other.offsetWidth=162; mutations(); settle();
+assert.equal(scrolls.length,previousScrolls,'badge update must not steal scroll');
+other.offsetLeft=220; resized(); settle();
+motion.matches=true; other.offsetLeft=40; motionChanged();
+assert.equal(drop.style.transform,'translateX(40px)','reduced motion updates immediately');
+settle();
+selected=null; mutations(); assert.equal(drop.hidden,true);
+selected=item; mutations(); settle(); assert.equal(drop.hidden,false);
+'''
+        result = subprocess.run([shutil.which("node"), "-e", self.js[start:end] + harness], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 if __name__ == "__main__":
     unittest.main()
