@@ -4179,3 +4179,100 @@ html { scrollbar-gutter: stable; }
 .pulse-dot, .status-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--success); }
 .finn-body, .finn-paw-left, .finn-paw-right { transform-box:fill-box; transform-origin:center; }
 .reason-list { padding-left:20px; color:var(--ll-muted); }
+
+/* Aurora Background: MIT, Manu Arora; attribution in docs/THIRD_PARTY.md. */
+.aurora-background-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+  isolation: isolate;
+  background-color: #f8fafc;
+  contain: strict;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.aurora-layer-base {
+  position: absolute;
+  inset: -30px;
+  opacity: 0.65;
+  filter: blur(28px);
+  will-change: transform, opacity;
+  background: 
+    radial-gradient(circle at 12% 18%, rgba(59, 130, 246, 0.45) 0%, transparent 45%),
+    radial-gradient(circle at 88% 22%, rgba(168, 85, 247, 0.45) 0%, transparent 48%),
+    radial-gradient(circle at 50% 55%, rgba(96, 165, 250, 0.35) 0%, transparent 52%),
+    radial-gradient(circle at 82% 82%, rgba(192, 132, 252, 0.35) 0%, transparent 50%),
+    radial-gradient(circle at 18% 80%, rgba(56, 189, 248, 0.3) 0%, transparent 48%);
+  animation: aurora-pulse 24s ease-in-out infinite alternate;
+}
+
+.aurora-layer {
+  position: absolute;
+  inset: -15px;
+  opacity: 0.6;
+  filter: blur(14px);
+  will-change: transform, background-position;
+  background-image: 
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
+    repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
+  background-size: 300% 200%;
+  background-position: 50% 50%, 50% 50%;
+  mask-image: radial-gradient(ellipse at 100% 0%, black 12%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 12%, transparent 72%);
+}
+
+.aurora-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
+    repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
+  background-size: 200% 100%;
+  background-attachment: fixed;
+  mix-blend-mode: overlay;
+  animation: aurora-movement 55s linear infinite;
+}
+
+@keyframes aurora-movement {
+  0% {
+    background-position: 50% 50%, 50% 50%;
+  }
+  100% {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+@keyframes aurora-pulse {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.08) translateY(-25px);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.03) translateY(15px);
+    opacity: 0.7;
+  }
+}
+
+
+
+body { isolation:isolate; background:transparent; }
+html { background:var(--canvas-bg); }
+.ambient-mesh { opacity:.25; }
+.login-story.public-landing-shell { background:rgba(255,255,255,.28); border:1px solid var(--glass-rim); box-shadow:var(--glass-shadow); }
+#publicHomeContent { max-width:1080px; margin-inline:auto; }
+#publicHomeContent .public-title { font-size:clamp(2.5rem,6vw,5rem); letter-spacing:-.055em; line-height:1.08; }
+#publicHomeContent .public-title span { background:linear-gradient(100deg,#0284c7,#6366f1); background-clip:text; -webkit-background-clip:text; color:transparent; }
+.public-action-panel { background:rgba(255,255,255,.3); border-color:var(--glass-rim); }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-layer-base, .aurora-layer::after { animation:none; will-change:auto; }
+}
