@@ -62,6 +62,26 @@ def audit(page, label: str) -> None:
     if result["overflow"] or result["overlaps"]:
         raise AssertionError(f"{label}: layout issues: {result}")
 
+def audit_navbar(page, nav_id: str) -> None:
+    """The spring must settle on the active item, including after a badge resize."""
+    aligned = """id => {
+      const nav = document.getElementById(id);
+      const active = nav.querySelector('.nimbus-item.active');
+      const drop = nav.querySelector('.nimbus-drop');
+      if (!active || !drop) return false;
+      const a = active.getBoundingClientRect(), d = drop.getBoundingClientRect();
+      return Math.abs(a.x - d.x) < 1 && Math.abs(a.width - d.width) < 1;
+    }"""
+    page.wait_for_function(aligned, arg=nav_id)
+    page.locator('#' + nav_id + ' .nimbus-item.active').evaluate("""item => {
+      const badge = document.createElement('span');
+      badge.className = 'nav-count'; badge.dataset.auditBadge = 'true';
+      badge.textContent = '999'; item.append(badge);
+    }""")
+    page.wait_for_function(aligned, arg=nav_id)
+    page.locator('[data-audit-badge]').evaluate('(badge) => badge.remove()')
+    page.wait_for_function(aligned, arg=nav_id)
+
 def return_home(page) -> None:
     back = page.locator("[data-public-home]:visible").first
     if back.is_visible():
@@ -168,9 +188,9 @@ def submit_public_report(page, kind: str) -> None:
 
 def main() -> int:
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(executable_path=os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE") or None)
         try:
-            for width, height in [(320, 740), (375, 812), (768, 1024), (1440, 900)]:
+            for width, height in [(320, 740), (375, 812), (390, 844), (768, 1024), (1280, 900), (1440, 900)]:
                 page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1)
                 page_errors = []
                 page.on("pageerror", lambda error: page_errors.append(str(error)))
@@ -201,6 +221,7 @@ def main() -> int:
                 page.locator("#publicNav [data-public-destination='track']").click()
                 page.locator("#publicTrackPage").wait_for(state="visible")
                 audit(page, f"public nav track {width}x{height}")
+                audit_navbar(page, "publicNav")
                 return_home(page)
 
                 page.locator('[data-public-report="lost"]').click()
@@ -281,6 +302,7 @@ def main() -> int:
                 assert page.locator("#officeWorkspaceButton").count() == 0
                 assert page.locator("#studentNav [data-view='office']:visible").count() == 1
                 audit(page, f"office dashboard {width}x{height}")
+                audit_navbar(page, "studentNav")
                 for view, view_id in [("notifications", "notificationsView"), ("browse", "browseView")]:
                     page.locator(f'button[data-view="{view}"]:visible').first.click()
                     page.locator("#" + view_id).wait_for(state="visible")
@@ -288,7 +310,7 @@ def main() -> int:
                 if page_errors:
                     raise AssertionError(f"Uncaught browser JavaScript errors at {width}px: {page_errors}")
                 page.close()
-            print("Responsive browser and Lost/Found submit audit passed at 320, 375, 768 and 1440 CSS pixels.")
+            print("Responsive browser and Lost/Found submit audit passed at 320, 375, 390, 768, 1280 and 1440 CSS pixels.")
             return 0
         finally:
             browser.close()

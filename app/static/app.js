@@ -2727,5 +2727,70 @@ async function loadReportForClaimByRef(reportId, publicRef) {
   return openPublicClaimById(reportId, publicRef);
 }
 
+// CSS fallback of PR #21's spring navbar; workflow event handlers stay authoritative.
+function initLiquidNavbars() {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  document.querySelectorAll(".nimbus-nav").forEach(nav => {
+    const drop = document.createElement("span");
+    drop.className = "nimbus-drop";
+    drop.setAttribute("aria-hidden", "true");
+    nav.prepend(drop);
+    let active = null, frame = 0, lastTime = 0;
+    let x = 0, width = 0, velocity = 0, widthVelocity = 0;
+    let targetX = 0, targetWidth = 0;
+    function paint() {
+      drop.style.transform = `translateX(${x}px)`;
+      drop.style.width = `${Math.max(0, width)}px`;
+    }
+    function animate(time) {
+      const dt = Math.min((time - lastTime) / 1000 || 1 / 60, 1 / 30);
+      lastTime = time;
+      velocity += ((targetX - x) * 260 - velocity * 27) * dt;
+      widthVelocity += ((targetWidth - width) * 260 - widthVelocity * 27) * dt;
+      x += velocity * dt;
+      width += widthVelocity * dt;
+      const settled = Math.abs(targetX - x) + Math.abs(targetWidth - width) + Math.abs(velocity) + Math.abs(widthVelocity) < .1;
+      if (settled || reducedMotion.matches) {
+        x = targetX; width = targetWidth; velocity = widthVelocity = 0;
+        frame = 0;
+      } else frame = requestAnimationFrame(animate);
+      paint();
+    }
+    function measure() {
+      const selected = nav.querySelector(".nimbus-item.active, .nimbus-item[aria-current='page']");
+      if (!selected || !selected.getClientRects().length) { drop.hidden = true; return; }
+      drop.hidden = false;
+      targetX = selected.offsetLeft;
+      targetWidth = selected.offsetWidth;
+      drop.style.top = `${selected.offsetTop}px`;
+      drop.style.height = `${selected.offsetHeight}px`;
+      if (!active || reducedMotion.matches) { x = targetX; width = targetWidth; paint(); }
+      if (active !== selected) {
+        nav.scrollTo({left: selected.offsetLeft - (nav.clientWidth - selected.offsetWidth) / 2,
+          behavior: reducedMotion.matches ? "instant" : "smooth"});
+      }
+      active = selected;
+      if (!frame) { lastTime = 0; frame = requestAnimationFrame(animate); }
+      updateScrollHint();
+    }
+    function updateScrollHint() {
+      nav.dataset.scrollHint = nav.scrollWidth > nav.clientWidth + nav.scrollLeft + 2 ? "more" : "end";
+    }
+    // Badges change both text and visibility; measure the active item even if it did not change.
+    new MutationObserver(measure).observe(nav, {
+      childList: true, subtree: true, characterData: true,
+      attributes: true, attributeFilter: ["class", "aria-current"]
+    });
+    const resize = new ResizeObserver(measure);
+    resize.observe(nav);
+    nav.querySelectorAll(".nimbus-item").forEach(item => resize.observe(item));
+    nav.addEventListener("scroll", updateScrollHint, {passive:true});
+    reducedMotion.addEventListener("change", measure);
+    document.fonts.ready.then(measure);
+    measure();
+  });
+}
+
+initLiquidNavbars();
 observeAuthImages();
 start().then(recoverOldTrackingLink);
