@@ -283,17 +283,16 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn(".public-ai-panel", self.css)
 
     def test_global_theme_uses_consistent_bone_beige_palette(self):
-        self.assertIn("--ll-paper: #f2e9dc", self.css)
-        self.assertIn("--ll-primary: #96552f", self.css)
+        # Retain the theme contract, updated for the explicitly requested PR #21 palette.
+        self.assertIn("--ll-paper: #f8fafc", self.css)
+        self.assertIn("--ll-primary: #0284c7", self.css)
         self.assertIn("--canvas-bg: var(--ll-paper)", self.css)
         self.assertIn("--water-blue: var(--ll-primary)", self.css)
-        self.assertNotIn("#dcebf5", self.css.lower())
-        self.assertNotIn("#0284c7", self.css.lower())
-        self.assertNotIn("#2563eb", self.css.lower())
-        self.assertNotIn("#00a2ff", self.css.lower())
-        self.assertNotIn("rgba(37,99,235", self.css.lower())
-        self.assertIn(".report-kind-guidance", self.css)
-        self.assertIn(".button-primary", self.css)
+        for obsolete in ("#f2e9dc", "#96552f", "#a85e32", "#7d4327", "rgba(168,94,50"):
+            self.assertNotIn(obsolete, self.css.lower())
+        for selector in (".report-kind-guidance", ".button-primary", ".form-card", ".office-section", ".public-browse-card", ".dialog-card"):
+            self.assertIn(selector, self.css)
+        self.assertIn("backdrop-filter: blur(22px) saturate(1.25)", self.css)
 
     def test_navigation_destinations_are_oval_on_desktop_and_mobile(self):
         self.assertIn('#appView #studentNav .nimbus-item { border-radius:999px !important; }', self.css)
