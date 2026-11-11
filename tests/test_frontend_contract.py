@@ -429,6 +429,21 @@ class FrontendContractTests(unittest.TestCase):
         self.assertIn('id="publicHomeContent"', self.html)
         self.assertIn('id="loginForm"', self.html)
 
+    def test_latest_teammate_artwork_keeps_existing_help_buttons(self):
+        self.assertEqual(len(re.findall(r'<button\b', self.html)), 99)
+        for element_id in ("finnCharacter", "finnTipsToggle", "finnFur", "finnCream", "finnCoat", "finnHat", "finnDrop"):
+            self.assertIn(element_id, self.id_set)
+        self.assertIn('class="finn-mascot detective-mascot-svg"', self.html)
+        self.assertRegex(self.css, r'@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.detective-mascot-svg,')
+
+    def test_visual_port_does_not_import_mock_api_or_private_link_buttons(self):
+        self.assertNotIn("function mockApi", self.js)
+        self.assertNotIn("usingMockApi", self.js)
+        self.assertNotIn("copyPublicTrackingLink", self.id_set)
+        self.assertIn("copyPublicTrackingReference", self.id_set)
+        for field in ("publicTrackReference", "publicTrackRoll", "publicTrackSecret"):
+            self.assertIn(field, self.id_set)
+
     def test_dialog_close_icons_have_consistent_accessible_names(self):
         controls = re.findall(r'<button\b[^>]*aria-label="Close"[^>]*>(.*?)</button>', self.html, re.S)
         self.assertGreaterEqual(len(controls), 11)
