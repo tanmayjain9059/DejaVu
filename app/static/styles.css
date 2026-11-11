@@ -4339,3 +4339,19 @@ html { background:var(--canvas-bg); }
 .ui-icon { display:inline-block; flex:none; width:1.15em; height:1.15em; vertical-align:-.15em; }
 .public-action-icon .ui-icon { width:26px; height:26px; }
 .icon-button, .dialog-close { min-width:44px; min-height:44px; display:inline-grid; place-items:center; }
+
+/* Keep report, evidence, privacy and handover inputs readable over the aurora. */
+.form-stack input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-stack select, .form-stack textarea {
+  background:rgba(255,255,255,.84); color:var(--ll-ink);
+  border-color:var(--ll-border); min-width:0; max-width:100%;
+}
+.public-handover-fields { background:rgba(239,246,255,.7); border-color:var(--ll-border); }
+.dialog-card { color:var(--ll-ink); background:rgba(255,255,255,.9); }
+.dialog-heading > :first-child { min-width:0; }
+.dialog-heading > button { flex-shrink:0; }
+.nimbus-nav { --n-tint:rgba(255,255,255,.38); --n-fg:var(--ll-ink); --n-fg-soft:var(--ll-muted); --n-rim:rgba(255,255,255,.9); }
+.nimbus-nav .nimbus-glass { background:rgba(255,255,255,.28); }
+@media (max-width:700px) {
+  .dialog-card { padding:20px; width:calc(100vw - 24px); max-height:calc(100dvh - 24px); }
+}

@@ -109,7 +109,7 @@
             <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrand" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColor" maxlength="60" placeholder="e.g. Matte black"></label></div>
             <label><span>Distinctive visible features · Optional</span><textarea id="publicFeatures" rows="2" maxlength="400" placeholder="Stickers, scratches, patterns or other visible details"></textarea></label>
             <label><span>Description · Required</span><textarea id="publicDescription" required minlength="10" maxlength="1200" rows="4" placeholder="Describe visible details. Keep private proof of ownership out of this description."></textarea></label>
-            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestion" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You confirm the final choice.</small></div>
+            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z"/></svg> Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestion" role="status" aria-live="polite">After entering the item name and description, get AI category suggestions. You confirm the final choice.</small></div>
             <div class="public-location-group">
               <label><span>Last-known building / campus area</span><select id="publicBlock"><option value="">Choose a building or outdoor area</option></select></label>
               <div class="two-columns">
@@ -150,7 +150,7 @@
             <div class="two-columns"><label><span>Brand / make · Optional</span><input id="publicBrandFound" maxlength="80" placeholder="e.g. Casio"></label><label><span>Primary colour · Optional</span><input id="publicColorFound" maxlength="60" placeholder="e.g. Matte black"></label></div>
             <label><span>Visible condition and features · Optional</span><textarea id="publicFeaturesFound" rows="2" maxlength="400" placeholder="Scratches, damage, colour, brand or visible exterior details"></textarea></label>
             <label><span>Describe the found item · Required</span><textarea id="publicDescriptionFound" required minlength="10" maxlength="1200" rows="4" placeholder="Describe only observable details. Do not publish names, student IDs, serial numbers, contents or hidden identifying marks."></textarea></label>
-            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category>✦ Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestionFound" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You confirm the final choice.</small></div>
+            <div class="public-ai-panel"><button class="button button-quiet button-small public-ai-category" type="button" data-public-ai-category><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z"/></svg> Suggest category with AI</button><small class="field-hint public-ai-status" id="publicCategorySuggestionFound" role="status" aria-live="polite">After entering the found item's name and visible description, get AI category suggestions. You confirm the final choice.</small></div>
             <div class="public-location-group">
               <label><span>Discovery building / campus area</span><select id="publicBlockFound"><option value="">Choose a building or outdoor area</option></select></label>
               <div class="two-columns">
@@ -1121,7 +1121,7 @@
       </svg>
     </button>
   </div>
-  <dialog id="privacyDecisionDialog" class="modal-dialog">
+  <dialog id="privacyDecisionDialog" class="modal-dialog dialog-card liquid-glass-panel">
     <form id="privacyDecisionForm" class="form-card form-stack">
       <div class="dialog-heading"><div><p class="eyebrow">DATA RIGHTS</p><h2>Update privacy request</h2></div><button type="button" class="dialog-close" id="closePrivacyDecision" aria-label="Close"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <p id="privacyDecisionSummary" class="field-hint"></p>
@@ -1131,7 +1131,7 @@
       <p id="privacyDecisionError" class="form-error" role="alert"></p>
     </form>
   </dialog>
-  <dialog id="publicPrivacyDialog" class="modal-dialog">
+  <dialog id="publicPrivacyDialog" class="modal-dialog dialog-card liquid-glass-panel">
     <form id="publicPrivacyForm" class="form-card form-stack">
       <div class="dialog-heading"><div><p class="eyebrow">YOUR DATA</p><h2>Request a privacy action</h2></div><button type="button" class="dialog-close" id="closePublicPrivacy" aria-label="Close"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <p class="field-hint">Your private tracking credentials verify that you control this case. Do not share your tracking secret with anyone else.</p>

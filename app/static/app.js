@@ -2111,6 +2111,7 @@ async function requestPublicCategorySuggestion(button) {
     (payload.title.length < 4 ? field("publicTitle") : field("publicDescription")).focus();
     return;
   }
+  const originalLabel = button.innerHTML;
   button.disabled = true;
   button.textContent = "Analysing…";
   output.textContent = "Checking item details…";
@@ -2149,7 +2150,7 @@ async function requestPublicCategorySuggestion(button) {
     output.textContent = error.message || "AI suggestion is unavailable. Choose a category manually.";
   } finally {
     button.disabled = false;
-    button.textContent = "✦ Suggest with AI";
+    button.innerHTML = originalLabel;
   }
 }
 document.addEventListener("click", event => {
