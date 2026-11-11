@@ -715,8 +715,8 @@ function itemCard(report, options) {
     "<h3>" + escapeHTML(report.title) + "</h3>" +
     '<p class="item-description">' + escapeHTML(report.description) + "</p>" +
     characteristicBlock + reasons +
-    '<div class="item-meta"><span><b>⌖</b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
-    '<span><b>◷</b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
+    '<div class="item-meta"><span><b><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2"/></svg></b>' + escapeHTML(report.location || "Location not specified") + "</span>" +
+    '<span><b><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></b>' + escapeHTML(humanDate(report.occurred_at)) + "</span></div>" +
     '<div class="item-actions">' + strength + detailsButton + claimButton + "</div></div></article>";
 }
 
@@ -790,7 +790,7 @@ async function suggestReportCategory(event) {
     return;
   }
   button.disabled = true;
-  button.innerHTML = '<span aria-hidden="true">◌</span> Analysing…';
+  button.innerHTML = '<span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 1-9 9"/></svg></span> Analysing…';
   output.textContent = "Reviewing the item details…";
   try {
     const result = await api("/api/reports/category-suggestion", { method: "POST", body: payload });
@@ -811,7 +811,7 @@ async function suggestReportCategory(event) {
     output.textContent = "AI suggestion unavailable: " + (error.message || "choose a category manually.");
   } finally {
     button.disabled = false;
-    button.innerHTML = '<span aria-hidden="true">✦</span> Suggest with AI';
+    button.innerHTML = '<span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z"/></svg></span> Suggest with AI';
   }
 }
 
@@ -962,7 +962,7 @@ async function loadMatches(reportId) {
       claim: true, strength: report.match_strength, reasons: report.match_reasons
     })).join("");
     if (!result.matches.length) {
-      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon">⌕</span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
+      $("#matchResults").innerHTML = '<div class="empty-state"><span class="empty-icon"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><h3>No available matches yet</h3><p>Your report remains active. Try checking again after new found-item reports are received by the office.</p></div>';
     }
     $("#matchesPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) { showToast(error.message, true); }
@@ -1515,7 +1515,7 @@ async function loadActivity() {
       : "All current recognition milestones earned";
     $("#activityOverview").innerHTML =
       '<div class="activity-points-card"><div><p class="eyebrow">VERIFIED ACTIVITY</p><strong>' + escapeHTML(total) +
-      '</strong><span>total points</span></div><div class="points-symbol">✦</div><p class="muted">Points are awarded for contributions verified by the campus office.</p></div>' +
+      '</strong><span>total points</span></div><div class="points-symbol"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z"/></svg></div><p class="muted">Points are awarded for contributions verified by the campus office.</p></div>' +
       '<div class="milestone-card"><div class="milestone-heading"><div><p class="eyebrow">NEXT MILESTONE</p><h3>' +
       escapeHTML(next ? next.tier : "Recognition complete") + '</h3></div><span class="count-pill">' +
       escapeHTML(next ? (next.threshold + " pts") : "Complete") + "</span></div><div class=\"progress-track\"><span style=\"width:" +
@@ -1534,14 +1534,14 @@ async function loadActivity() {
     ).join("");
     $("#leaderboardEmpty").classList.toggle("hidden", leaderboard.leaders.length > 0);
     $("#certificateList").innerHTML = data.certificates.map((certificate) =>
-      '<article class="certificate-card"><div class="certificate-emblem">✧</div><div class="certificate-copy"><span class="item-ref">' +
+      '<article class="certificate-card"><div class="certificate-emblem"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="5"/><path d="m8 12-2 9 6-3 6 3-2-9"/></svg></div><div class="certificate-copy"><span class="item-ref">' +
       escapeHTML(certificate.serial) + "</span><h3>" + escapeHTML(certificate.tier) + '</h3><p class="muted">' +
       escapeHTML(certificate.points_at_issue + " points at issue · " + humanDate(certificate.issued_at)) + '</p></div><button class="button button-primary button-small" type="button" data-certificate-download="' +
       escapeHTML(certificate.id) + '">Download PDF ↗</button></article>'
     ).join("");
     $("#certificateEmpty").classList.toggle("hidden", data.certificates.length > 0);
     $("#activityLedger").innerHTML = data.ledger.map((entry) =>
-      '<article class="ledger-row"><div class="ledger-icon">＋</div><div class="ledger-copy"><strong>' +
+      '<article class="ledger-row"><div class="ledger-icon"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></div><div class="ledger-copy"><strong>' +
       escapeHTML(entry.reason) + '</strong><small>' + escapeHTML(humanDateTime(entry.created_at)) +
       (entry.report_id ? " · Verified report recorded" : "") + '</small></div><span class="ledger-points">+' +
       escapeHTML(entry.points) + " pts</span></article>"
@@ -1910,7 +1910,7 @@ async function loadPublicFound() {
     $("#publicBrowseResults").innerHTML = reports.map(item => {
       const isFound = String(item.report_type || "").toLowerCase() === "found";
       const canClaim = isFound && String(item.status || "").toLowerCase() === "available";
-      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'" data-public-ref="'+escapeHTML(item.public_ref || item.reference || '')+'">Claim this item <span aria-hidden="true">→</span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
+      return '<article class="list-card public-browse-card"><div class="list-card-head"><div><span class="eyebrow">'+(isFound ? "FOUND ITEM" : "LOST REPORT")+'</span><h3>'+escapeHTML(item.title)+'</h3><p>'+escapeHTML(categoryLabel(item.category))+' · '+escapeHTML(item.public_ref || item.reference)+'</p></div><span class="status-pill">'+escapeHTML(statusLabel(item.status))+'</span></div><p class="field-hint">'+escapeHTML(item.location_area || item.location_block || "Campus location")+'</p>'+(canClaim ? '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="'+escapeHTML(item.id)+'" data-public-ref="'+escapeHTML(item.public_ref || item.reference || '')+'">Claim this item <span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button><span class="public-claim-hint">Submit ownership evidence for office review</span></div>' : (isFound ? '<p class="field-hint">This item is not yet available to claim.</p>' : ''))+'</article>';
     }).join("");
     $("#publicBrowseEmpty").textContent = reports.length ? "No claimable Found items yet. Found items appear here after the campus office receives and lists them." : "No public reports match that search yet.";
     $("#publicBrowseEmpty").classList.toggle("hidden", reports.length > 0);
@@ -2022,7 +2022,7 @@ function recoverOldTrackingLink() {
 }
 function publicMatchClaimButton(report) {
   if (!report || report.report_type !== "found" || report.status !== "available") return "";
-  return '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || report.reference || "") + '">Claim this item <span aria-hidden="true">→</span></button></div>';
+  return '<div class="public-browse-actions"><button class="button button-liquid public-claim-action" type="button" data-public-claim="' + escapeHTML(report.id) + '" data-public-ref="' + escapeHTML(report.public_ref || report.reference || "") + '">Claim this item <span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></button></div>';
 }
 function openPublicClaimDialog(report) {
   if (!report || !report.id || report.report_type !== "found" || report.status !== "available") {

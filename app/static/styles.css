@@ -4290,7 +4290,7 @@ html { background:var(--canvas-bg); }
   will-change: transform, width;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 248, 255, 0.82) 100%);
   border: 1px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 
+  box-shadow:
     inset 0 1px 2px #fff,
     inset 0 -1px 2px rgba(0, 162, 255, 0.12),
     0 4px 16px -2px rgba(0, 80, 180, 0.16),
@@ -4334,3 +4334,8 @@ html { background:var(--canvas-bg); }
 @media (prefers-reduced-motion: reduce) {
   .nimbus-nav .nv-ico svg { transition:none; }
 }
+
+/* Inline Lucide/Feather shapes; decorative SVG never changes a button's name. */
+.ui-icon { display:inline-block; flex:none; width:1.15em; height:1.15em; vertical-align:-.15em; }
+.public-action-icon .ui-icon { width:26px; height:26px; }
+.icon-button, .dialog-close { min-width:44px; min-height:44px; display:inline-grid; place-items:center; }
