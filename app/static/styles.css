@@ -6,7 +6,7 @@
 
 :root {
   color-scheme: light;
-  
+
   /* Exact 21st.dev Liquid Glass Color Tokens */
   --n-tint: rgba(255, 255, 255, 0.38);
   --n-tint-card: rgba(255, 255, 255, 0.48);
@@ -14,11 +14,11 @@
   --n-fg-soft: rgba(11,19,43, 0.65);
   --n-fg-muted: rgba(11,19,43, 0.45);
   --n-rim: rgba(255, 255, 255, 0.95);
-  
+
   /* Canvas Background (Exact #f8fafc from 21st demo) */
   --canvas-bg: #f8fafc;
   --canvas-gradient: radial-gradient(130% 120% at 50% 0%, #f8fafc 0%, #f8fafc 55%, #e0f2fe 100%);
-  
+
   /* Liquid Accents */
   --water-blue: #0284c7;
   --water-deep: #0369a1;
@@ -4202,7 +4202,7 @@ html { scrollbar-gutter: stable; }
   opacity: 0.65;
   filter: blur(28px);
   will-change: transform, opacity;
-  background: 
+  background:
     radial-gradient(circle at 12% 18%, rgba(59, 130, 246, 0.45) 0%, transparent 45%),
     radial-gradient(circle at 88% 22%, rgba(168, 85, 247, 0.45) 0%, transparent 48%),
     radial-gradient(circle at 50% 55%, rgba(96, 165, 250, 0.35) 0%, transparent 52%),
@@ -4217,7 +4217,7 @@ html { scrollbar-gutter: stable; }
   opacity: 0.6;
   filter: blur(14px);
   will-change: transform, background-position;
-  background-image: 
+  background-image:
     repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
     repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
   background-size: 300% 200%;
@@ -4230,7 +4230,7 @@ html { scrollbar-gutter: stable; }
   content: "";
   position: absolute;
   inset: 0;
-  background-image: 
+  background-image:
     repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 7%, transparent 10%, transparent 12%, rgba(255, 255, 255, 0.95) 16%),
     repeating-linear-gradient(100deg, #3b82f6 10%, #a855f7 15%, #60a5fa 20%, #c084fc 25%, #38bdf8 30%);
   background-size: 200% 100%;
