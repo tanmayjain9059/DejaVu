@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 
 TABLE_ORDER = (
     "users",
+    "privacy_requests",
+    "public_roll_identities",
     "login_attempts",
     "reports",
     "claims",
@@ -34,7 +36,7 @@ TABLE_ORDER = (
 )
 # Embeddings are disposable derived data. They are intentionally rebuilt on the
 # destination instead of copied during a database migration.
-IGNORED_SOURCE_TABLES = {"schema_migrations", "ai_embedding_cache"}
+IGNORED_SOURCE_TABLES = {"schema_migrations", "ai_embedding_cache", "public_rate_limits"}
 BATCH_SIZE = 500
 
 
@@ -190,7 +192,7 @@ def main():
                     ).fetchone()["sequence"]
                     if sequence:
                         target.execute(
-                            f"SELECT setval(%s, COALESCE((SELECT MAX(id) FROM {table}), 1), "
+                            f"SELECT setval(?, COALESCE((SELECT MAX(id) FROM {table}), 1), "
                             f"EXISTS(SELECT 1 FROM {table}))",
                             (sequence,),
                         )

@@ -40,11 +40,30 @@ def _load_pipeline():
         try:
             from transformers import pipeline
             model_name = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base")
-            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name)
+            revision = os.getenv("IMAGE_CAPTION_MODEL_REVISION", "main")
+            _CAPTION_PIPELINE = pipeline("image-to-text", model=model_name, revision=os.getenv("MODEL_DOWNLOAD_REVISION") or revision, local_files_only=os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() != "true")
         except Exception:
             _CAPTION_PIPELINE = None
         return _CAPTION_PIPELINE
 
+
+def model_status() -> dict[str, Any]:
+    """Safe diagnostics for the optional caption model."""
+    enabled = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
+    if not enabled:
+        state = "disabled"
+    elif _MODEL_ATTEMPTED and _CAPTION_PIPELINE is not None:
+        state = "ready"
+    elif _MODEL_ATTEMPTED:
+        state = "unavailable"
+    else:
+        state = "not_loaded"
+    return {
+        "enabled": enabled,
+        "state": state,
+        "model": os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base"),
+        "revision": os.getenv("IMAGE_CAPTION_MODEL_REVISION", "main"),
+    }
 
 def _keywords(caption: str, limit: int = 12) -> list[str]:
     words = re.findall(r"[a-z][a-z0-9-]{2,}", caption.casefold())

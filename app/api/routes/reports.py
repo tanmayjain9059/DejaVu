@@ -60,20 +60,20 @@ async def list_reports(
         conditions.append("r.category=?")
         params.append(category)
     if block:
-        conditions.append("LOWER(COALESCE(r.location_block,'')) LIKE ?")
+        conditions.append("LOWER(COALESCE(r.location_block,'')) LIKE ? ESCAPE '!'")
         params.append("%" + block.lower() + "%")
     if room:
-        conditions.append("LOWER(COALESCE(r.location_room,'')) LIKE ?")
+        conditions.append("LOWER(COALESCE(r.location_room,'')) LIKE ? ESCAPE '!'")
         params.append("%" + room.lower() + "%")
     if q:
-        term = "%" + q.strip().lower() + "%"
+        term = "%" + q.strip().lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
         conditions.append("""(
-            LOWER(r.title) LIKE ? OR LOWER(r.description) LIKE ? OR LOWER(r.public_ref) LIKE ?
-            OR LOWER(COALESCE(r.location_area,'')) LIKE ? OR LOWER(COALESCE(r.brand,'')) LIKE ?
-            OR LOWER(COALESCE(r.primary_color,'')) LIKE ? OR LOWER(COALESCE(r.visible_features,'')) LIKE ?
-            OR LOWER(COALESCE(r.location_block,'')) LIKE ? OR LOWER(COALESCE(r.location_floor,'')) LIKE ?
-            OR LOWER(COALESCE(r.location_room,'')) LIKE ?
-            OR LOWER(COALESCE(r.ai_caption,'')) LIKE ? OR LOWER(COALESCE(r.ai_keywords,'')) LIKE ?
+            LOWER(r.title) LIKE ? ESCAPE '!' OR LOWER(r.description) LIKE ? ESCAPE '!' OR LOWER(r.public_ref) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_area,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.brand,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.primary_color,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.visible_features,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_block,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.location_floor,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.location_room,'')) LIKE ? ESCAPE '!'
+            OR LOWER(COALESCE(r.ai_caption,'')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(r.ai_keywords,'')) LIKE ? ESCAPE '!'
         )""")
         params.extend([term] * 12)
     if date_from:
@@ -165,13 +165,13 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
         conn.execute(
             """INSERT INTO reports(id, public_ref, report_type, title, description, brand, primary_color,
                visible_features, category, occurred_at, location_block, location_floor, location_room,
-               location_area, status, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               location_area, image_ai_consent, status, created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (report_id, public_ref, body.report_type, body.title.strip(), body.description.strip(),
              (body.brand or "").strip() or None, (body.primary_color or "").strip() or None,
              (body.visible_features or "").strip() or None, body.category, body.occurred_at,
              body.location_block, body.location_floor, body.location_room, body.location_area,
-             status, user["id"], timestamp, timestamp),
+             int(body.image_ai_consent), status, user["id"], timestamp, timestamp),
         )
         audit(conn, user["id"], "report_created", "report", report_id, {"report_type": body.report_type})
         if body.report_type == "found":
@@ -183,6 +183,7 @@ async def create_report(body: ReportBody, user: dict[str, Any] = Depends(authent
             notify_user(conn, user["id"], "report-created:" + report_id, "Lost report submitted",
                         "Your lost-item report is saved. LostLink can suggest possible matches as found items are received.", "report", report_id)
             notify_matches_for_lost_report(conn, read_report(conn, report_id))
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
     return {"report": serialise_report(row, internal=user["role"] == "office"),
             "message": "Lost report submitted." if body.report_type == "lost" else "Found-item report submitted for office intake. It will become searchable after staff confirm receipt."}
@@ -211,6 +212,7 @@ async def update_report(
 
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
         is_office = user["role"] == "office"
         if not is_office and int(row["created_by"]) != int(user["id"]):
@@ -260,6 +262,7 @@ async def close_report(
         raise HTTPException(status_code=403, detail="Only the report owner can close their report.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         report = read_report(conn, report_id)
         if report["created_by"] != user["id"]:
             raise HTTPException(status_code=404, detail="Report not found.")
@@ -323,25 +326,23 @@ async def upload_report_image(
         raise HTTPException(status_code=413, detail="Images must be 5 MB or smaller.")
     normalized, image_sha256, image_phash = canonicalise_image(raw)
 
+    filename = uuid.uuid4().hex + ".jpg"
     new_key = None
     old = None
     try:
+        # Keep object-storage latency outside the global PostgreSQL write lock.
+        new_key = await run_in_threadpool(save_upload, filename, normalized)
         with connect_db() as conn:
-            # Serialize fingerprint check and update against concurrent uploads.
             conn.execute("BEGIN IMMEDIATE")
+            lock_row(conn, "reports", "id", report_id)
             row = read_report(conn, report_id)
             is_office = user["role"] == "office"
             if not is_office and row["created_by"] != user["id"]:
                 raise HTTPException(status_code=403, detail="You cannot update this report.")
             if not is_office and row["report_type"] == "found" and row["status"] != "awaiting_intake":
                 raise HTTPException(status_code=409, detail="A found item's photo can only be changed before office intake.")
-            if image_fingerprint_matches(conn, image_sha256, image_phash):
-                raise HTTPException(
-                    status_code=409,
-                    detail="This image duplicates or closely matches an image already in LostLink. Upload a different, genuine item photo.",
-                )
-            filename = uuid.uuid4().hex + ".jpg"
-            new_key = save_upload(filename, normalized)
+            if is_office and image_fingerprint_matches(conn, image_sha256, image_phash):
+                raise HTTPException(status_code=409, detail="This image cannot be attached. Please choose another image.")
             old = row["image_path"]
             conn.execute(
                 "UPDATE reports SET image_path=?, image_sha256=?, image_phash=?, updated_at=? WHERE id=?",
@@ -350,21 +351,54 @@ async def upload_report_image(
             audit(conn, user["id"], "report_image_added", "report", report_id)
             updated = read_report(conn, report_id)
     except Exception:
-        # Also catches commit failures from the connection context manager.
         if new_key is not None:
             try:
-                delete_upload(new_key)
+                await run_in_threadpool(delete_upload, new_key)
             except Exception:
                 pass
         raise
 
-    # Only delete the previous image after the DB transaction has committed.
     if old and old != new_key:
         try:
-            delete_upload(old)
+            await run_in_threadpool(delete_upload, old)
         except Exception:
             pass
     return {"report": serialise_report(updated, internal=user["role"] == "office")}
+
+
+
+@router.post("/api/reports/{report_id}/ai-consent")
+async def update_report_ai_consent(
+    report_id: str,
+    body: ImageAiConsentBody,
+    user: dict[str, Any] = Depends(authenticated_user),
+):
+    with connect_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
+        row = read_report(conn, report_id)
+        if user["role"] != "office" and int(row["created_by"]) != int(user["id"]):
+            raise HTTPException(status_code=404, detail="Report not found.")
+        consent = int(bool(body.consent))
+        conn.execute(
+            """UPDATE reports SET image_ai_consent=?,
+               ai_caption=CASE WHEN ?=0 THEN NULL ELSE ai_caption END,
+               ai_keywords=CASE WHEN ?=0 THEN NULL ELSE ai_keywords END,
+               ai_attributes_json=CASE WHEN ?=0 THEN NULL ELSE ai_attributes_json END,
+               ai_enriched_at=CASE WHEN ?=0 THEN NULL ELSE ai_enriched_at END,
+               ai_enrichment_model=CASE WHEN ?=0 THEN NULL ELSE ai_enrichment_model END,
+               updated_at=? WHERE id=?""",
+            (consent, consent, consent, consent, consent, consent, now_iso(), report_id),
+        )
+        if not consent and row["image_sha256"]:
+            conn.execute(
+                "DELETE FROM ai_embedding_cache WHERE content_hash=? AND model_name LIKE ?",
+                (row["image_sha256"], "%:image"),
+            )
+        audit(conn, user["id"], "report_image_ai_consent_updated", "report", report_id,
+              {"consent": bool(consent)})
+    return {"report_id": report_id, "image_ai_consent": bool(body.consent)}
+
 
 @router.post("/api/reports/{report_id}/enrichment")
 async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
@@ -377,6 +411,8 @@ async def enrich_report_image(report_id: str, user: dict[str, Any] = Depends(aut
             raise HTTPException(status_code=404, detail="Report not found.")
         if not row["image_path"]:
             raise HTTPException(status_code=409, detail="Upload an item photo before requesting image enrichment.")
+        if not row["image_ai_consent"]:
+            raise HTTPException(status_code=403, detail="AI photo analysis was not authorised for this report.")
         image_key = row["image_path"]
         try:
             image_bytes = read_upload(image_key)
@@ -425,10 +461,12 @@ async def get_report_image(report_id: str, user: dict[str, Any] = Depends(authen
 
 
 @router.get("/api/reports/{report_id}/matches")
-async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticated_user)):
+async def get_matches(report_id: str, request: Request, user: dict[str, Any] = Depends(authenticated_user)):
     from app.matching import matching_engine
+    from app.api.routes.public_workflow import _enforce_rate_limit
 
     with connect_db() as conn:
+        _enforce_rate_limit(conn, request, "authenticated-matches", 60, actor_key="account:" + str(user["id"]))
         lost = read_report(conn, report_id)
         if lost["report_type"] != "lost":
             raise HTTPException(status_code=400, detail="Matches are generated from a lost-item report.")
@@ -533,18 +571,6 @@ async def get_matches(report_id: str, user: dict[str, Any] = Depends(authenticat
     return response
 
 
-@router.get("/api/office/ai-status")
-def office_ai_status(user: dict[str, Any] = Depends(authenticated_user)):
-    """Office-only diagnostics for the optional matching models."""
-    from app.matching import matching_engine
-
-    require_office(user)
-    return {
-        "models": matching_engine.model_status(),
-        "matching_policy": "AI scores rank candidates for human review; they do not establish ownership.",
-    }
-
-
 @router.post("/api/reports/{report_id}/intake")
 async def intake_found_item(
     report_id: str,
@@ -559,9 +585,14 @@ async def intake_found_item(
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         row = read_report(conn, report_id)
         if row["report_type"] != "found" or row["status"] != "awaiting_intake":
             raise HTTPException(status_code=409, detail="Only found-item reports awaiting intake can be accepted.")
+        if row["submission_channel"] == "public":
+            verified_roll = (body.verified_roll_number or "").strip().upper()
+            if not body.identity_verified_in_person or verified_roll != (row["roll_number"] or "").strip().upper():
+                raise HTTPException(status_code=422, detail="Physically verify the Found reporter's college ID and matching roll number before intake.")
         level = effective_level(row["category"], body.value_band, body.sensitivity_level)
         detail_length = len((body.private_detail or "").strip())
         minimum_detail = 8 if level >= 3 else (6 if level >= 2 else 0)
@@ -569,7 +600,7 @@ async def intake_found_item(
             raise HTTPException(status_code=422, detail="For this risk level, record a private identifying detail or the approved verification method.")
         year = datetime.now().year
         prefix = "LL-CVR-" + str(year) + "-"
-        latest = conn.execute("SELECT tag_id FROM reports WHERE tag_id LIKE ? ORDER BY tag_id DESC LIMIT 1", (prefix + "%",)).fetchone()
+        latest = conn.execute("SELECT tag_id FROM reports WHERE tag_id LIKE ? ESCAPE '!' ORDER BY tag_id DESC LIMIT 1", (prefix + "%",)).fetchone()
         number = int(latest["tag_id"].rsplit("-", 1)[1]) + 1 if latest else 1
         tag_id = prefix + str(number).zfill(6)
         conn.execute(
@@ -611,6 +642,7 @@ async def update_storage_location(
         raise HTTPException(status_code=422, detail="Record the actual campus room, cabinet, shelf or other storage location.")
     with connect_db() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        lock_row(conn, "reports", "id", report_id)
         report = read_report(conn, report_id)
         if report["report_type"] != "found" or not report["tag_id"]:
             raise HTTPException(status_code=409, detail="Only physically received and tagged found items can have a storage location.")

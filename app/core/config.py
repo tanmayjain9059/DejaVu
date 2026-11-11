@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 ROOT = Path(__file__).resolve().parents[2]  # app/core/config.py -> repository root
 DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
@@ -22,6 +23,10 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(DATA_DIR / "uploads"))).resolve()
 UPLOAD_STORAGE_BACKEND = os.getenv("UPLOAD_STORAGE_BACKEND", "local").strip().lower()
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 USE_IMAGE_ENRICHMENT = os.getenv("USE_IMAGE_ENRICHMENT", "false").lower() == "true"
+ALLOW_MODEL_DOWNLOADS = os.getenv("ALLOW_MODEL_DOWNLOADS", "false").lower() == "true"
+MODEL_DOWNLOAD_REVISION = os.getenv("MODEL_DOWNLOAD_REVISION", "").strip()
+if ALLOW_MODEL_DOWNLOADS and (not MODEL_DOWNLOAD_REVISION or not __import__("re").fullmatch(r"[0-9a-f]{40}", MODEL_DOWNLOAD_REVISION)):
+    raise RuntimeError("ALLOW_MODEL_DOWNLOADS requires MODEL_DOWNLOAD_REVISION to be an immutable 40-character commit SHA.")
 IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "Salesforce/blip-image-captioning-base").strip()
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 MAX_OPEN_CLAIMS_PER_STUDENT = 5
@@ -68,4 +73,4 @@ CATEGORY_DEFAULT_LEVEL = {
     "other": 3,
 }
 SENSITIVE_CATEGORIES = {"identity_documents", "keys_access"}
-ACTIVE_CLAIM_STATES = {"pending", "disputed", "needs_more_evidence"}
+ACTIVE_CLAIM_STATES = {"pending", "disputed", "needs_more_evidence", "approved_for_collection"}

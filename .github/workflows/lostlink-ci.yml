@@ -1,0 +1,99 @@
+name: LostLink CI
+
+on:
+  pull_request:
+    branches:
+      - feat/lostlink-unified-public-workflow
+      - main
+  push:
+    branches:
+      - feat/lostlink-unified-public-workflow
+      - 'fix/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: .
+      SESSION_SECRET: ci-only-secret-not-used-for-deployment-0123456789abcdef0123456789abcdef
+      AUTH_PROVIDER: local
+      DEMO_MODE: "false"
+      ALLOW_MODEL_DOWNLOADS: "false"
+      USE_CLIP_MODEL: "false"
+      USE_IMAGE_ENRICHMENT: "false"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install application and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest httpx
+      - name: Compile Python modules
+        run: python -m compileall -q app
+      - name: Check browser JavaScript syntax
+        run: node --check app/static/app.js
+      - name: Run automated tests
+        run: pytest -q
+
+  browser-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SESSION_SECRET: ci-browser-layout-secret-6a0c9d8e3f214b7aa1
+      AUTH_PROVIDER: local
+      DEMO_MODE: "false"
+      SESSION_HTTPS_ONLY: "false"
+      REQUIRE_REQUEST_ORIGIN: "false"
+      ALLOWED_HOSTS: 127.0.0.1,localhost
+      DATABASE_PATH: /tmp/lostlink-browser.sqlite
+      DATA_DIR: /tmp/lostlink-browser-data
+      UPLOAD_DIR: /tmp/lostlink-browser-uploads
+      LOSTLINK_AUDIT_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install runtime and browser test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Start local API for browser audit
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/lostlink-browser.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/lostlink-browser.log
+          exit 1
+      - name: Seed a local office account for the browser audit
+        run: |
+          python - <<'PY'
+          from app.main import connect_db, now_iso
+          from app.core.security import hash_password
+          with connect_db() as conn:
+              conn.execute(
+                  "INSERT INTO users(email,display_name,role,password_hash,created_at) VALUES (?,?,?,?,?)",
+                  ("layout-audit@lostlink.test", "Layout Audit Office", "office", hash_password("layout-audit-password"), now_iso()),
+              )
+          PY
+      - name: Audit responsive layouts and interactive element overlap
+        run: python scripts/audit_frontend_layout.py

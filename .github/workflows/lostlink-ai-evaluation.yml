@@ -66,6 +66,9 @@ jobs:
       USE_SEMANTIC_MODEL: "true"
       USE_CLIP_MODEL: "false"
       USE_IMAGE_ENRICHMENT: "false"
+      ALLOW_MODEL_DOWNLOADS: "true"
+      MODEL_DOWNLOAD_REVISION: "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+      HF_HUB_DISABLE_TELEMETRY: "1"
       TOKENIZERS_PARALLELISM: "false"
     steps:
       - name: Check out repository
@@ -81,7 +84,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: lostlink-minilm-all-MiniLM-L6-v2-v1
+          key: lostlink-minilm-all-MiniLM-L6-v2-1110a243fdf4706b3f48f1d95db1a4f5529b4d41
 
       - name: Install ML dependencies
         run: |

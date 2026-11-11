@@ -96,7 +96,7 @@ async def contribution_leaderboard(user: dict[str, Any] = Depends(authenticated_
             previous_points = points
         entry = {
             "rank": current_rank,
-            "display_name": row["display_name"],
+            "display_name": "Contributor " + str(current_rank),
             "total_points": points,
             "verified_reports": int(row["verified_reports"]),
             "is_me": int(row["id"]) == int(user["id"]),
@@ -112,7 +112,7 @@ async def contribution_leaderboard(user: dict[str, Any] = Depends(authenticated_
         "my_total_points": my_points,
         "participant_count": len(rows),
         "updated_at": now_iso(),
-        "privacy_note": "Only display names and verified contribution totals are shown; emails and claim details are not included.",
+        "privacy_note": "Contributor identities are hidden; only anonymised ranks and contribution totals are shown.",
     }
 
 

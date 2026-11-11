@@ -8,9 +8,12 @@ from pathlib import Path
 
 from PIL import Image
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from app.core import config as app_config
 from app.core import database as app_database
+from app.api.dependencies import authenticated_user
+from app.api.routes import public_workflow as public_workflow_routes
 
 # By default, workflow tests isolate themselves in temporary SQLite files.
 # The PostgreSQL CI job explicitly opts in with TEST_WITH_POSTGRES=true and points
@@ -35,7 +38,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.modules = [main, app_config, app_database, app_runtime, app_notifications,
-                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes]
+                        app_reports_service, app_object_storage, auth_routes, reports_routes, claims_routes, engagement_routes, public_workflow_routes]
         self.old_module_settings = {}
         new_settings = {"DATA_DIR": root, "DB_PATH": root / "test.sqlite",
                         "UPLOAD_DIR": root / "uploads", "DEMO_MODE": False,
@@ -61,9 +64,26 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 "INSERT INTO users(email, display_name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
                 ("office@example.test", "Campus Office", "office", main.hash_password("office-password"), main.now_iso()),
             )
+        main.app.dependency_overrides.clear()
         self.client = TestClient(main.app)
 
+        async def test_only_student_override(request: Request):
+            email = request.headers.get("x-test-student")
+            if email:
+                with main.connect_db() as conn:
+                    row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+                if not row:
+                    raise AssertionError("Test-only student identity was not provisioned.")
+                return {"id": row["id"], "email": row["email"],
+                        "display_name": row["display_name"], "role": row["role"]}
+            return await authenticated_user(request)
+
+        # All clients share the app; the request header selects a test-only
+        # legacy identity while office requests still use real session auth.
+        main.app.dependency_overrides[authenticated_user] = test_only_student_override
+
     def tearDown(self):
+        main.app.dependency_overrides.clear()
         self.client.close()
         for (module_name, value) in self.old_module_settings.items():
             module, name = module_name
@@ -76,10 +96,18 @@ class LostLinkWorkflowTests(unittest.TestCase):
                 module.DEMO_MODE = enabled
 
     def login(self, email, password):
+        # Legacy authenticated-student route tests use a test-only dependency
+        # override. Production login endpoints reject student identities; the
+        # public roll-number workflow is covered separately end to end.
+        if email in {"finder@example.test", "claimant@example.test"}:
+            self.client.headers["X-Test-Student"] = email
+            return
+        self.client.headers.pop("X-Test-Student", None)
         response = self.client.post("/api/login", json={"email": email, "password": password})
         self.assertEqual(response.status_code, 200, response.text)
 
     def logout(self):
+        self.client.headers.pop("X-Test-Student", None)
         response = self.client.post("/api/logout")
         self.assertEqual(response.status_code, 200, response.text)
 
@@ -98,6 +126,19 @@ class LostLinkWorkflowTests(unittest.TestCase):
             "location_room": "A-101",
             "location_area": "Library",
         }
+
+    def test_authenticated_match_refresh_has_account_rate_limit(self):
+        self.login("claimant@example.test", "claimant-password")
+        created = self.client.post("/api/reports", json=self.report_body(
+            "lost", "Blue backpack", "A blue backpack with two zipped pockets."
+        ))
+        self.assertEqual(created.status_code, 200, created.text)
+        report_id = created.json()["report"]["id"]
+        for _ in range(60):
+            response = self.client.get("/api/reports/" + report_id + "/matches")
+            self.assertEqual(response.status_code, 200, response.text)
+        limited = self.client.get("/api/reports/" + report_id + "/matches")
+        self.assertEqual(limited.status_code, 429, limited.text)
 
     def test_report_intake_match_claim_handover_and_rewards(self):
         # A student first reports a lost item.
@@ -269,7 +310,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(leaderboard.status_code, 200, leaderboard.text)
         self.assertEqual(leaderboard.json()["my_rank"], 1)
         self.assertEqual(leaderboard.json()["my_total_points"], 15)
-        self.assertEqual(leaderboard.json()["leaders"][0]["display_name"], "Finder Student")
+        self.assertEqual(leaderboard.json()["leaders"][0]["display_name"], "Contributor 1")
         self.assertNotIn("email", leaderboard.json()["leaders"][0])
         self.logout()
 
@@ -318,7 +359,12 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(self.client.get("/health/live").json(), {"status": "ok"})
         ready = self.client.get("/health/ready")
         self.assertEqual(ready.status_code, 200)
-        self.assertEqual(ready.json(), {"status": "ready"})
+        payload = ready.json()
+        self.assertEqual(payload["status"], "ready")
+        self.assertIn(payload["database"], {"sqlite", "postgresql"})
+        self.assertEqual(payload["canonical_tables"], "ready")
+        self.assertIn(payload["storage"], {"local", "s3"})
+        self.assertGreaterEqual(payload["schema_version"], 11)
 
     def test_cross_origin_mutations_are_rejected(self):
         response = self.client.post(
@@ -585,7 +631,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
         image.save(output, format="PNG")
         return output.getvalue()
 
-    def test_report_image_rejects_duplicate_already_used_on_another_report(self):
+    def test_report_image_upload_does_not_disclose_cross_report_duplicates(self):
         self.login("finder@example.test", "finder-password")
         first = self.client.post("/api/reports", json=self.report_body(
             "found", "Black headphones", "Black over-ear headphones with padded band and silver hinge."
@@ -601,10 +647,10 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 200, upload.text)
         duplicate = self.client.post(f"/api/reports/{second.json()['report']['id']}/image",
                                      files={"file": ("copy.png", image, "image/png")})
-        self.assertEqual(duplicate.status_code, 409, duplicate.text)
-        self.assertIn("duplicates or closely matches", duplicate.json()["detail"])
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
+        self.assertTrue(duplicate.json()["report"]["image_url"])
 
-    def test_claim_evidence_rejects_image_already_used_on_a_report(self):
+    def test_claim_evidence_upload_does_not_disclose_cross_report_duplicates(self):
         self.login("finder@example.test", "finder-password")
         found = self.client.post(
             "/api/reports",
@@ -649,11 +695,10 @@ class LostLinkWorkflowTests(unittest.TestCase):
             f"/api/claims/{claim_id}/evidence-image",
             files={"file": ("same-headphones.png", original_image, "image/png")},
         )
-        self.assertEqual(duplicate.status_code, 409, duplicate.text)
-        self.assertIn("duplicates or closely matches", duplicate.json()["detail"])
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
         listed_claim = next(item for item in self.client.get("/api/claims").json()["claims"] if item["id"] == claim_id)
         self.assertEqual(listed_claim["evidence_types"], ["distinctive_features", "purchase_or_receipt"])
-        self.assertFalse(listed_claim["evidence_image_available"])
+        self.assertTrue(listed_claim["evidence_image_available"])
         self.logout()
 
     def test_private_claim_evidence_image_is_only_visible_to_claimant_and_office(self):
@@ -798,18 +843,27 @@ class LostLinkWorkflowTests(unittest.TestCase):
         self.assertEqual(accepted.status_code, 200, accepted.text)
         self.assertEqual(accepted.json()["claim"]["status"], "approved_for_collection")
 
-    def test_demo_mode_creates_independent_student_logins(self):
+    def test_preprovisioned_student_cannot_sign_in(self):
+        response = self.client.post("/api/login", json={
+            "email": "finder@example.test", "password": "finder-password"
+        })
+        self.assertEqual(response.status_code, 401, response.text)
+    def test_demo_mode_exposes_only_office_login(self):
         self.set_demo_mode(True)
         main.initialise_db()
         for email, password in (
+            ("student@lostlink.local", "student123"),
             ("student2@lostlink.local", "student2123"),
             ("student3@lostlink.local", "student3123"),
             ("student4@lostlink.local", "student4123"),
         ):
             response = self.client.post("/api/login", json={"email": email, "password": password})
-            self.assertEqual(response.status_code, 200, response.text)
-            self.assertEqual(response.json()["user"]["role"], "student")
-            self.client.post("/api/logout")
+            self.assertEqual(response.status_code, 401, response.text)
+        office = self.client.post("/api/login", json={
+            "email": "office@lostlink.local", "password": "office123"
+        })
+        self.assertEqual(office.status_code, 200, office.text)
+        self.assertEqual(office.json()["user"]["role"], "office")
         self.set_demo_mode(False)
 
 
@@ -1088,9 +1142,7 @@ class LostLinkWorkflowTests(unittest.TestCase):
 
         self.login("claimant@example.test", "claimant-password")
         rival_client = TestClient(main.app)
-        self.assertEqual(rival_client.post("/api/login", json={
-            "email": "rival@example.test", "password": "rival-password"
-        }).status_code, 200)
+        rival_client.headers["X-Test-Student"] = "rival@example.test"
         payloads = (
             {"report_id": report_id, "evidence": "I can identify the wooden curved handle and the silver tip beneath it.", "evidence_types": ["distinctive_features"]},
             {"report_id": report_id, "evidence": "I can identify the silver tip and describe the unique wear on the handle.", "evidence_types": ["distinctive_features"]},
@@ -1497,11 +1549,26 @@ class LostLinkWorkflowTests(unittest.TestCase):
                         name TEXT NOT NULL,
                         applied_at TEXT NOT NULL
                     );
+                    CREATE TABLE users (
+                        id INTEGER PRIMARY KEY,
+                        email TEXT NOT NULL UNIQUE,
+                        display_name TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
                     CREATE TABLE reports (
                         id TEXT PRIMARY KEY,
                         report_type TEXT NOT NULL,
                         status TEXT NOT NULL,
                         category TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                    CREATE TABLE claims (
+                        id TEXT PRIMARY KEY,
+                        report_id TEXT NOT NULL,
+                        claimant_id INTEGER NOT NULL,
+                        status TEXT NOT NULL,
                         created_at TEXT NOT NULL
                     );
                     """

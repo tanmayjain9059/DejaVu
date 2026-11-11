@@ -1,59 +1,39 @@
-# LostLink production deployment runbook
+# Production deployment checklist
 
-This is a deployment baseline. A successful container start is not a security audit or a substitute for a staging rehearsal.
+## Before deployment
 
-## Required infrastructure
+- [ ] Confirm institution approval for public roll-number attribution and in-person identity checks.
+- [ ] Configure Supabase PostgreSQL and verify additive migrations on a staging copy.
+- [ ] Configure office-only Supabase Auth with an exact `OFFICE_USER_EMAILS` allowlist.
+- [ ] Confirm no student signup, password login, Google login or OTP flow is enabled.
+- [ ] Configure the Vercel origin in `FRONTEND_ORIGINS` and verify CORS preflight for `X-LostLink-Tracking-Secret`.
+- [ ] Configure HTTPS, canonical host allowlist, secure session settings and unique secrets.
+- [ ] Configure private object storage and verify authenticated-only access.
+- [ ] Back up the database and private uploads before migration or release.
 
-- A supported PostgreSQL instance with automated backups, TLS, restricted network access, and a tested restore procedure.
-- A public HTTPS reverse proxy/load balancer with a valid certificate. The application container binds to localhost only; terminate TLS at the proxy and preserve the original host. Do not expose port 8000 directly to the internet.
-- Persistent, private storage for report images and claim evidence. The default Compose configuration uses a named Docker volume; an S3-compatible private backend is also available. Back up the local volume or configure provider versioning/replication for S3, always coordinated with the database.
-- Secret management for `SESSION_SECRET` and `DATABASE_URL`. Never commit actual credentials or put them in logs.
-- A verified canonical hostname and DNS, monitoring/alerts, a retention/deletion policy, and an incident response owner.
+## End-to-end release gate
 
-## Configure and deploy
+- [ ] Anonymous Lost report submission writes to canonical `reports`.
+- [ ] Anonymous Found report submission writes to canonical `reports` and remains hidden until office intake.
+- [ ] Office intake checks the physical reporter ID and matching roll number, records custody and assigns a Tag ID.
+- [ ] Public Found browse returns only available items and never exposes roll numbers, Tag IDs or storage locations.
+- [ ] Public claims write to canonical `claims` and appear in the existing office review queue.
+- [ ] Competing claims are disputed and cannot bypass office verification.
+- [ ] Claim approval checks the claimant's physical ID, matching roll number and category-level verification checklist.
+- [ ] Handover checks claimant identity and the recorded Tag ID before marking the item returned.
+- [ ] Lost report matching uses the same bounded retrieval and AI ranking path as the authenticated workflow.
+- [ ] Notifications and rewards are linked to the correct canonical case.
+- [ ] A tracking secret cannot access any other report or claim, even when the roll number is the same.
+- [ ] Student authentication is rejected by both local and Supabase providers.
+- [ ] Office authentication works only for exact allowlisted staff emails.
+- [ ] Public image/evidence upload remains disabled until token-scoped private-storage access is implemented.
 
-Create an untracked deployment `.env` file containing:
+## Operations
 
-```dotenv
-DATABASE_URL=postgresql://<user>:<url-encoded-password>@<host>:5432/<database>?sslmode=require
-SESSION_SECRET=<unique-random-secret>
-ALLOWED_HOSTS=lostlink.example.edu
-APP_PORT=8000
-DATABASE_POOL_MAX_SIZE=5
-```
-
-Replace the example hostname and URL with real provider values. URL-encode special characters in the database password. Do not use the local development password. Ensure the PostgreSQL provider accepts connections only from the deployment host/network.
-
-For private S3-compatible storage, also set `UPLOAD_STORAGE_BACKEND=s3`, `S3_BUCKET`, `S3_PREFIX`, `S3_REGION`, and the secret access key variables. Pass `S3_ENDPOINT_URL` for a compatible non-AWS provider. Follow [Private object storage operations](OBJECT_STORAGE.md) to migrate existing uploads and verify access. The bucket must block public access.
-
-Build and start:
-
-```bash
-docker compose -f compose.production.yml up -d --build
-docker compose -f compose.production.yml ps
-docker compose -f compose.production.yml logs --tail=100 app
-```
-
-Configure the reverse proxy to forward HTTPS traffic to `127.0.0.1:8000`, preserve the public `Host`, and set the standard forwarded-protocol headers. Verify the proxy, host allowlist, cookie Secure flag, and HTTPS redirect in staging before production. Do not trust arbitrary forwarded headers from public clients.
-
-## Pre-launch checks
-
-1. Run the CI workflow for the exact commit to deploy.
-2. Verify `/health/live` and `/health/ready` through the intended proxy path.
-3. Test student and office roles, cross-account access, private evidence image access, login lockouts, claim disputes, approval, and duplicate handover.
-4. Run a restore drill for PostgreSQL **and** the uploads volume; verify row counts, relationships, and that evidence is still private.
-5. Confirm migration from SQLite is separately rehearsed using the explicit migration command and a backup of the source.
-6. Set monitoring for error rates, readiness failures, disk usage, database connections, lock contention, backup freshness, and upload failures.
-7. Define retention/deletion rules and obtain campus approval before real personal or sensitive item data is entered.
-
-## Backup and restore
-
-See [database and upload backup operations](DATABASE_OPERATIONS.md). PostgreSQL dumps are encrypted with age before retention; store encrypted artifacts off-host with access controls. A PostgreSQL dump does not contain the upload volume. Test restoration on an isolated database before relying on backups.
-
-## Limits that require environment-specific validation
-
-- This repository cannot provision your provider, DNS, TLS certificate, secret store, monitoring, or off-host backup destination.
-- The app stores opaque upload keys in the database. The selected local or S3-compatible backend must remain private; local volume backups or S3 versioning/replication must be coordinated with database backups.
-- The existing SQL compatibility adapter and advisory lock need workload testing; run concurrency/load tests on staging before high-traffic use.
-- Existing SQLite records are not moved automatically. Use the reviewed migration script and verify images and row counts.
-- Matching quality needs a representative, privacy-reviewed labelled dataset; a passing synthetic benchmark is not proof of production accuracy.
+- [ ] Run SQLite unit and integration tests.
+- [ ] Run PostgreSQL end-to-end public workflow tests.
+- [ ] Run frontend selector/navigation and JavaScript syntax checks.
+- [ ] Verify migration 10 and legacy public-record migration on a staging copy.
+- [ ] Review public API rate limits, abuse monitoring, CAPTCHA and alerting.
+- [ ] Verify retention, deletion, backup and restore procedures.
+- [ ] Complete security review and college approval before broad launch.

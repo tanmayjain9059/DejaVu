@@ -87,7 +87,6 @@ def _run_supabase_profile(monkeypatch, identity, *, allowed_domains, office_emai
         yield connection
 
     monkeypatch.setattr(auth_dependencies, "AUTH_PROVIDER", "supabase")
-    monkeypatch.setattr(auth_dependencies, "ALLOWED_EMAIL_DOMAINS", set(allowed_domains))
     monkeypatch.setattr(auth_dependencies, "OFFICE_USER_EMAILS", set(office_emails))
     monkeypatch.setattr(auth_dependencies, "verify_supabase_access_token", lambda token: identity)
     monkeypatch.setattr(auth_dependencies, "connect_db", fake_connect_db)
@@ -115,25 +114,21 @@ def _identity_database():
     return connection
 
 
-def test_supabase_provisioning_defaults_to_student_and_ignores_metadata_role(monkeypatch):
+def test_supabase_student_identity_is_rejected_even_on_college_domain(monkeypatch):
     connection = _identity_database()
     identity = {
         "id": "auth-student-1",
         "email": "student@college.edu",
         "user_metadata": {"display_name": "Student User", "role": "office"},
     }
-    user = _run_supabase_profile(
-        monkeypatch, identity, allowed_domains={"college.edu"},
-        office_emails=set(), connection=connection,
-    )
-    assert user["role"] == "student"
-    assert user["display_name"] == "Student User"
-    stored = connection.execute("SELECT supabase_user_id, role FROM users WHERE email=?", (identity["email"],)).fetchone()
-    assert stored["supabase_user_id"] == identity["id"]
-    assert stored["role"] == "student"
+    with pytest.raises(HTTPException) as rejected:
+        _run_supabase_profile(
+            monkeypatch, identity, allowed_domains={"college.edu"},
+            office_emails=set(), connection=connection,
+        )
+    assert rejected.value.status_code == 403
+    assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
     connection.close()
-
-
 def test_supabase_office_role_requires_exact_allowlist_and_can_be_revoked(monkeypatch):
     connection = _identity_database()
     identity = {
@@ -146,11 +141,14 @@ def test_supabase_office_role_requires_exact_allowlist_and_can_be_revoked(monkey
         office_emails={"office@college.edu"}, connection=connection,
     )
     assert user["role"] == "office"
-    downgraded = _run_supabase_profile(
-        monkeypatch, identity, allowed_domains={"college.edu"},
-        office_emails=set(), connection=connection,
-    )
-    assert downgraded["role"] == "student"
+    with pytest.raises(HTTPException) as revoked:
+        _run_supabase_profile(
+            monkeypatch, identity, allowed_domains={"college.edu"},
+            office_emails=set(), connection=connection,
+        )
+    assert revoked.value.status_code == 403
+    stored = connection.execute("SELECT role FROM users WHERE email=?", (identity["email"],)).fetchone()
+    assert stored["role"] == "office"
     connection.close()
 
 
@@ -181,7 +179,7 @@ def test_supabase_identity_migration_is_registered_and_idempotent():
     columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)").fetchall()}
     assert "supabase_user_id" in columns
     versions = [version for version, _, _ in SCHEMA_MIGRATIONS]
-    assert versions[-2:] == [8, 9]
+    assert versions[-5:] == [12, 13, 14, 15, 16]
     _migration_lock_down_supabase_data_api(connection)
     connection.execute("INSERT INTO users(email, supabase_user_id) VALUES (?, ?)", ("one@example.edu", "auth-1"))
     with pytest.raises(sqlite3.IntegrityError):

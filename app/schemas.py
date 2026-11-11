@@ -13,6 +13,7 @@ class ReportBody(BaseModel):
     title: str = Field(min_length=4, max_length=100)
     description: str = Field(min_length=10, max_length=1200)
     category: str
+    image_ai_consent: bool = False
     # Optional public characteristics improve search/matching; never put secret proof here.
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
@@ -35,6 +36,8 @@ class ClaimDisputeBody(BaseModel):
 
 class IntakeBody(BaseModel):
     confirmed_physical_receipt: bool
+    identity_verified_in_person: bool = False
+    verified_roll_number: str | None = Field(default=None, min_length=5, max_length=20)
     storage_location: str = Field(min_length=4, max_length=160)
     private_detail: str | None = Field(default=None, max_length=1200)
     value_band: Literal["low", "medium", "high", "unknown"] = "unknown"
@@ -60,12 +63,15 @@ class ClaimEvidenceBody(BaseModel):
 class ClaimDecisionBody(BaseModel):
     action: Literal["approve", "reject", "request_more_evidence", "mark_disputed"]
     note: str | None = Field(default=None, max_length=800)
+    identity_verified_in_person: bool = False
+    verified_roll_number: str | None = Field(default=None, min_length=5, max_length=20)
     verification_checks: list[str] = Field(default_factory=list)
 
 
 class HandoverBody(BaseModel):
     confirmed_physical_handover: bool
     claimant_identity_checked: bool
+    verified_roll_number: str | None = Field(default=None, min_length=5, max_length=20)
     tag_id: str = Field(min_length=4, max_length=80)
     note: str | None = Field(default=None, max_length=800)
 
@@ -76,3 +82,7 @@ class CategorySuggestionBody(BaseModel):
     brand: str | None = Field(default=None, max_length=80)
     primary_color: str | None = Field(default=None, max_length=60)
     visible_features: str | None = Field(default=None, max_length=400)
+
+
+class ImageAiConsentBody(BaseModel):
+    consent: bool

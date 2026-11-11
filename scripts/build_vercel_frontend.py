@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
 DIST = ROOT / "dist"
-origin = os.environ.get("BACKEND_ORIGIN", "").strip().rstrip("/")
+origin = os.environ.get("BACKEND_ORIGIN", "https://lostlink-q8ft.onrender.com").strip().rstrip("/")
 if origin:
     parsed = urlsplit(origin)
     if parsed.scheme != "https" or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
@@ -17,7 +17,7 @@ if origin:
     if parsed.username or parsed.password:
         raise SystemExit("BACKEND_ORIGIN must not contain credentials.")
 else:
-    print("BACKEND_ORIGIN is not set; building an intentionally unconfigured preview.")
+    raise SystemExit("BACKEND_ORIGIN resolved to an empty value; configure the deployed LostLink API origin.")
 STATIC.mkdir(parents=True, exist_ok=True)
 (STATIC / "deployment-config.js").write_text(
     "window.LOSTLINK_API_BASE_URL = " + json.dumps(origin) + ";\n" +
@@ -29,4 +29,17 @@ if DIST.exists():
 shutil.copytree(STATIC, DIST / "static")
 shutil.copy2(STATIC / "index.html", DIST / "index.html")
 shutil.copy2(STATIC / "deployment-config.js", DIST / "deployment-config.js")
+
+(DIST / "_headers").write_text(
+    """/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cross-Origin-Resource-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: """ + origin + """; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; script-src 'self'; connect-src 'self' """ + origin + """ https://*.supabase.co https://*.storage.supabase.co; upgrade-insecure-requests
+""",
+    encoding="utf-8",
+)
 print("Prepared Vercel static frontend for " + origin)

@@ -20,6 +20,9 @@ class FakeS3:
     def delete_object(self, **kwargs):
         self.objects.pop((kwargs["Bucket"], kwargs["Key"]), None)
 
+    def head_bucket(self, **kwargs):
+        return {}
+
     def head_object(self, **kwargs):
         if (kwargs["Bucket"], kwargs["Key"]) not in self.objects:
             raise KeyError("missing")
@@ -32,6 +35,7 @@ class ObjectStorageTests(unittest.TestCase):
                  patch.object(object_storage, "_BACKEND", "local"):
                 key = object_storage.save_upload("report-photo.jpg", b"private-image")
                 self.assertEqual(key, "report-photo.jpg")
+                self.assertEqual(object_storage.check_storage_ready(), "local")
                 self.assertEqual(object_storage.read_upload(key), b"private-image")
                 self.assertTrue(object_storage.upload_exists(key))
                 with object_storage.materialize_upload(key) as path:
@@ -46,6 +50,7 @@ class ObjectStorageTests(unittest.TestCase):
              patch.object(object_storage, "_BUCKET", "private-test-bucket"), \
              patch.object(object_storage, "_PREFIX", "lostlink-private"), \
              patch.object(object_storage, "_s3_client", return_value=fake):
+            self.assertEqual(object_storage.check_storage_ready(), "s3")
             key = object_storage.save_upload("claim-proof.jpg", b"private-evidence")
             self.assertEqual(key, "claim-proof.jpg")
             self.assertIn(("private-test-bucket", "lostlink-private/claim-proof.jpg"), fake.objects)

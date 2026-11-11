@@ -165,3 +165,16 @@ def migrate_local_uploads_to_s3(keys: list[str], *, dry_run: bool = True) -> dic
                 raise IOError(f"Object-storage verification failed for upload key {key!r}.")
         copied += 1
     return {"copied": copied, "missing": missing}
+
+
+def check_storage_ready() -> str:
+    """Verify that the configured private upload backend is reachable and usable."""
+    backend = storage_backend()
+    if backend == "s3":
+        # A successful bucket-level request verifies endpoint, credentials and bucket access.
+        _s3_client().head_bucket(Bucket=_BUCKET)
+        return "s3"
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix=".lostlink-ready-", dir=UPLOAD_DIR, delete=True):
+        pass
+    return "local"
